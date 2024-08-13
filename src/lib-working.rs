@@ -17,6 +17,7 @@ extern crate euclid;
 extern crate type1_encoding_parser;
 extern crate unicode_normalization;
 use euclid::vec2;
+use rayon::prelude::*;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, VecDeque};
 use std::fs::File;
@@ -35,6 +36,36 @@ mod form;
 mod glyphnames;
 mod zapfglyphnames;
 
+struct NullOutputDev;
+
+impl OutputDev for NullOutputDev {
+    // Implement all methods of OutputDev with empty bodies
+    fn begin_page(&mut self, _: u32, _: &MediaBox, _: Option<ArtBox>) -> Result<(), OutputError> {
+        Ok(())
+    }
+    fn end_page(&mut self) -> Result<(), OutputError> {
+        Ok(())
+    }
+    fn output_character(
+        &mut self,
+        _: &Transform,
+        _: f64,
+        _: f64,
+        _: f64,
+        _: &str,
+    ) -> Result<(), OutputError> {
+        Ok(())
+    }
+    fn begin_word(&mut self) -> Result<(), OutputError> {
+        Ok(())
+    }
+    fn end_word(&mut self) -> Result<(), OutputError> {
+        Ok(())
+    }
+    fn end_line(&mut self) -> Result<(), OutputError> {
+        Ok(())
+    }
+}
 pub struct Space;
 pub type Transform = Transform2D<f64, Space, Space>;
 
@@ -1719,6 +1750,7 @@ struct TextSegment {
     is_bold: bool,
     font_name: String, // New field to store the font name
     page_num: u32,
+    avg_char_width: f64,
 }
 struct Processor<'a> {
     _none: PhantomData<&'a ()>,
@@ -1752,6 +1784,7 @@ impl<'a> Processor<'a> {
         let mut last_y = 0.0;
         let mut current_is_bold = false;
         let mut current_font_size = 0.0;
+        let mut current_font_width = 0.0;
         // let mut text_segments: Vec<TextSegment> = Vec::new();
 
         let content = Content::decode(&content).unwrap();
@@ -1866,26 +1899,27 @@ impl<'a> Processor<'a> {
                     //     new_font_size, new_is_bold
                     // );
 
-                    if new_is_bold != current_is_bold {
-                        if !current_word.is_empty() {
-                            current_line.push_str(&current_word);
-                            text.push_str(&current_line);
-                            text_segments.push(TextSegment {
-                                content: text.clone(),
-                                font_size: (self.current_font_size * 100.0_f64).round() / 100.0,
-                                x: gs.ts.tm.m31,
-                                y: gs.ts.tm.m32,
-                                is_bold: current_is_bold,
-                                font_name: self.current_font_name.clone(),
-                                page_num: page_num,
-                            });
-                            text.clear();
-                            current_line.clear();
-                            current_word.clear();
-                        }
-                        current_is_bold = new_is_bold;
-                        self.current_font_size = new_font_size;
-                    }
+                    // if new_is_bold != current_is_bold {
+                    //     if !current_word.is_empty() {
+                    //         current_line.push_str(&current_word);
+                    //         // text.push_str(&current_line);
+                    //         text_segments.push(TextSegment {
+                    //             content: current_line.clone(),
+                    //             font_size: (self.current_font_size * 100.0_f64).round() / 100.0,
+                    //             x: gs.ts.tm.m31,
+                    //             y: gs.ts.tm.m32,
+                    //             is_bold: current_is_bold,
+                    //             font_name: self.current_font_name.clone(),
+                    //             page_num: page_num,
+                    //             avg_char_width: current_font_width,
+                    //         });
+
+                    //         current_line.clear();
+                    //         current_word.clear();
+                    //     }
+                    //     current_is_bold = new_is_bold;
+                    //     self.current_font_size = new_font_size;
+                    // }
                     gs.ts.font = Some(font.clone());
                     gs.ts.font_size = as_num(&operation.operands[1]);
 
@@ -1903,7 +1937,7 @@ impl<'a> Processor<'a> {
                     );
                 }
 
-                "TJ" => match operation.operands[0] {
+                "TJ" | "Tj" => match operation.operands[0] {
                     Object::Array(ref array) => {
                         for e in array {
                             match e {
@@ -1944,9 +1978,8 @@ impl<'a> Processor<'a> {
                                                 current_word.clear();
                                             }
                                             if !current_line.is_empty() {
-                                                text.push_str(&current_line);
                                                 text_segments.push(TextSegment {
-                                                    content: text.clone(),
+                                                    content: current_line.clone(),
                                                     font_size: (current_font_size * 100.0_f64)
                                                         .round()
                                                         / 100.0,
@@ -1958,8 +1991,9 @@ impl<'a> Processor<'a> {
                                                         .contains("bold"),
                                                     font_name: self.current_font_name.clone(),
                                                     page_num: page_num,
+                                                    avg_char_width: current_font_width,
                                                 });
-                                                text.clear();
+
                                                 // Add both a space and a newline for later collation
 
                                                 current_line.clear();
@@ -2034,12 +2068,7 @@ impl<'a> Processor<'a> {
                     }
                     _ => {}
                 },
-                "Tj" => match operation.operands[0] {
-                    Object::String(ref s, _) => {}
-                    _ => {
-                        panic!("unexpected Tj operand {:?}", operation)
-                    }
-                },
+
                 "Tc" => {
                     gs.ts.character_spacing = as_num(&operation.operands[0]);
                 }
@@ -2052,39 +2081,11 @@ impl<'a> Processor<'a> {
                 "TL" => {
                     gs.ts.leading = as_num(&operation.operands[0]);
                 }
-                // "Tf" => {
-                //     let fonts: &Dictionary = get(&doc, resources, b"Font");
-                //     let name = operation.operands[0].as_name().unwrap();
-                //     let font = font_table
-                //         .entry(name.to_owned())
-                //         .or_insert_with(|| make_font(doc, get::<&Dictionary>(doc, fonts, name)))
-                //         .clone();
-                //     {
-                //         /*let file = font.get_descriptor().and_then(|desc| desc.get_file());
-                //         if let Some(file) = file {
-                //             let file_contents = filter_data(file.as_stream().unwrap());
-                //             let mut cursor = Cursor::new(&file_contents[..]);
-                //             //let f = Font::read(&mut cursor);
-                //             //dlog!("font file: {:?}", f);
-                //         }*/
-                //     }
-                //     gs.ts.font = Some(font);
 
-                //     gs.ts.font_size = as_num(&operation.operands[1]);
-                //     // self.current_font_size = as_num(&operation.operands[1]);
-                //     // self.font_sizes.push(self.current_font_size);
-
-                //     dlog!(
-                //         "font {} size: {} {:?}",
-                //         pdf_to_utf8(name),
-                //         gs.ts.font_size,
-                //         operation
-                //     );
-                // }
                 "Ts" => {
                     gs.ts.rise = as_num(&operation.operands[0]);
-                    text.push(' ');
-                    current_line.push(' ');
+                    // text.push(' ');
+                    // current_line.push(' ');
                 }
                 "Tm" => {
                     assert!(operation.operands.len() == 6);
@@ -2273,16 +2274,16 @@ impl<'a> Processor<'a> {
             current_line.push_str(&current_word);
         }
         if !current_line.is_empty() {
-            text.push_str(&current_line);
             if let Some(last_segment) = text_segments.last() {
                 text_segments.push(TextSegment {
-                    content: text.clone(),
+                    content: current_line.clone(),
                     font_size: (self.current_font_size * 100.0_f64).round() / 100.0,
                     x: last_segment.x,
                     y: last_segment.y,
                     is_bold: last_segment.is_bold.clone(),
                     font_name: self.current_font_name.clone(),
                     page_num: page_num,
+                    avg_char_width: last_segment.avg_char_width,
                 });
             }
         }
@@ -2839,96 +2840,129 @@ pub struct ContentOutput {
     pub paragraph: String,
     pub page: u32,
 }
-/// Parse a given document and output it to `output`
 
-fn calculate_document_stats(lines: Vec<TextSegment>) -> (f64, Vec<f64>) {
+fn calculate_document_stats(text_segments: &[TextSegment]) -> (f64, Vec<f64>, f64) {
     let mut heights: Vec<f64> = Vec::new();
+    let mut bold_heights: Vec<f64> = Vec::new();
+    let mut char_widths: Vec<f64> = Vec::new();
 
-    for each in lines {
-        if each.font_size > 0.0 {
-            heights.push((each.font_size * 100.0).round() / 100.0);
-        }
-    }
-
-    heights.sort_by(|a, b| b.partial_cmp(a).unwrap());
-    let mut unique_heights: Vec<f64> = heights.clone();
-    unique_heights.dedup();
-
-    // println!("heights: {:?}", heights);
-    println!("unique_heights: {:?}", unique_heights);
-
-    // count the number of times each height appears
-    let mut heights_by_count: HashMap<i64, usize> = HashMap::new();
-    for &value in heights.iter() {
-        let value: i64 = (value * 10000.0).round() as i64;
-        *heights_by_count.entry(value).or_insert(0) += 1;
-        // *heights_by_count.entry(value).or_insert(0) += 1;
-    }
-    println!("heights_by_count: {:?}", heights_by_count);
-
-    // let avg_height = (heights.iter().sum::<f64>() / heights.len() as f64 * 100.0).round() / 100.0;
-
-    let text_height = (*heights
-        .iter()
-        .max_by_key(|&&h| heights.iter().filter(|&&x| x == h).count())
-        // .unwrap()
-        .unwrap_or(&0.0)
-        * 100.0)
-        .round()
-        / 100.0;
-
-    // text height will now be the height of paragraph text. For all values higher we need to have H1...H6. If there are less than 6 counts above paragraph size we can assing them H1....h6 if not we nneed to group them into H1...H6 where multiple counts are the same.
-
-    // Calculate heading thresholds
-    let mut heading_thresholds: Vec<f64> = Vec::new();
-    let mut heights_above_text: Vec<(f64, usize)> = heights_by_count
-        .iter()
-        .filter(|(&height, _)| (height as f64 / 10000.0) > text_height)
-        .map(|(&height, &count)| (height as f64 / 10000.0, count))
-        .collect();
-
-    heights_above_text.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
-
-    if heights_above_text.len() <= 6 {
-        // If 6 or fewer unique heights above text_height, use them all
-        heading_thresholds = heights_above_text
-            .iter()
-            .map(|&(height, _)| height)
-            .collect();
-    } else {
-        // Group heights into 6 levels
-        let total_count: usize = heights_above_text.iter().map(|&(_, count)| count).sum();
-        let target_count_per_level = total_count / 6;
-        let mut current_count = 0;
-        let mut current_level = Vec::new();
-
-        for (height, count) in heights_above_text {
-            current_count += count;
-            current_level.push(height);
-
-            if current_count >= target_count_per_level || heading_thresholds.len() == 5 {
-                heading_thresholds.push(
-                    *current_level
-                        .iter()
-                        .max_by(|a, b| a.partial_cmp(b).unwrap())
-                        .unwrap(),
-                );
-                current_count = 0;
-                current_level.clear();
-
-                if heading_thresholds.len() == 6 {
-                    break;
-                }
+    for segment in text_segments {
+        if segment.font_size > 0.0 {
+            heights.push((segment.font_size * 100.0).round() / 100.0);
+            char_widths.push(segment.avg_char_width);
+            if segment.is_bold {
+                bold_heights.push((segment.font_size * 100.0).round() / 100.0);
             }
         }
     }
 
-    // Ensure heading thresholds are in descending order
-    heading_thresholds.sort_by(|a, b| b.partial_cmp(a).unwrap());
+    heights.sort_by(|a, b| b.partial_cmp(a).unwrap());
+    bold_heights.sort_by(|a, b| b.partial_cmp(a).unwrap());
 
-    println!("Calculated heading thresholds: {:?}", heading_thresholds);
+    // Calculate text height (most common font size)
+    let text_height = calculate_most_common(&heights);
 
-    (text_height, heading_thresholds)
+    // Calculate heading thresholds
+    let heading_thresholds = calculate_heading_thresholds(&heights, &bold_heights, text_height);
+
+    // Calculate average character width for regular text
+    let avg_char_width = char_widths.iter().sum::<f64>() / char_widths.len() as f64;
+
+    // println!("text_height: {}", text_height);
+    // println!("heading_thresholds: {:?}", heading_thresholds);
+    // println!("avg_char_width: {}", avg_char_width);
+
+    (text_height, heading_thresholds, avg_char_width)
+}
+
+fn calculate_most_common(values: &[f64]) -> f64 {
+    let mut count_map: HashMap<i64, usize> = HashMap::new();
+    for &value in values {
+        let key = (value * 10000.0).round() as i64;
+        *count_map.entry(key).or_insert(0) += 1;
+    }
+    let most_common = count_map
+        .iter()
+        .max_by_key(|&(_, count)| count)
+        .map(|(&key, _)| key);
+    most_common.map(|key| key as f64 / 10000.0).unwrap_or(0.0)
+}
+
+fn calculate_heading_thresholds(
+    heights: &[f64],
+    bold_heights: &[f64],
+    text_height: f64,
+) -> Vec<f64> {
+    let mut thresholds = Vec::new();
+    let mut candidates: Vec<f64> = heights
+        .iter()
+        .filter(|&&h| h > text_height)
+        .cloned()
+        .collect();
+    candidates.extend(bold_heights.iter().filter(|&&h| h > text_height).cloned());
+    candidates.sort_by(|a, b| b.partial_cmp(a).unwrap());
+    candidates.dedup();
+
+    if candidates.len() <= 6 {
+        thresholds = candidates;
+    } else {
+        // Group into 6 levels
+        let chunk_size = candidates.len() / 6;
+        for i in 0..6 {
+            let start = i * chunk_size;
+            let end = if i == 5 {
+                candidates.len()
+            } else {
+                (i + 1) * chunk_size
+            };
+            if let Some(&max) = candidates[start..end]
+                .iter()
+                .max_by(|a, b| a.partial_cmp(b).unwrap())
+            {
+                thresholds.push(max);
+            }
+        }
+    }
+
+    thresholds
+}
+
+fn is_heading(
+    segment: &TextSegment,
+    heading_thresholds: &[f64],
+    text_height: f64,
+    avg_char_width: f64,
+) -> bool {
+    // Consider a segment as a heading if:
+    // 1. Its font size is in the heading thresholds
+    // 2. It's bold and its font size is at least the text height
+    // 3. It has significantly wider characters than average (might indicate a different font or weight)
+    // 4. It has very few characters (likely a short heading)
+    let in_heading_thresholds = heading_thresholds.iter().any(|&h| segment.font_size >= h);
+    let is_bold_and_large = segment.is_bold && segment.font_size >= text_height;
+    // let is_wide_chars = segment.avg_char_width > avg_char_width * 1.2;
+    // let is_short = segment.content.len() < 50; // Adjust this threshold as needed
+
+    // in_heading_thresholds || is_bold_and_large || (is_wide_chars && is_short)
+    (in_heading_thresholds || is_bold_and_large) && segment.content.len() > 4
+}
+const MIN_CONTENT_LENGTH: usize = 4;
+
+fn flush_current_content(
+    document_structure: &mut Vec<ContentOutput>,
+    current_headings: &mut Vec<String>,
+    current_paragraph: &mut String,
+    page: u32,
+    // toc_by_page: &HashMap<usize, Vec<(String, usize)>>,
+) {
+    if !current_paragraph.is_empty() && current_paragraph.trim().len() >= MIN_CONTENT_LENGTH {
+        document_structure.push(ContentOutput {
+            headings: current_headings.clone(),
+            paragraph: current_paragraph.trim().to_string(),
+            page,
+        });
+        current_paragraph.clear();
+    }
 }
 
 pub fn output_doc(
@@ -2942,186 +2976,164 @@ pub fn output_doc(
     }
     let empty_resources = &Dictionary::new();
 
+    // let toc = doc.get_toc().unwrap();
+
+    // let mut toc_by_page: HashMap<usize, Vec<(String, usize)>> = HashMap::new();
+
+    // for item in toc.toc {
+    //     toc_by_page
+    //         .entry(item.page)
+    //         .or_insert_with(Vec::new)
+    //         .push((item.title, item.level));
+    // }
+
+    // println!("{:#?}", toc_by_page);
+    // for each in toc {
+    //     println!("{:#?}", each);
+    // }
+
     let pages = doc.get_pages();
     // let toc = doc.get_toc();
 
-    let form = match form_fields(&doc, &mut document_structure) {
+    let _ = match form_fields(&doc, &mut document_structure) {
         Ok(form) => form,
         Err(e) => {
-            println!("Error: {:#?}", e);
+            dlog!("Error: {:#?}", e);
             // None
         }
     };
     // println!("form: {:#?}", form);
-    let mut text_segments: Vec<TextSegment> = Vec::new();
 
-    let mut p = Processor::new();
+    // Process pages in parallel
+    let text_segments: Vec<TextSegment> = pages
+        .par_iter()
+        .filter(|dict| {
+            let page_num = dict.0;
+            (2595_u32..=2598_u32).contains(&page_num)
+        })
+        .flat_map(|dict| {
+            let page_num = dict.0;
+            let page_dict = doc.get_object(*dict.1).unwrap().as_dict().unwrap();
+            let resources = get_inherited(doc, page_dict, b"Resources").unwrap_or(empty_resources);
 
-    for dict in pages {
-        let page_num = dict.0;
-        let page_dict = doc.get_object(dict.1).unwrap().as_dict().unwrap();
-        dlog!("page {} {:?}", page_num, page_dict);
-        // XXX: Some pdfs lack a Resources directory
-        let resources = get_inherited(doc, page_dict, b"Resources").unwrap_or(empty_resources);
-        dlog!("resources {:?}", resources);
+            let media_box: Vec<f64> = get_inherited(doc, page_dict, b"MediaBox").expect("MediaBox");
+            let media_box = MediaBox {
+                llx: media_box[0],
+                lly: media_box[1],
+                urx: media_box[2],
+                ury: media_box[3],
+            };
 
-        // pdfium searches up the page tree for MediaBoxes as needed
-        let media_box: Vec<f64> = get_inherited(doc, page_dict, b"MediaBox").expect("MediaBox");
-        let media_box = MediaBox {
-            llx: media_box[0],
-            lly: media_box[1],
-            urx: media_box[2],
-            ury: media_box[3],
-        };
+            let art_box = get::<Option<Vec<f64>>>(&doc, page_dict, b"ArtBox")
+                .map(|x| (x[0], x[1], x[2], x[3]));
 
-        let art_box =
-            get::<Option<Vec<f64>>>(&doc, page_dict, b"ArtBox").map(|x| (x[0], x[1], x[2], x[3]));
+            let mut p = Processor::new();
+            let mut page_segments = Vec::new();
 
-        output.begin_page(page_num, &media_box, art_box)?;
+            // We can't use the output device directly in parallel, so we'll skip those calls
+            p.process_stream(
+                &doc,
+                doc.get_page_content(*dict.1).unwrap(),
+                resources,
+                &media_box,
+                &mut NullOutputDev,
+                *page_num,
+                &mut page_segments,
+            )
+            .unwrap();
 
-        p.process_stream(
-            &doc,
-            doc.get_page_content(dict.1).unwrap(),
-            resources,
-            &media_box,
-            output,
-            page_num,
-            &mut text_segments,
-        )?;
+            page_segments
+        })
+        .collect();
 
-        output.end_page()?;
-        // break;
-        //print every 10 pages
-        if page_num % 10 == 0 {
-            println!("page: {}", page_num);
-        }
-        if page_num % 10 == 0 {
-            break;
-        }
-    }
-    let (text_height, heights) = calculate_document_stats(text_segments.clone());
+    // The rest of the function remains sequential to ensure that the document structure is created in the correct order
+    let (text_height, heading_thresholds, avg_char_width) =
+        calculate_document_stats(&text_segments);
 
+    // let mut document_structure: Vec<ContentOutput> = Vec::new();
     let mut current_headings: Vec<String> = Vec::new();
     let mut current_paragraph = String::new();
-    let mut is_bold_heading = false;
     let mut last_y = f64::MAX;
     let mut last_x = 0.0;
-    let footer_threshold = text_height * 0.8; // Adjust this value as needed
+    let mut current_page = 0;
+    let mut is_bold_heading = false;
+    let mut last_heading_size = 0.0;
 
     for segment in text_segments.clone() {
-        let heading_level = heights.iter().position(|&h| segment.font_size == h);
+        let is_heading = is_heading(&segment, &heading_thresholds, text_height, avg_char_width);
         let is_new_line = (segment.y - last_y).abs() > text_height * 0.5 || segment.x < last_x;
 
-        if segment.font_size == text_height {
-            if segment.is_bold {
-                // This is likely a bold heading
-                if !current_paragraph.is_empty() {
-                    document_structure.push(ContentOutput {
-                        headings: current_headings.clone(),
-                        paragraph: current_paragraph.trim().to_string(),
-                        page: segment.page_num,
-                    });
-                    current_paragraph.clear();
-                    if is_bold_heading {
-                        current_headings.pop();
-                    }
-                } else {
-                    if is_bold_heading {
-                        document_structure.push(ContentOutput {
-                            headings: current_headings.clone(),
-                            paragraph: current_headings
-                                .last()
-                                .unwrap_or(&" ".to_owned())
-                                .to_string(),
-                            page: segment.page_num,
-                        });
-                        current_headings.pop();
-                    }
-                }
+        if segment.page_num != current_page {
+            // flush_current_content(
+            //     &mut document_structure,
+            //     &mut current_headings,
+            //     &mut current_paragraph,
+            //     current_page,
+            // );
+            current_page = segment.page_num;
+        }
 
-                current_headings.push(segment.content.trim().to_string());
-                is_bold_heading = true;
-            } else {
-                current_paragraph.push_str(&segment.content);
+        if !is_heading {
+            if is_new_line && !current_paragraph.is_empty() {
                 current_paragraph.push('\n');
             }
-        }
-        // Check if this is footer text
-        else if segment.font_size < footer_threshold {
-            // Handle footer text (you might want to store it separately or ignore it)
-            continue;
-        }
-        // Check if this is a new line
-        else if let Some(level) = heading_level {
-            // This is a heading
-            if !current_paragraph.is_empty() {
-                document_structure.push(ContentOutput {
-                    headings: current_headings.clone(),
-                    paragraph: current_paragraph.trim().to_string(),
-                    page: segment.page_num,
-                });
-                current_paragraph.clear();
-                if is_bold_heading {
-                    current_headings.pop();
-                    is_bold_heading = false;
-                }
-            }
+            current_paragraph.push(' ');
+            current_paragraph.push_str(&segment.content);
+
+            // Check if we need to flush the content
+        } else {
+            // This is paragraph text
+            flush_current_content(
+                &mut document_structure,
+                &mut current_headings,
+                &mut current_paragraph,
+                current_page,
+                // &toc_by_page,
+            );
+
+            let heading_level = heading_thresholds
+                .iter()
+                .position(|&h| segment.font_size >= h)
+                .unwrap_or(heading_thresholds.len());
+
+            //     if segment.is_bold && segment.font_size == text_height {
+            //     current_paragraph.pop();
+
+            // } else {
+            //     is_bold_heading = true;
+            // }
 
             // Adjust the current_headings based on the new heading level
-            while current_headings.len() > level {
+            while current_headings.len() > heading_level {
                 current_headings.pop();
             }
-            if current_headings.len() == level {
+            if current_headings.len() == heading_level {
                 current_headings.pop();
             }
 
-            if segment.content.trim().to_string() == ""
-                || segment.content.trim().to_string() == " "
-                || segment.content.trim().to_string().len() < 4
-            {
-                continue;
-            } else {
-                current_headings.push(segment.content.trim().to_string());
+            if segment.font_size > last_heading_size {
+                current_headings.pop();
             }
-        } else {
-            if segment.is_bold && is_new_line {
-                // This is likely a bold heading
-                if !current_paragraph.is_empty() {
-                    document_structure.push(ContentOutput {
-                        headings: current_headings.clone(),
-                        paragraph: current_paragraph.trim().to_string(),
-                        page: segment.page_num,
-                    });
-                    current_paragraph.clear();
-                }
-                if is_bold_heading {
-                    current_headings.pop();
-                }
-                current_headings.push(segment.content.trim().to_string());
-                is_bold_heading = true;
-            } else {
-                // This is paragraph text or inline bold
-                if is_new_line && !current_paragraph.is_empty() {
-                    current_paragraph.push(' ');
-                }
-                current_paragraph.push_str(&segment.content);
-                // current_paragraph.push('\n');
-                is_bold_heading = false;
+
+            let heading_content = segment.content.trim().to_string();
+            if heading_content.len() >= MIN_CONTENT_LENGTH {
+                current_headings.push(heading_content);
             }
+            last_heading_size = segment.font_size;
         }
 
         last_y = segment.y;
         last_x = segment.x;
     }
 
-    // Push the last paragraph if it's not empty
-    if !current_paragraph.is_empty() {
-        document_structure.push(ContentOutput {
-            headings: current_headings,
-            paragraph: current_paragraph.trim().to_string(),
-            page: 0,
-        });
-    }
+    // Flush any remaining content
+    flush_current_content(
+        &mut document_structure,
+        &mut current_headings,
+        &mut current_paragraph,
+        current_page,
+        // &toc_by_page,
+    );
 
     // Print the document structure (for debugging)
     // for content in &document_structure {
@@ -3129,19 +3141,16 @@ pub fn output_doc(
     //     println!("Paragraph: {}\n", content.paragraph);
     //     println!("Page: {}\n", content.page);
     // }
-    // for each in text_segments {
-    //     println!("{:#?}", each);
-    // }
+    for each in text_segments {
+        println!("{:#?}", each);
+    }
 
     Ok(document_structure)
 }
 
 pub fn parse_pdf(file: &str) -> Result<Vec<ContentOutput>, OutputError> {
     let output_kind = "txt";
-    //let output_kind = "svg";
 
-    // let output_kind = env::args().nth(2).unwrap_or_else(|| "txt".to_owned());
-    println!("{}", file);
     let path = path::Path::new(&file);
     let filename = path.file_name().expect("expected a filename");
     let mut output_file = PathBuf::new();
@@ -3151,7 +3160,7 @@ pub fn parse_pdf(file: &str) -> Result<Vec<ContentOutput>, OutputError> {
         BufWriter::new(File::create(output_file).expect("could not create output"));
     let doc = Document::load(path).unwrap();
 
-    print_metadata(&doc);
+    // print_metadata(&doc);
 
     let mut output: Box<dyn OutputDev> = match output_kind.as_ref() {
         "txt" => Box::new(PlainTextOutput::new(
