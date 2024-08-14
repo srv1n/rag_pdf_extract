@@ -309,6 +309,7 @@ pub fn form_fields(
 ) -> Result<(), OutputError> {
     let form = Form::load_doc(doc.clone())?;
     println!("form len: {}", form.len());
+    let mut text = String::new();
     for i in 0..form.len() {
         // let page = form.doc.;
         let field_type = form.get_type(i);
@@ -377,11 +378,16 @@ pub fn form_fields(
             FieldState::Unknown => "Unknown".to_string(),
         };
 
-        document_structure.push(ContentOutput {
-            headings: vec![],
-            paragraph: format!("{}: {}", field_name.unwrap_or("".to_string()), field_value),
-            page: 0,
-        });
+        text.push_str(&format!(
+            "{}: {}",
+            field_name.unwrap_or("".to_string()),
+            field_value
+        ));
     }
+    document_structure.push(ContentOutput {
+        headings: vec![],
+        paragraph: text,
+        page: 0,
+    });
     Ok(())
 }
