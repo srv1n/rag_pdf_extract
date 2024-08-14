@@ -577,14 +577,14 @@ impl<'a> PdfSimpleFont<'a> {
                                                         e.get().nfkc().eq(String::from_utf16(&be)
                                                             .unwrap()
                                                             .nfkc());
-                                                    println!(
-                                                        "Unicode mismatch {} {} {:?} {:?} {:?}",
-                                                        normal_match,
-                                                        name,
-                                                        e.get(),
-                                                        String::from_utf16(&be),
-                                                        be
-                                                    );
+                                                    // println!(
+                                                    //     "Unicode mismatch {} {} {:?} {:?} {:?}",
+                                                    //     normal_match,
+                                                    //     name,
+                                                    //     e.get(),
+                                                    //     String::from_utf16(&be),
+                                                    //     be
+                                                    // );
                                                 }
                                             }
                                         }
@@ -1772,7 +1772,7 @@ impl<'a> Processor<'a> {
         content: Vec<u8>,
         resources: &'a Dictionary,
         media_box: &MediaBox,
-        output: &mut dyn OutputDev,
+
         page_num: u32,
         text_segments: &mut Vec<TextSegment>,
     ) -> Result<(), OutputError> {
@@ -2131,7 +2131,7 @@ impl<'a> Processor<'a> {
                     dlog!("Tm: matrix {:?}", gs.ts.tm);
                     // text.push(' ');
                     // current_line.push(' ');
-                    output.end_line()?;
+                    // output.end_line()?;
                 }
                 "Td" => {
                     /* Move to the start of the next line, offset from the start of the current line by (tx , ty ).
@@ -2148,7 +2148,7 @@ impl<'a> Processor<'a> {
                     dlog!("Td matrix {:?}", gs.ts.tm);
                     // text.push(' ');
                     // current_line.push(' ');
-                    output.end_line()?;
+                    // output.end_line()?;
                 }
 
                 "TD" => {
@@ -2166,7 +2166,7 @@ impl<'a> Processor<'a> {
                     dlog!("TD matrix {:?}", gs.ts.tm);
                     // text.push(' ');
                     // current_line.push(' ');
-                    output.end_line()?;
+                    // output.end_line()?;
                 }
 
                 "T*" => {
@@ -2178,7 +2178,7 @@ impl<'a> Processor<'a> {
                     dlog!("T* matrix {:?}", gs.ts.tm);
                     // text.push(' ');
                     // current_line.push(' ');
-                    output.end_line()?;
+                    // output.end_line()?;
                 }
                 "q" => {
                     gs_stack.push(gs.clone());
@@ -2255,11 +2255,11 @@ impl<'a> Processor<'a> {
                     dlog!("unhandled path op {:?}", operation);
                 }
                 "S" => {
-                    output.stroke(&gs.ctm, &gs.stroke_colorspace, &gs.stroke_color, &path)?;
+                    // output.stroke(&gs.ctm, &gs.stroke_colorspace, &gs.stroke_color, &path)?;
                     path.ops.clear();
                 }
                 "F" | "f" => {
-                    output.fill(&gs.ctm, &gs.fill_colorspace, &gs.fill_color, &path)?;
+                    // output.fill(&gs.ctm, &gs.fill_colorspace, &gs.fill_color, &path)?;
                     path.ops.clear();
                 }
                 "W" | "w*" => {
@@ -2290,7 +2290,7 @@ impl<'a> Processor<'a> {
                         contents,
                         resources,
                         &media_box,
-                        output,
+                        // output,
                         page_num,
                         text_segments,
                     )?;
@@ -2776,10 +2776,10 @@ pub fn extract_text<P: std::convert::AsRef<std::path::Path>>(
 ) -> Result<String, OutputError> {
     let mut s = String::new();
     {
-        let mut output = PlainTextOutput::new(&mut s);
+        // let mut output = PlainTextOutput::new(&mut s);
         let mut doc = Document::load(path)?;
         maybe_decrypt(&mut doc)?;
-        output_doc(&doc, &mut output)?;
+        output_doc(&doc)?;
     }
     Ok(s)
 }
@@ -2806,9 +2806,9 @@ pub fn extract_text_encrypted<P: std::convert::AsRef<std::path::Path>, PW: AsRef
 ) -> Result<String, OutputError> {
     let mut s = String::new();
     {
-        let mut output = PlainTextOutput::new(&mut s);
+        // let mut output = PlainTextOutput::new(&mut s);
         let mut doc = Document::load(path)?;
-        output_doc_encrypted(&mut doc, &mut output, password)?;
+        output_doc_encrypted(&mut doc, password)?;
     }
     Ok(s)
 }
@@ -2816,10 +2816,10 @@ pub fn extract_text_encrypted<P: std::convert::AsRef<std::path::Path>, PW: AsRef
 pub fn extract_text_from_mem(buffer: &[u8]) -> Result<String, OutputError> {
     let mut s = String::new();
     {
-        let mut output = PlainTextOutput::new(&mut s);
+        // let mut output = PlainTextOutput::new(&mut s);
         let mut doc = Document::load_mem(buffer)?;
         maybe_decrypt(&mut doc)?;
-        output_doc(&doc, &mut output)?;
+        output_doc(&doc)?;
     }
     Ok(s)
 }
@@ -2830,9 +2830,9 @@ pub fn extract_text_from_mem_encrypted<PW: AsRef<[u8]>>(
 ) -> Result<String, OutputError> {
     let mut s = String::new();
     {
-        let mut output = PlainTextOutput::new(&mut s);
+        // let mut output = PlainTextOutput::new(&mut s);
         let mut doc = Document::load_mem(buffer)?;
-        output_doc_encrypted(&mut doc, &mut output, password)?;
+        output_doc_encrypted(&mut doc, password)?;
     }
     Ok(s)
 }
@@ -2857,11 +2857,11 @@ fn get_inherited<'a, T: FromObj<'a>>(
 
 pub fn output_doc_encrypted<PW: AsRef<[u8]>>(
     doc: &mut Document,
-    output: &mut dyn OutputDev,
+    // output: &mut dyn OutputDev,
     password: PW,
 ) -> Result<Vec<ContentOutput>, OutputError> {
     doc.decrypt(password)?;
-    output_doc(doc, output)
+    output_doc(doc)
 }
 
 #[derive(Debug)]
@@ -2886,7 +2886,7 @@ fn calculate_document_stats(lines: Vec<TextSegment>) -> (f64, Vec<f64>) {
     unique_heights.dedup();
 
     // println!("heights: {:?}", heights);
-    println!("unique_heights: {:?}", unique_heights);
+    // println!("unique_heights: {:?}", unique_heights);
 
     // count the number of times each height appears
     let mut heights_by_count: HashMap<i64, usize> = HashMap::new();
@@ -2895,7 +2895,7 @@ fn calculate_document_stats(lines: Vec<TextSegment>) -> (f64, Vec<f64>) {
         *heights_by_count.entry(value).or_insert(0) += 1;
         // *heights_by_count.entry(value).or_insert(0) += 1;
     }
-    println!("heights_by_count: {:?}", heights_by_count);
+    // println!("heights_by_count: {:?}", heights_by_count);
 
     // let avg_height = (heights.iter().sum::<f64>() / heights.len() as f64 * 100.0).round() / 100.0;
 
@@ -2957,15 +2957,12 @@ fn calculate_document_stats(lines: Vec<TextSegment>) -> (f64, Vec<f64>) {
     // Ensure heading thresholds are in descending order
     heading_thresholds.sort_by(|a, b| b.partial_cmp(a).unwrap());
 
-    println!("Calculated heading thresholds: {:?}", heading_thresholds);
+    // println!("Calculated heading thresholds: {:?}", heading_thresholds);
 
     (text_height, heading_thresholds)
 }
 
-pub fn output_doc(
-    doc: &Document,
-    output: &mut dyn OutputDev,
-) -> Result<Vec<ContentOutput>, OutputError> {
+pub fn output_doc(doc: &Document) -> Result<Vec<ContentOutput>, OutputError> {
     let mut document_structure: Vec<ContentOutput> = Vec::new();
     // println!("Shaata");
     if doc.is_encrypted() {
@@ -3016,7 +3013,6 @@ pub fn output_doc(
                 doc.get_page_content(*dict.1).unwrap(),
                 resources,
                 &media_box,
-                &mut NullOutputDev,
                 *page_num,
                 &mut page_segments,
             )
@@ -3169,7 +3165,7 @@ pub fn parse_pdf(file: &str) -> Result<Vec<ContentOutput>, OutputError> {
     //let output_kind = "svg";
 
     // let output_kind = env::args().nth(2).unwrap_or_else(|| "txt".to_owned());
-    println!("{}", file);
+    // println!("{}", file);
     let path = path::Path::new(&file);
     let filename = path.file_name().expect("expected a filename");
     let mut output_file = PathBuf::new();
@@ -3190,6 +3186,6 @@ pub fn parse_pdf(file: &str) -> Result<Vec<ContentOutput>, OutputError> {
         _ => panic!(),
     };
 
-    let document_structure = output_doc(&doc, output.as_mut());
+    let document_structure = output_doc(&doc);
     document_structure
 }
