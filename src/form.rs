@@ -379,7 +379,7 @@ pub fn form_fields(
         };
 
         text.push_str(&format!(
-            "{}: {}",
+            "{}: {} \n",
             field_name.unwrap_or("".to_string()),
             field_value
         ));
