@@ -1,5 +1,3 @@
-extern crate lopdf;
-
 use adobe_cmap_parser::{ByteMapping, CIDRange, CodeRange};
 use encoding_rs::UTF_16BE;
 use euclid::*;
@@ -8,18 +6,11 @@ use lopdf::encryption::DecryptionError;
 use lopdf::*;
 
 use std::fmt::{format, Debug, Formatter};
-use std::io::BufWriter;
-use std::path::PathBuf;
 
-extern crate adobe_cmap_parser;
-extern crate encoding_rs;
-extern crate euclid;
-extern crate type1_encoding_parser;
-extern crate unicode_normalization;
 use euclid::vec2;
 use rayon::prelude::*;
 use std::collections::hash_map::Entry;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::fs::File;
 use std::marker::PhantomData;
 use std::rc::Rc;
@@ -29,43 +20,14 @@ use std::str;
 use std::{fmt, path};
 use unicode_normalization::UnicodeNormalization;
 
+mod encodings;
 use crate::form::form_fields;
 mod core_fonts;
-mod encodings;
+
 mod form;
 mod glyphnames;
 mod zapfglyphnames;
 
-struct NullOutputDev;
-
-impl OutputDev for NullOutputDev {
-    // Implement all methods of OutputDev with empty bodies
-    fn begin_page(&mut self, _: u32, _: &MediaBox, _: Option<ArtBox>) -> Result<(), OutputError> {
-        Ok(())
-    }
-    fn end_page(&mut self) -> Result<(), OutputError> {
-        Ok(())
-    }
-    fn output_character(
-        &mut self,
-        _: &Transform,
-        _: f64,
-        _: f64,
-        _: f64,
-        _: &str,
-    ) -> Result<(), OutputError> {
-        Ok(())
-    }
-    fn begin_word(&mut self) -> Result<(), OutputError> {
-        Ok(())
-    }
-    fn end_word(&mut self) -> Result<(), OutputError> {
-        Ok(())
-    }
-    fn end_line(&mut self) -> Result<(), OutputError> {
-        Ok(())
-    }
-}
 pub struct Space;
 pub type Transform = Transform2D<f64, Space, Space>;
 
@@ -629,7 +591,10 @@ impl<'a> PdfSimpleFont<'a> {
                         }
                     }
                 }
-                let name = pdf_to_utf8(encoding.get(b"Type").unwrap().as_name().unwrap());
+                let name = encoding
+                    .get(b"Type")
+                    .and_then(|x| x.as_name())
+                    .and_then(|x| Ok(pdf_to_utf8(x)));
                 dlog!("name: {}", name);
 
                 encoding_table = Some(table);
@@ -1898,11 +1863,11 @@ impl<'a> Processor<'a> {
                     // );
 
                     if new_is_bold != current_is_bold {
-                        if !current_word.is_empty() {
+                        if !current_word.trim().is_empty() {
                             current_line.push_str(&current_word);
                             text.push_str(&current_line);
                             text_segments.push(TextSegment {
-                                content: text.clone(),
+                                content: text.clone().trim().to_string(),
                                 font_size: (self.current_font_size * 100.0_f64).round() / 100.0,
                                 x: gs.ts.tm.m31,
                                 y: gs.ts.tm.m32,
@@ -1939,12 +1904,8 @@ impl<'a> Processor<'a> {
                         for e in array {
                             match e {
                                 &Object::String(ref s, _) => {
-                                    // show_text(&mut gs, s, &tlm, &flip_ctm, output)?;
                                     let font: &Rc<dyn PdfFont> = gs.ts.font.as_ref().unwrap();
-                                    //convert font into a Dictionary with try_into()
                                     let font_text = format!("{:#?}", font);
-
-                                    //println!("Font: {:#?}", font);
 
                                     for (c, length) in font.char_codes(s) {
                                         let w0 = font.get_width(c) / 1000.;
@@ -1968,34 +1929,30 @@ impl<'a> Processor<'a> {
                                         // Check for significant vertical movement (new line)
                                         if (y - last_y).abs() > transformed_font_size * 1.5 {
                                             if !current_word.is_empty() {
-                                                // text.push('$');
                                                 current_line.push(' ');
-                                                // current_word.push('@');
                                                 current_line.push_str(&current_word);
                                                 current_word.clear();
                                             }
                                             if !current_line.is_empty() {
                                                 text.push_str(&current_line);
-                                                text_segments.push(TextSegment {
-                                                    content: text.clone(),
-                                                    font_size: (current_font_size * 100.0_f64)
-                                                        .round()
-                                                        / 100.0,
-                                                    x: x,
-                                                    y: y,
-                                                    is_bold: font_text
-                                                        .clone()
-                                                        .to_lowercase()
-                                                        .contains("bold"),
-                                                    font_name: self.current_font_name.clone(),
-                                                    page_num: page_num,
-                                                });
+                                                if !text.trim().is_empty() {
+                                                    text_segments.push(TextSegment {
+                                                        content: text.clone().trim().to_string(),
+                                                        font_size: (current_font_size * 100.0_f64)
+                                                            .round()
+                                                            / 100.0,
+                                                        x: x,
+                                                        y: y,
+                                                        is_bold: font_text
+                                                            .clone()
+                                                            .to_lowercase()
+                                                            .contains("bold"),
+                                                        font_name: self.current_font_name.clone(),
+                                                        page_num: page_num,
+                                                    });
+                                                }
                                                 text.clear();
-                                                // Add both a space and a newline for later collation
-
                                                 current_line.clear();
-                                                // text.push(' ');
-                                                // text.push('\n');
                                             }
                                             last_end = x; // Reset last_end for the new line
                                         }
@@ -2004,12 +1961,8 @@ impl<'a> Processor<'a> {
                                             && (y - last_y).abs() > transformed_font_size * 0.5
                                         {
                                             current_word.push(' ');
-                                            // text.push('*');
-                                            // current_line.push('^');
                                         }
-                                        {}
                                         if x > last_end + transformed_font_size * 0.1 {
-                                            // Space between words
                                             if !current_word.is_empty() {
                                                 if !current_line.is_empty() {
                                                     current_line.push(' ');
@@ -2066,7 +2019,86 @@ impl<'a> Processor<'a> {
                     _ => {}
                 },
                 "Tj" => match operation.operands[0] {
-                    Object::String(ref s, _) => {}
+                    Object::String(ref s, _) => {
+                        let font: &Rc<dyn PdfFont> = gs.ts.font.as_ref().unwrap();
+                        let font_text = format!("{:#?}", font);
+
+                        for (c, length) in font.char_codes(s) {
+                            let w0 = font.get_width(c) / 1000.;
+                            let mut spacing = gs.ts.character_spacing;
+                            let is_space = c == 32 && length == 1;
+                            if is_space {
+                                spacing += gs.ts.word_spacing;
+                            }
+
+                            let char = font.decode_char(c);
+
+                            let position = gs.ts.tm.post_transform(&flip_ctm);
+                            let (x, y) = (position.m31, position.m32);
+                            let transformed_font_size_vec = gs
+                                .ts
+                                .tm
+                                .transform_vector(vec2(gs.ts.font_size, gs.ts.font_size));
+                            let transformed_font_size =
+                                (transformed_font_size_vec.x * transformed_font_size_vec.y).sqrt();
+
+                            // Check for significant vertical movement (new line)
+                            if (y - last_y).abs() > transformed_font_size * 1.5 {
+                                if !current_word.is_empty() {
+                                    current_line.push(' ');
+                                    current_line.push_str(&current_word);
+                                    current_word.clear();
+                                }
+                                if !current_line.is_empty() {
+                                    text.push_str(&current_line);
+                                    if !text.trim().is_empty() {
+                                        text_segments.push(TextSegment {
+                                            content: text.clone().trim().to_string(),
+                                            font_size: (current_font_size * 100.0_f64).round()
+                                                / 100.0,
+                                            x: x,
+                                            y: y,
+                                            is_bold: font_text
+                                                .clone()
+                                                .to_lowercase()
+                                                .contains("bold"),
+                                            font_name: self.current_font_name.clone(),
+                                            page_num: page_num,
+                                        });
+                                    }
+                                    text.clear();
+                                    current_line.clear();
+                                }
+                                last_end = x; // Reset last_end for the new line
+                            }
+
+                            if x < last_end && (y - last_y).abs() > transformed_font_size * 0.5 {
+                                current_word.push(' ');
+                            }
+                            if x > last_end + transformed_font_size * 0.1 {
+                                if !current_word.is_empty() {
+                                    if !current_line.is_empty() {
+                                        current_line.push(' ');
+                                    }
+                                    current_line.push_str(&current_word);
+                                    current_word.clear();
+                                }
+                            }
+
+                            current_word.push_str(&char);
+                            current_font_size = gs.ts.font_size;
+
+                            last_end = x + w0 * transformed_font_size;
+                            last_y = y;
+
+                            let tx = gs.ts.horizontal_scaling
+                                * ((w0 - 0. / 1000.) * gs.ts.font_size + spacing);
+                            gs.ts.tm = gs
+                                .ts
+                                .tm
+                                .pre_transform(&Transform2D::create_translation(tx, 0.));
+                        }
+                    }
                     _ => {
                         panic!("unexpected Tj operand {:?}", operation)
                     }
@@ -2083,35 +2115,6 @@ impl<'a> Processor<'a> {
                 "TL" => {
                     gs.ts.leading = as_num(&operation.operands[0]);
                 }
-                // "Tf" => {
-                //     let fonts: &Dictionary = get(&doc, resources, b"Font");
-                //     let name = operation.operands[0].as_name().unwrap();
-                //     let font = font_table
-                //         .entry(name.to_owned())
-                //         .or_insert_with(|| make_font(doc, get::<&Dictionary>(doc, fonts, name)))
-                //         .clone();
-                //     {
-                //         /*let file = font.get_descriptor().and_then(|desc| desc.get_file());
-                //         if let Some(file) = file {
-                //             let file_contents = filter_data(file.as_stream().unwrap());
-                //             let mut cursor = Cursor::new(&file_contents[..]);
-                //             //let f = Font::read(&mut cursor);
-                //             //dlog!("font file: {:?}", f);
-                //         }*/
-                //     }
-                //     gs.ts.font = Some(font);
-
-                //     gs.ts.font_size = as_num(&operation.operands[1]);
-                //     // self.current_font_size = as_num(&operation.operands[1]);
-                //     // self.font_sizes.push(self.current_font_size);
-
-                //     dlog!(
-                //         "font {} size: {} {:?}",
-                //         pdf_to_utf8(name),
-                //         gs.ts.font_size,
-                //         operation
-                //     );
-                // }
                 "Ts" => {
                     gs.ts.rise = as_num(&operation.operands[0]);
                     text.push(' ');
@@ -2129,15 +2132,8 @@ impl<'a> Processor<'a> {
                     );
                     gs.ts.tm = tlm;
                     dlog!("Tm: matrix {:?}", gs.ts.tm);
-                    // text.push(' ');
-                    // current_line.push(' ');
-                    // output.end_line()?;
                 }
                 "Td" => {
-                    /* Move to the start of the next line, offset from the start of the current line by (tx , ty ).
-                      tx and ty are numbers expressed in unscaled text space units.
-                      More precisely, this operator performs the following assignments:
-                    */
                     assert!(operation.operands.len() == 2);
                     let tx = as_num(&operation.operands[0]);
                     let ty = as_num(&operation.operands[1]);
@@ -2146,15 +2142,9 @@ impl<'a> Processor<'a> {
                     tlm = tlm.pre_transform(&Transform2D::create_translation(tx, ty));
                     gs.ts.tm = tlm;
                     dlog!("Td matrix {:?}", gs.ts.tm);
-                    // text.push(' ');
-                    // current_line.push(' ');
-                    // output.end_line()?;
                 }
 
                 "TD" => {
-                    /* Move to the start of the next line, offset from the start of the current line by (tx , ty ).
-                      As a side effect, this operator sets the leading parameter in the text state.
-                    */
                     assert!(operation.operands.len() == 2);
                     let tx = as_num(&operation.operands[0]);
                     let ty = as_num(&operation.operands[1]);
@@ -2164,9 +2154,6 @@ impl<'a> Processor<'a> {
                     tlm = tlm.pre_transform(&Transform2D::create_translation(tx, ty));
                     gs.ts.tm = tlm;
                     dlog!("TD matrix {:?}", gs.ts.tm);
-                    // text.push(' ');
-                    // current_line.push(' ');
-                    // output.end_line()?;
                 }
 
                 "T*" => {
@@ -2176,9 +2163,6 @@ impl<'a> Processor<'a> {
                     tlm = tlm.pre_transform(&Transform2D::create_translation(tx, ty));
                     gs.ts.tm = tlm;
                     dlog!("T* matrix {:?}", gs.ts.tm);
-                    // text.push(' ');
-                    // current_line.push(' ');
-                    // output.end_line()?;
                 }
                 "q" => {
                     gs_stack.push(gs.clone());
@@ -2255,11 +2239,9 @@ impl<'a> Processor<'a> {
                     dlog!("unhandled path op {:?}", operation);
                 }
                 "S" => {
-                    // output.stroke(&gs.ctm, &gs.stroke_colorspace, &gs.stroke_color, &path)?;
                     path.ops.clear();
                 }
                 "F" | "f" => {
-                    // output.fill(&gs.ctm, &gs.fill_colorspace, &gs.fill_color, &path)?;
                     path.ops.clear();
                 }
                 "W" | "w*" => {
@@ -2276,8 +2258,6 @@ impl<'a> Processor<'a> {
                     mc_stack.pop();
                 }
                 "Do" => {
-                    // `Do` process an entire subdocument, so we do a recursive call to `process_stream`
-                    // with the subdocument content and resources
                     let xobject: &Dictionary = get(&doc, resources, b"XObject");
                     let name = operation.operands[0].as_name().unwrap();
                     let xf: &Stream = get(&doc, xobject, name);
@@ -2290,7 +2270,6 @@ impl<'a> Processor<'a> {
                         contents,
                         resources,
                         &media_box,
-                        // output,
                         page_num,
                         text_segments,
                     )?;
@@ -2303,20 +2282,20 @@ impl<'a> Processor<'a> {
         if !current_word.is_empty() {
             current_line.push_str(&current_word);
         }
-        if !current_line.is_empty() {
-            text.push_str(&current_line);
-            if let Some(last_segment) = text_segments.last() {
-                text_segments.push(TextSegment {
-                    content: text.clone(),
-                    font_size: (self.current_font_size * 100.0_f64).round() / 100.0,
-                    x: last_segment.x,
-                    y: last_segment.y,
-                    is_bold: last_segment.is_bold.clone(),
-                    font_name: self.current_font_name.clone(),
-                    page_num: page_num,
-                });
-            }
-        }
+        // if !current_line.is_empty() {
+        //     text.push_str(&current_line);
+        //     if let Some(last_segment) = text_segments.last() {
+        //         text_segments.push(TextSegment {
+        //             content: text.clone(),
+        //             font_size: (self.current_font_size * 100.0_f64).round() / 100.0,
+        //             x: last_segment.x,
+        //             y: last_segment.y,
+        //             is_bold: last_segment.is_bold.clone(),
+        //             font_name: self.current_font_name.clone(),
+        //             page_num: page_num,
+        //         });
+        //     }
+        // }
 
         Ok(())
     }
@@ -2902,7 +2881,6 @@ fn calculate_document_stats(lines: Vec<TextSegment>) -> (f64, Vec<f64>) {
     let text_height = (*heights
         .iter()
         .max_by_key(|&&h| heights.iter().filter(|&&x| x == h).count())
-        // .unwrap()
         .unwrap_or(&0.0)
         * 100.0)
         .round()
@@ -2971,6 +2949,8 @@ pub fn output_doc(doc: &Document) -> Result<Vec<ContentOutput>, OutputError> {
     let empty_resources = &Dictionary::new();
 
     let pages = doc.get_pages();
+    // trim to only first page
+    // let pages: BTreeMap<u32, (u32, u16)> = pages.iter().take(1).map(|(&k, &v)| (k, v)).collect();
     // let toc = doc.get_toc();
 
     let form = match form_fields(&doc, &mut document_structure) {
@@ -3039,7 +3019,7 @@ pub fn output_doc(doc: &Document) -> Result<Vec<ContentOutput>, OutputError> {
         if segment.font_size == text_height {
             if segment.is_bold {
                 // This is likely a bold heading
-                if !current_paragraph.is_empty() {
+                if !current_paragraph.trim().is_empty() {
                     document_structure.push(ContentOutput {
                         headings: current_headings.clone(),
                         paragraph: current_paragraph.trim().to_string(),
@@ -3063,10 +3043,12 @@ pub fn output_doc(doc: &Document) -> Result<Vec<ContentOutput>, OutputError> {
                     }
                 }
 
-                current_headings.push(segment.content.trim().to_string());
-                is_bold_heading = true;
+                if !segment.content.trim().is_empty() {
+                    current_headings.push(segment.content.trim().to_string());
+                    is_bold_heading = true;
+                }
             } else {
-                current_paragraph.push_str(&segment.content);
+                current_paragraph.push_str(&segment.content.trim().to_string());
                 current_paragraph.push('\n');
             }
         }
@@ -3078,7 +3060,7 @@ pub fn output_doc(doc: &Document) -> Result<Vec<ContentOutput>, OutputError> {
         // Check if this is a new line
         else if let Some(level) = heading_level {
             // This is a heading
-            if !current_paragraph.is_empty() {
+            if !current_paragraph.trim().is_empty() {
                 document_structure.push(ContentOutput {
                     headings: current_headings.clone(),
                     paragraph: current_paragraph.trim().to_string(),
@@ -3099,18 +3081,13 @@ pub fn output_doc(doc: &Document) -> Result<Vec<ContentOutput>, OutputError> {
                 current_headings.pop();
             }
 
-            if segment.content.trim().to_string() == ""
-                || segment.content.trim().to_string() == " "
-                || segment.content.trim().to_string().len() < 4
-            {
-                continue;
-            } else {
+            if !segment.content.trim().is_empty() {
                 current_headings.push(segment.content.trim().to_string());
             }
         } else {
             if segment.is_bold && is_new_line {
                 // This is likely a bold heading
-                if !current_paragraph.is_empty() {
+                if !current_paragraph.trim().is_empty() {
                     document_structure.push(ContentOutput {
                         headings: current_headings.clone(),
                         paragraph: current_paragraph.trim().to_string(),
@@ -3121,8 +3098,10 @@ pub fn output_doc(doc: &Document) -> Result<Vec<ContentOutput>, OutputError> {
                 if is_bold_heading {
                     current_headings.pop();
                 }
-                current_headings.push(segment.content.trim().to_string());
-                is_bold_heading = true;
+                if !segment.content.trim().is_empty() {
+                    current_headings.push(segment.content.trim().to_string());
+                    is_bold_heading = true;
+                }
             } else {
                 // This is paragraph text or inline bold
                 if is_new_line && !current_paragraph.is_empty() {
@@ -3139,7 +3118,7 @@ pub fn output_doc(doc: &Document) -> Result<Vec<ContentOutput>, OutputError> {
     }
 
     // Push the last paragraph if it's not empty
-    if !current_paragraph.is_empty() {
+    if !current_paragraph.trim().is_empty() {
         document_structure.push(ContentOutput {
             headings: current_headings,
             paragraph: current_paragraph.trim().to_string(),

@@ -2,7 +2,7 @@ use pdf_extract::*;
 
 fn main() {
     //let output_kind = "svg";
-    let file = "claim_2.pdf";
+    let file = "2.pdf";
 
     // let output_kind = env::args().nth(2).unwrap_or_else(|| "txt".to_owned());
     let shata = parse_pdf(file).unwrap();
