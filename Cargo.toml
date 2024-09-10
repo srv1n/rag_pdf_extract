@@ -22,6 +22,7 @@ postscript = "0.14"
 type1-encoding-parser = "0.1.0"
 unicode-normalization = "0.1.19"
 rayon = "1.10.0"
+ordered-float = "4.2.2"
 
 [dev-dependencies]
 ureq = "2.6.2"

@@ -2,7 +2,7 @@ use pdf_extract::*;
 
 fn main() {
     //let output_kind = "svg";
-    let file = "2.pdf";
+    let file = "1.pdf";
 
     // let output_kind = env::args().nth(2).unwrap_or_else(|| "txt".to_owned());
     let shata = parse_pdf(file).unwrap();
@@ -12,5 +12,5 @@ fn main() {
         println!("\n{}", item.paragraph.replace("\\n", "\n"));
         println!("\nPage: {:#?}", item.page);
     }
-    println!("Length of shata: {}", muta);
+    // println!("Length of shata: {}", muta);
 }

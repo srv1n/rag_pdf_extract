@@ -4,8 +4,10 @@ use euclid::*;
 use lopdf::content::{Content, Operation};
 use lopdf::encryption::DecryptionError;
 use lopdf::*;
+use ordered_float::OrderedFloat;
 
 use std::fmt::{format, Debug, Formatter};
+use std::thread::current;
 
 use euclid::vec2;
 use rayon::prelude::*;
@@ -343,7 +345,6 @@ fn maybe_get_name_string<'a>(
 fn maybe_get_name<'a>(doc: &'a Document, dict: &'a Dictionary, key: &[u8]) -> Option<&'a [u8]> {
     maybe_get_obj(doc, dict, key).and_then(|n| n.as_name().ok())
 }
-
 fn maybe_get_array<'a>(
     doc: &'a Document,
     dict: &'a Dictionary,
@@ -760,7 +761,6 @@ impl<'a> PdfSimpleFont<'a> {
             })
     }
 }
-
 impl<'a> PdfType3Font<'a> {
     fn new(doc: &'a Document, font: &'a Dictionary) -> PdfType3Font<'a> {
         let unicode_map = get_unicode_map(doc, font);
@@ -1710,25 +1710,56 @@ fn make_colorspace<'a>(doc: &'a Document, name: &[u8], resources: &'a Dictionary
 struct TextSegment {
     content: String,
     font_size: f64,
+    transformed_font_size: f64,
     x: f64,
     y: f64,
     is_bold: bool,
     font_name: String, // New field to store the font name
     page_num: u32,
+    cutat: String,
+    // font_color: (f64, f64, f64),
 }
 struct Processor<'a> {
     _none: PhantomData<&'a ()>,
-    current_font_name: String, // New field to store the current font name
-    current_font_size: f64,
 }
 
 impl<'a> Processor<'a> {
     fn new() -> Processor<'a> {
-        Processor {
-            _none: PhantomData,
-            current_font_name: String::new(),
-            current_font_size: 0.0,
+        Processor { _none: PhantomData }
+    }
+
+    fn is_visible_text(
+        &self,
+        transform: &Transform,
+        font_size: f64,
+        color: &(f64, f64, f64),
+        media_box: &MediaBox,
+    ) -> bool {
+        const MIN_FONT_SIZE: f64 = 4.0;
+        const MIN_COLOR_DIFF: f64 = 0.1;
+
+        // if font_size < MIN_FONT_SIZE {
+        //     return false;
+        // }
+
+        let point = transform.transform_point(Point2D::new(0.0, 0.0));
+        if point.x < media_box.llx
+            || point.x > media_box.urx
+            || point.y < media_box.lly
+            || point.y > media_box.ury
+        {
+            return false;
         }
+
+        // Assuming white background, check if text color is too close to white
+        if color.0 > 1.0 - MIN_COLOR_DIFF
+            && color.1 > 1.0 - MIN_COLOR_DIFF
+            && color.2 > 1.0 - MIN_COLOR_DIFF
+        {
+            return false;
+        }
+
+        true
     }
 
     fn process_stream(
@@ -1737,7 +1768,6 @@ impl<'a> Processor<'a> {
         content: Vec<u8>,
         resources: &'a Dictionary,
         media_box: &MediaBox,
-
         page_num: u32,
         text_segments: &mut Vec<TextSegment>,
     ) -> Result<(), OutputError> {
@@ -1748,7 +1778,15 @@ impl<'a> Processor<'a> {
         let mut last_y = 0.0;
         let mut current_is_bold = false;
         let mut current_font_size = 0.0;
-        // let mut text_segments: Vec<TextSegment> = Vec::new();
+        let mut current_transformed_font_size = 0.0;
+        let mut current_x = 0.0;
+        let mut current_y = 0.0;
+        let mut first_char = false;
+        let mut current_font = String::new();
+        let mut current_color = (0.0, 0.0, 0.0); // Default to black
+        let mut is_clipping = false;
+        let mut current_transform = Transform::default();
+        let mut current_font_color = (0.0, 0.0, 0.0); // Default to black
 
         let content = Content::decode(&content).unwrap();
         let mut font_table = HashMap::new();
@@ -1772,12 +1810,8 @@ impl<'a> Processor<'a> {
             smask: None,
         };
 
-        //let mut ts = &mut gs.ts;
-
         let mut gs_stack = Vec::new();
-
         let mut mc_stack = Vec::new();
-        // XXX: replace tlm with a point for text start
         let mut tlm = Transform2D::<f64, Space, Space>::identity();
         let mut path = Path::new();
         let flip_ctm = Transform2D::<f64, Space, Space>::row_major(
@@ -1790,8 +1824,6 @@ impl<'a> Processor<'a> {
         );
         dlog!("MediaBox {:?}", media_box);
         for operation in &content.operations {
-            //dlog!("op: {:?}", operation);
-
             match operation.operator.as_ref() {
                 "BT" => {
                     tlm = Transform2D::identity();
@@ -1840,6 +1872,18 @@ impl<'a> Processor<'a> {
                         _ => operation.operands.iter().map(|x| as_num(x)).collect(),
                     };
                 }
+                "rg" | "g" => {
+                    current_color = if operation.operator == "rg" {
+                        (
+                            as_num(&operation.operands[0]),
+                            as_num(&operation.operands[1]),
+                            as_num(&operation.operands[2]),
+                        )
+                    } else {
+                        let gray = as_num(&operation.operands[0]);
+                        (gray, gray, gray)
+                    };
+                }
                 "G" | "g" | "RG" | "rg" | "K" | "k" => {
                     dlog!("unhandled color operation {:?}", operation);
                 }
@@ -1851,61 +1895,117 @@ impl<'a> Processor<'a> {
                         .or_insert_with(|| make_font(doc, get::<&Dictionary>(doc, fonts, name)))
                         .clone();
 
-                    // check if font changes in size or name and then create a new text segment
-
                     let new_font_size =
                         (as_num(&operation.operands[1]) * 100.0_f64).round() / 100.0;
                     let new_is_bold = format!("{:?}", font).to_lowercase().contains("bold");
+                    let new_font_name = String::from_utf8_lossy(name).into_owned();
 
-                    // println!(
-                    //     "new_font_size: {} and is bold: {}",
-                    //     new_font_size, new_is_bold
-                    // );
+                    // let is_add =
+                    //     self.is_visible_text(&tlm, current_font_size, &current_color, media_box);
 
-                    if new_is_bold != current_is_bold {
-                        if !current_word.trim().is_empty() {
-                            current_line.push_str(&current_word);
-                            text.push_str(&current_line);
+                    if (new_is_bold != current_is_bold
+                        || new_font_size != current_font_size
+                        || new_font_name != current_font)
+                        && !current_line.trim().is_empty()
+                    // && is_add
+                    {
+                        if current_x > 0.0 && current_y > 0.0
+                        //     && current_y < self.current_font_size
+                        {
+                            // reason is if boldchange, fontsize change or font change
+                            let (oldvalue, newvalue) = if current_is_bold != new_is_bold {
+                                (current_is_bold.to_string(), new_is_bold.to_string())
+                            } else if new_font_size != current_font_size {
+                                (current_font_size.to_string(), new_font_size.to_string())
+                            } else {
+                                (current_font.to_string(), new_font_name.to_string())
+                            };
                             text_segments.push(TextSegment {
-                                content: text.clone().trim().to_string(),
-                                font_size: (self.current_font_size * 100.0_f64).round() / 100.0,
-                                x: gs.ts.tm.m31,
-                                y: gs.ts.tm.m32,
+                                content: current_line.clone().trim().to_string(),
+                                font_size: current_font_size,
+                                transformed_font_size: current_transformed_font_size,
+                                x: current_x,
+                                y: current_y,
                                 is_bold: current_is_bold,
-                                font_name: self.current_font_name.clone(),
+                                font_name: current_font.clone(),
                                 page_num: page_num,
+                                cutat: format!(
+                                    "Tf, old value: {}, new value: {}",
+                                    oldvalue, newvalue
+                                )
+                                .to_string(),
                             });
-                            text.clear();
                             current_line.clear();
-                            current_word.clear();
+                            current_is_bold = new_is_bold;
+                            // current_font_name = new_font_name.clone();
+                            current_font = new_font_name;
+                            current_font_size = new_font_size;
                         }
-                        current_is_bold = new_is_bold;
-                        self.current_font_size = new_font_size;
                     }
+
                     gs.ts.font = Some(font.clone());
+
                     gs.ts.font_size = as_num(&operation.operands[1]);
-
-                    // Update the current font information
-                    self.current_font_name = String::from_utf8_lossy(name).into_owned();
-                    self.current_font_size = gs.ts.font_size;
-
-                    // Create a new text segment if there's existing content
+                    // println!("font size: {}", gs.ts.font_size);
 
                     dlog!(
                         "font {} size: {} {:?}",
                         pdf_to_utf8(name),
-                        self.current_font_size,
+                        current_font_size,
                         operation
                     );
                 }
-
                 "TJ" => match operation.operands[0] {
                     Object::Array(ref array) => {
+                        // current_line.push_str("*");
                         for e in array {
                             match e {
                                 &Object::String(ref s, _) => {
+                                    // let ts = &mut gs.ts;
+                                    // let tsm: Transform2D<f64, Space, Space> =
+                                    //     Transform2D::row_major(
+                                    //         ts.horizontal_scaling,
+                                    //         0.,
+                                    //         0.,
+                                    //         1.0,
+                                    //         0.,
+                                    //         ts.rise,
+                                    //     );
+                                    // // Trm = Tsm × Tm × CTM
+                                    // let trm = tsm.post_transform(&ts.tm.post_transform(&gs.ctm));
+                                    // let font: &Rc<dyn PdfFont> = ts.font.as_ref().unwrap();
+                                    // let font_text = format!("{:#?}", font);
+                                    // first_char = true;
+
+                                    // for (c, length) in font.char_codes(s) {
+                                    //     let w0 = font.get_width(c) / 1000.;
+                                    //     let mut spacing = ts.character_spacing;
+                                    //     let is_space = c == 32 && length == 1;
+                                    //     if is_space {
+                                    //         spacing += ts.word_spacing;
+                                    //     }
+
+                                    //     let char = font.decode_char(c);
+
+                                    //     let position = trm.post_transform(&flip_ctm);
+                                    //     let transformed_font_size_vec =
+                                    //         trm.transform_vector(vec2(ts.font_size, ts.font_size));
+                                    //     // get the length of one sized of the square with the same area with a rectangle of size (x, y)
+                                    //     // let transformed_font_size = (transformed_font_size_vec.x
+                                    //     //     * transformed_font_size_vec.y)
+                                    //     //     .sqrt();
+                                    //     let (x, y) = (position.m31, position.m32);
+                                    //     let transformed_font_size = ((transformed_font_size_vec.x
+                                    //         * transformed_font_size_vec.y)
+                                    //         .sqrt()
+                                    //         * 100.0)
+                                    //         .round()
+                                    //         / 100.0;
+
+                                    // let ts = &mut gs.ts;
                                     let font: &Rc<dyn PdfFont> = gs.ts.font.as_ref().unwrap();
-                                    let font_text = format!("{:#?}", font);
+                                    // let font_text = format!("{:#?}", font);
+                                    first_char = true;
 
                                     for (c, length) in font.char_codes(s) {
                                         let w0 = font.get_width(c) / 1000.;
@@ -1922,58 +2022,74 @@ impl<'a> Processor<'a> {
                                         let transformed_font_size_vec = gs.ts.tm.transform_vector(
                                             vec2(gs.ts.font_size, gs.ts.font_size),
                                         );
-                                        let transformed_font_size = (transformed_font_size_vec.x
+                                        let transformed_font_size = ((transformed_font_size_vec.x
                                             * transformed_font_size_vec.y)
-                                            .sqrt();
+                                            .sqrt()
+                                            * 100.0)
+                                            .round()
+                                            / 100.0;
+                                        let is_add = self.is_visible_text(
+                                            &tlm,
+                                            current_font_size,
+                                            &current_color,
+                                            media_box,
+                                        );
 
-                                        // Check for significant vertical movement (new line)
-                                        if (y - last_y).abs() > transformed_font_size * 1.5 {
-                                            if !current_word.is_empty() {
-                                                current_line.push(' ');
-                                                current_line.push_str(&current_word);
-                                                current_word.clear();
-                                            }
-                                            if !current_line.is_empty() {
-                                                text.push_str(&current_line);
-                                                if !text.trim().is_empty() {
+                                        if transformed_font_size != current_transformed_font_size
+                                            && !transformed_font_size.is_nan()
+                                            && !current_transformed_font_size.is_nan()
+                                        {
+                                            if !current_line.trim().is_empty() {
+                                                // also check if current x and current y are positive and that y is greater than font size, sometimes text seems to be hidden in the pdf which we should avoid
+                                                if current_x > 0.0 && current_y > 0.0
+                                                //  && is_add
+                                                //     && current_y < self.current_font_size
+                                                {
                                                     text_segments.push(TextSegment {
-                                                        content: text.clone().trim().to_string(),
-                                                        font_size: (current_font_size * 100.0_f64)
-                                                            .round()
-                                                            / 100.0,
-                                                        x: x,
-                                                        y: y,
-                                                        is_bold: font_text
+                                                        content: current_line
                                                             .clone()
-                                                            .to_lowercase()
-                                                            .contains("bold"),
-                                                        font_name: self.current_font_name.clone(),
+                                                            .trim()
+                                                            .to_string(),
+                                                        font_size: current_font_size,
+                                                        transformed_font_size:
+                                                            current_transformed_font_size,
+                                                        x: current_x,
+                                                        y: current_y,
+                                                        is_bold: current_is_bold,
+                                                        font_name: current_font.clone(),
                                                         page_num: page_num,
+                                                        cutat: "TJ".to_string(),
                                                     });
                                                 }
-                                                text.clear();
                                                 current_line.clear();
                                             }
-                                            last_end = x; // Reset last_end for the new line
+
+                                            current_transformed_font_size = transformed_font_size;
                                         }
 
-                                        if x < last_end
-                                            && (y - last_y).abs() > transformed_font_size * 0.5
-                                        {
-                                            current_word.push(' ');
-                                        }
-                                        if x > last_end + transformed_font_size * 0.1 {
-                                            if !current_word.is_empty() {
-                                                if !current_line.is_empty() {
-                                                    current_line.push(' ');
-                                                }
-                                                current_line.push_str(&current_word);
-                                                current_word.clear();
+                                        if first_char {
+                                            if (y - last_y).abs() > transformed_font_size * 1.5 {
+                                                current_line.push(' ')
                                             }
+
+                                            if x < last_end
+                                                && (y - last_y).abs() > transformed_font_size * 0.5
+                                            {
+                                                current_line.push(' ')
+                                            }
+
+                                            if x > last_end + transformed_font_size * 0.1 {
+                                                current_line.push(' ')
+                                            }
+
+                                            current_x = (x * 100.00).round() / 100.0;
+                                            current_y = (y * 100.00).round() / 100.0;
                                         }
 
-                                        current_word.push_str(&char);
-                                        current_font_size = gs.ts.font_size;
+                                        if is_add {
+                                            current_line.push_str(&char);
+                                        }
+                                        first_char = false;
 
                                         last_end = x + w0 * transformed_font_size;
                                         last_y = y;
@@ -1985,7 +2101,6 @@ impl<'a> Processor<'a> {
                                         );
                                     }
                                 }
-
                                 &Object::Integer(i) => {
                                     let ts = &mut gs.ts;
                                     let w0 = 0.;
@@ -2020,8 +2135,10 @@ impl<'a> Processor<'a> {
                 },
                 "Tj" => match operation.operands[0] {
                     Object::String(ref s, _) => {
+                        let ts = &mut gs.ts;
                         let font: &Rc<dyn PdfFont> = gs.ts.font.as_ref().unwrap();
-                        let font_text = format!("{:#?}", font);
+                        // let font_text = format!("{:#?}", font);
+                        first_char = true;
 
                         for (c, length) in font.char_codes(s) {
                             let w0 = font.get_width(c) / 1000.;
@@ -2039,54 +2156,69 @@ impl<'a> Processor<'a> {
                                 .ts
                                 .tm
                                 .transform_vector(vec2(gs.ts.font_size, gs.ts.font_size));
-                            let transformed_font_size =
-                                (transformed_font_size_vec.x * transformed_font_size_vec.y).sqrt();
+                            let transformed_font_size = ((transformed_font_size_vec.x
+                                * transformed_font_size_vec.y)
+                                .sqrt()
+                                * 100.0)
+                                .round()
+                                / 100.0;
 
-                            // Check for significant vertical movement (new line)
-                            if (y - last_y).abs() > transformed_font_size * 1.5 {
-                                if !current_word.is_empty() {
-                                    current_line.push(' ');
-                                    current_line.push_str(&current_word);
-                                    current_word.clear();
-                                }
-                                if !current_line.is_empty() {
-                                    text.push_str(&current_line);
-                                    if !text.trim().is_empty() {
+                            let is_add = self.is_visible_text(
+                                &tlm,
+                                current_font_size,
+                                &current_color,
+                                media_box,
+                            );
+                            if transformed_font_size != current_transformed_font_size
+                                && !transformed_font_size.is_nan()
+                                && !current_transformed_font_size.is_nan()
+                            {
+                                if !current_line.trim().is_empty() {
+                                    // also check if current x and current y are positive and that y is greater than font size, sometimes text seems to be hidden in the pdf which we should avoid
+                                    if current_x > 0.0 && current_y > 0.0
+                                    //     && current_y < self.current_font_size
+                                    {
                                         text_segments.push(TextSegment {
-                                            content: text.clone().trim().to_string(),
-                                            font_size: (current_font_size * 100.0_f64).round()
-                                                / 100.0,
-                                            x: x,
-                                            y: y,
-                                            is_bold: font_text
-                                                .clone()
-                                                .to_lowercase()
-                                                .contains("bold"),
-                                            font_name: self.current_font_name.clone(),
+                                            content: current_line.clone().trim().to_string(),
+                                            font_size: current_font_size,
+                                            transformed_font_size: current_transformed_font_size,
+                                            x: current_x,
+                                            y: current_y,
+                                            is_bold: current_is_bold,
+                                            font_name: current_font.clone(),
                                             page_num: page_num,
+                                            cutat: "Tj".to_string(),
                                         });
                                     }
-                                    text.clear();
                                     current_line.clear();
                                 }
-                                last_end = x; // Reset last_end for the new line
+
+                                current_transformed_font_size = transformed_font_size;
                             }
 
-                            if x < last_end && (y - last_y).abs() > transformed_font_size * 0.5 {
-                                current_word.push(' ');
-                            }
-                            if x > last_end + transformed_font_size * 0.1 {
-                                if !current_word.is_empty() {
-                                    if !current_line.is_empty() {
-                                        current_line.push(' ');
-                                    }
-                                    current_line.push_str(&current_word);
-                                    current_word.clear();
+                            if first_char {
+                                if (y - last_y).abs() > transformed_font_size * 1.5 {
+                                    current_line.push(' ')
                                 }
-                            }
 
-                            current_word.push_str(&char);
-                            current_font_size = gs.ts.font_size;
+                                if x < last_end && (y - last_y).abs() > transformed_font_size * 0.5
+                                {
+                                    current_line.push(' ')
+                                }
+
+                                if x > last_end + transformed_font_size * 0.1 {
+                                    current_line.push(' ')
+                                }
+
+                                current_x = x;
+                                current_y = y;
+                                // current_transformed_font_size = transformed_font_size;
+                                // self.current_font_name =
+                            }
+                            if is_add {
+                                current_line.push_str(&char);
+                            }
+                            first_char = false;
 
                             last_end = x + w0 * transformed_font_size;
                             last_y = y;
@@ -2143,7 +2275,6 @@ impl<'a> Processor<'a> {
                     gs.ts.tm = tlm;
                     dlog!("Td matrix {:?}", gs.ts.tm);
                 }
-
                 "TD" => {
                     assert!(operation.operands.len() == 2);
                     let tx = as_num(&operation.operands[0]);
@@ -2155,7 +2286,6 @@ impl<'a> Processor<'a> {
                     gs.ts.tm = tlm;
                     dlog!("TD matrix {:?}", gs.ts.tm);
                 }
-
                 "T*" => {
                     let tx = 0.0;
                     let ty = -gs.ts.leading;
@@ -2279,23 +2409,29 @@ impl<'a> Processor<'a> {
                 }
             }
         }
-        if !current_word.is_empty() {
-            current_line.push_str(&current_word);
-        }
-        // if !current_line.is_empty() {
-        //     text.push_str(&current_line);
-        //     if let Some(last_segment) = text_segments.last() {
-        //         text_segments.push(TextSegment {
-        //             content: text.clone(),
-        //             font_size: (self.current_font_size * 100.0_f64).round() / 100.0,
-        //             x: last_segment.x,
-        //             y: last_segment.y,
-        //             is_bold: last_segment.is_bold.clone(),
-        //             font_name: self.current_font_name.clone(),
-        //             page_num: page_num,
-        //         });
-        //     }
+        // if !current_word.is_empty() {
+        //     current_line.push_str(&current_word);
+        //     current_word.clear();
         // }
+        if !current_line.is_empty() {
+            // text.push_str(&current_line);
+            // let mut content = current_line.clone();
+            // content.push_str(" Left Over");
+            if current_x > 0.0 && current_y > 0.0 {
+                text_segments.push(TextSegment {
+                    content: current_line.trim().to_string(),
+                    font_size: current_font_size,
+                    transformed_font_size: current_transformed_font_size,
+                    x: current_x,
+                    y: current_y,
+                    is_bold: current_is_bold, // Placeholder value since current_is_bold is not available
+                    font_name: current_font.clone(),
+                    page_num: page_num,
+                    cutat: "final".to_string(),
+                });
+            }
+            current_line.clear();
+        }
 
         Ok(())
     }
@@ -2851,93 +2987,234 @@ pub struct ContentOutput {
 }
 /// Parse a given document and output it to `output`
 
-fn calculate_document_stats(lines: Vec<TextSegment>) -> (f64, Vec<f64>) {
-    let mut heights: Vec<f64> = Vec::new();
+fn calculate_document_stats(lines: &[TextSegment]) -> DocumentStats {
+    let mut font_stats: HashMap<String, FontStats> = HashMap::new();
 
-    for each in lines {
-        if each.font_size > 0.0 {
-            heights.push((each.font_size * 100.0).round() / 100.0);
-        }
+    // Collect statistics
+
+    // Collect statistics
+    for segment in lines {
+        let font_stat = font_stats
+            .entry(segment.font_name.clone())
+            .or_insert_with(|| FontStats {
+                sizes: HashMap::new(),
+                transformed_sizes: HashMap::new(),
+                size_to_transformed: HashMap::new(),
+                total_chars: 0,
+            });
+
+        *font_stat
+            .sizes
+            .entry(OrderedFloat(segment.font_size))
+            .or_insert(0) += segment.content.len();
+        *font_stat
+            .transformed_sizes
+            .entry(OrderedFloat(segment.transformed_font_size))
+            .or_insert(0) += segment.content.len();
+    }
+    let (body_font, body_size, body_transformed_size) = font_stats
+        .iter()
+        .flat_map(|(font_name, stats)| {
+            stats
+                .transformed_sizes
+                .iter()
+                .map(move |(&size, &count)| (font_name, size, count))
+        })
+        .max_by_key(|&(_, _, count)| count)
+        .map(|(font, size, _)| (font.clone(), size, size))
+        .unwrap_or((
+            "".to_string(),
+            ordered_float::OrderedFloat(0.0),
+            ordered_float::OrderedFloat(0.0),
+        ));
+
+    // Find the body size (most common size across all fonts)
+
+    println!("body_transformed_size: {}", body_transformed_size);
+    // Calculate six threshold levels based on transformed sizes
+    let all_transformed_sizes: Vec<f64> = font_stats
+        .values()
+        .flat_map(|stats| stats.transformed_sizes.keys().cloned())
+        .map(|ordered_float| ordered_float.into_inner())
+        .collect();
+    let transformed_thresholds =
+        calculate_heading_thresholds(&all_transformed_sizes, *body_transformed_size);
+    println!("transformed_thresholdsa: {:?}", transformed_thresholds);
+
+    // Calculate font-specific thresholds
+    let mut font_heading_thresholds = HashMap::new();
+    for (font_name, stats) in font_stats.iter() {
+        let font_thresholds: Vec<f64> = transformed_thresholds
+            .iter()
+            .filter_map(|&transformed_size| {
+                stats
+                    .size_to_transformed
+                    .iter()
+                    .find(|&(_, &t)| (t - transformed_size).abs() < 0.01)
+                    .map(|(&original_size, _)| original_size.into_inner())
+            })
+            .collect();
+        font_heading_thresholds.insert(font_name.clone(), font_thresholds);
     }
 
-    heights.sort_by(|a, b| b.partial_cmp(a).unwrap());
-    let mut unique_heights: Vec<f64> = heights.clone();
-    unique_heights.dedup();
-
-    // println!("heights: {:?}", heights);
-    // println!("unique_heights: {:?}", unique_heights);
-
-    // count the number of times each height appears
-    let mut heights_by_count: HashMap<i64, usize> = HashMap::new();
-    for &value in heights.iter() {
-        let value: i64 = (value * 10000.0).round() as i64;
-        *heights_by_count.entry(value).or_insert(0) += 1;
-        // *heights_by_count.entry(value).or_insert(0) += 1;
+    DocumentStats {
+        font_stats,
+        body_font,
+        body_size: *body_size,
+        body_transformed_size: *body_transformed_size,
+        transformed_thresholds,
+        font_heading_thresholds,
     }
-    // println!("heights_by_count: {:?}", heights_by_count);
+}
 
-    // let avg_height = (heights.iter().sum::<f64>() / heights.len() as f64 * 100.0).round() / 100.0;
+#[derive(Debug)]
+struct FontStats {
+    sizes: HashMap<OrderedFloat<f64>, usize>,
+    transformed_sizes: HashMap<OrderedFloat<f64>, usize>,
+    size_to_transformed: HashMap<OrderedFloat<f64>, f64>,
 
-    let text_height = (*heights
+    total_chars: usize,
+}
+
+#[derive(Debug)]
+struct DocumentStats {
+    font_stats: HashMap<String, FontStats>,
+    body_font: String,
+    body_size: f64,
+    body_transformed_size: f64,
+    transformed_thresholds: Vec<f64>,
+    font_heading_thresholds: HashMap<String, Vec<f64>>,
+}
+
+fn calculate_mode(numbers: &[f64]) -> f64 {
+    let mut counts = HashMap::new();
+    for &num in numbers {
+        *counts.entry((num * 100.0).round() as i64).or_insert(0) += 1;
+    }
+    let mode = counts
+        .into_iter()
+        .max_by_key(|&(_, count)| count)
+        .unwrap()
+        .0;
+    mode as f64 / 100.0
+}
+
+fn calculate_heading_thresholds(sizes: &[f64], body_size: f64) -> Vec<f64> {
+    let mut thresholds: Vec<f64> = sizes
         .iter()
-        .max_by_key(|&&h| heights.iter().filter(|&&x| x == h).count())
-        .unwrap_or(&0.0)
-        * 100.0)
-        .round()
-        / 100.0;
-
-    // text height will now be the height of paragraph text. For all values higher we need to have H1...H6. If there are less than 6 counts above paragraph size we can assing them H1....h6 if not we nneed to group them into H1...H6 where multiple counts are the same.
-
-    // Calculate heading thresholds
-    let mut heading_thresholds: Vec<f64> = Vec::new();
-    let mut heights_above_text: Vec<(f64, usize)> = heights_by_count
-        .iter()
-        .filter(|(&height, _)| (height as f64 / 10000.0) > text_height)
-        .map(|(&height, &count)| (height as f64 / 10000.0, count))
+        .filter(|&&size| size > body_size * 1.1)
+        .cloned()
         .collect();
 
-    heights_above_text.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+    thresholds.sort_by(|a, b| b.partial_cmp(a).unwrap()); // Sort in descending order
+    thresholds.dedup(); // Remove duplicates
 
-    if heights_above_text.len() <= 6 {
-        // If 6 or fewer unique heights above text_height, use them all
-        heading_thresholds = heights_above_text
-            .iter()
-            .map(|&(height, _)| height)
-            .collect();
+    if thresholds.len() <= 6 {
+        thresholds
     } else {
-        // Group heights into 6 levels
-        let total_count: usize = heights_above_text.iter().map(|&(_, count)| count).sum();
-        let target_count_per_level = total_count / 6;
-        let mut current_count = 0;
-        let mut current_level = Vec::new();
+        // Group into 6 levels
+        let step = thresholds.len() / 6;
+        let mut result: Vec<f64> = (0..6).map(|i| thresholds[i * step]).collect();
+        result.dedup(); // Remove any potential duplicates after grouping
+        result
+    }
+}
 
-        for (height, count) in heights_above_text {
-            current_count += count;
-            current_level.push(height);
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+enum TextLevel {
+    H1,
+    H2,
+    H3,
+    H4,
+    H5,
+    H6,
+    H7,
+    Body,
+    SubBody,
+}
+fn is_heading(segment: &TextSegment, doc_stats: &DocumentStats) -> TextLevel {
+    // Additional heading checks
+    let is_short = segment.content.split_whitespace().count() < 10;
+    // let not_short = segment.content.len() > 4;
+    let starts_with_alphanum = segment
+        .content
+        .trim()
+        .chars()
+        .next()
+        .map_or(false, |c| c.is_alphanumeric());
 
-            if current_count >= target_count_per_level || heading_thresholds.len() == 5 {
-                heading_thresholds.push(
-                    *current_level
-                        .iter()
-                        .max_by(|a, b| a.partial_cmp(b).unwrap())
-                        .unwrap(),
-                );
-                current_count = 0;
-                current_level.clear();
-
-                if heading_thresholds.len() == 6 {
-                    break;
-                }
-            }
+    let is_valid_short_content = |content: &str| {
+        let trimmed = content.trim();
+        if trimmed.len() >= 4 {
+            true
+        } else {
+            // Check if it's a number or Roman numeral
+            trimmed.parse::<u32>().is_ok() || is_roman_numeral(trimmed)
         }
+    };
+
+    // let is_short = segment.content.split_whitespace().count() < 10 && is_valid_short_content(&segment.content);
+
+    fn is_roman_numeral(s: &str) -> bool {
+        let valid_chars = ['I', 'V', 'X'];
+        !s.is_empty() && s.chars().all(|c| valid_chars.contains(&c))
     }
 
-    // Ensure heading thresholds are in descending order
-    heading_thresholds.sort_by(|a, b| b.partial_cmp(a).unwrap());
+    let is_potential_heading =
+        is_short && starts_with_alphanum && is_valid_short_content(&segment.content);
 
-    // println!("Calculated heading thresholds: {:?}", heading_thresholds);
+    // Check if the segment matches the body font and size
+    if segment.font_name == doc_stats.body_font
+        && (segment.transformed_font_size - doc_stats.body_transformed_size).abs() < 0.1
+    {
+        // If it matches body font and size, check if it's bold
+        if segment.is_bold && is_potential_heading {
+            return TextLevel::H7;
+        } else {
+            return TextLevel::Body;
+        }
+    }
+    // If it's smaller than the body text, consider it sub-body
+    else if segment.transformed_font_size < doc_stats.body_transformed_size {
+        return TextLevel::SubBody;
+    } else if (segment.transformed_font_size - doc_stats.body_transformed_size).abs() < 0.1 {
+        if segment.is_bold && is_potential_heading {
+            return TextLevel::H7;
+        } else {
+            return TextLevel::Body;
+        }
+    }
+    // Find the closest heading level
+    else if is_potential_heading {
+        let closest_threshold = doc_stats
+            .transformed_thresholds
+            .iter()
+            .min_by(|&&a, &&b| {
+                (a - segment.transformed_font_size)
+                    .abs()
+                    .partial_cmp(&(b - segment.transformed_font_size).abs())
+                    .unwrap()
+            })
+            .unwrap();
 
-    (text_height, heading_thresholds)
+        let index = doc_stats
+            .transformed_thresholds
+            .iter()
+            .position(|&r| r == *closest_threshold)
+            .unwrap();
+
+        return match index {
+            0 => TextLevel::H1,
+            1 => TextLevel::H2,
+            2 => TextLevel::H3,
+            3 => TextLevel::H4,
+            4 => TextLevel::H5,
+            _ => TextLevel::H6,
+        };
+    } else {
+        // If we can't determine a specific level, return Body as fallback
+        return TextLevel::Body;
+    }
 }
 
 pub fn output_doc(doc: &Document) -> Result<Vec<ContentOutput>, OutputError> {
@@ -2950,7 +3227,11 @@ pub fn output_doc(doc: &Document) -> Result<Vec<ContentOutput>, OutputError> {
 
     let pages = doc.get_pages();
     // trim to only first page
-    // let pages: BTreeMap<u32, (u32, u16)> = pages.iter().take(1).map(|(&k, &v)| (k, v)).collect();
+    // let pages: BTreeMap<u32, (u32, u16)> = pages
+    //     .iter()
+    //     .filter(|(&k, _)| k >= 1 && k <= 60)
+    //     .map(|(&k, &v)| (k, v))
+    //     .collect();
     // let toc = doc.get_toc();
 
     let form = match form_fields(&doc, &mut document_structure) {
@@ -2960,10 +3241,6 @@ pub fn output_doc(doc: &Document) -> Result<Vec<ContentOutput>, OutputError> {
             // None
         }
     };
-    // println!("form: {:#?}", form);
-    let mut text_segments: Vec<TextSegment> = Vec::new();
-
-    let mut p = Processor::new();
 
     // Process pages in parallel
     let text_segments: Vec<TextSegment> = pages
@@ -2981,8 +3258,8 @@ pub fn output_doc(doc: &Document) -> Result<Vec<ContentOutput>, OutputError> {
                 ury: media_box[3],
             };
 
-            let art_box = get::<Option<Vec<f64>>>(&doc, page_dict, b"ArtBox")
-                .map(|x| (x[0], x[1], x[2], x[3]));
+            // let art_box = get::<Option<Vec<f64>>>(&doc, page_dict, b"ArtBox")
+            //     .map(|x| (x[0], x[1], x[2], x[3]));
 
             let mut p = Processor::new();
             let mut page_segments = Vec::new();
@@ -3003,137 +3280,103 @@ pub fn output_doc(doc: &Document) -> Result<Vec<ContentOutput>, OutputError> {
         .collect();
 
     // The rest of the function remains sequential to ensure that the document structure is created in the correct order
-    let (text_height, heights) = calculate_document_stats(text_segments.clone());
+    // The rest of the function remains sequential to ensure that the document structure is created in the correct order
+    // let doc_stats = calculate_document_stats(text_segments.clone());
 
-    let mut current_headings: Vec<String> = Vec::new();
+    let mut current_headings: Vec<String> = vec![String::new(); 8];
     let mut current_paragraph = String::new();
-    let mut is_bold_heading = false;
-    let mut last_y = f64::MAX;
-    let mut last_x = 0.0;
-    let footer_threshold = text_height * 0.8; // Adjust this value as needed
 
-    for segment in text_segments.clone() {
-        let heading_level = heights.iter().position(|&h| segment.font_size == h);
-        let is_new_line = (segment.y - last_y).abs() > text_height * 0.5 || segment.x < last_x;
+    // let footer_threshold = doc_stats.median_line_height * 0.8; // Adjust this value as needed
+    let mut last_page_num = 0;
 
-        if segment.font_size == text_height {
-            if segment.is_bold {
-                // This is likely a bold heading
-                if !current_paragraph.trim().is_empty() {
+    let doc_stats = calculate_document_stats(&text_segments.clone());
+
+    // for segment in text_segments.clone() {
+    //     println!("{:#?}", segment);
+    // }
+    // let processed_segments = process_document(text_segments);
+
+    // println!("processed_segments: {:#?}", processed_segments);
+
+    for segment in text_segments {
+        let level = is_heading(&segment, &doc_stats);
+        match level {
+            TextLevel::H1
+            | TextLevel::H2
+            | TextLevel::H3
+            | TextLevel::H4
+            | TextLevel::H5
+            | TextLevel::H6
+            | TextLevel::H7 => {
+                let heading_level = match level {
+                    TextLevel::H1 => 1,
+                    TextLevel::H2 => 2,
+                    TextLevel::H3 => 3,
+                    TextLevel::H4 => 4,
+                    TextLevel::H5 => 5,
+                    TextLevel::H6 => 6,
+                    TextLevel::H7 => 7,
+                    _ => unreachable!(),
+                };
+
+                if !current_paragraph.is_empty() && current_paragraph.trim().len() > 35 {
                     document_structure.push(ContentOutput {
-                        headings: current_headings.clone(),
-                        paragraph: current_paragraph.trim().to_string(),
+                        headings: current_headings
+                            .clone()
+                            .into_iter()
+                            .filter(|h| !h.is_empty())
+                            .collect(),
+                        paragraph: current_paragraph
+                            .trim()
+                            .split_whitespace()
+                            .collect::<Vec<&str>>()
+                            .join(" "),
                         page: segment.page_num,
                     });
                     current_paragraph.clear();
-                    if is_bold_heading {
-                        current_headings.pop();
+                    current_headings[heading_level] = segment.content.trim().to_string();
+                    for i in (heading_level + 1)..7 {
+                        current_headings[i].clear();
                     }
+
+                    // current_headings.push(segment.content.trim().to_string());
                 } else {
-                    if is_bold_heading {
-                        document_structure.push(ContentOutput {
-                            headings: current_headings.clone(),
-                            paragraph: current_headings
-                                .last()
-                                .unwrap_or(&" ".to_owned())
-                                .to_string(),
-                            page: segment.page_num,
-                        });
-                        current_headings.pop();
-                    }
+                    current_headings[heading_level] = format!(
+                        "{} {}",
+                        current_headings[heading_level],
+                        segment.content.trim()
+                    );
                 }
 
-                if !segment.content.trim().is_empty() {
-                    current_headings.push(segment.content.trim().to_string());
-                    is_bold_heading = true;
-                }
-            } else {
-                current_paragraph.push_str(&segment.content.trim().to_string());
-                current_paragraph.push('\n');
+                // Adjust heading level
             }
-        }
-        // Check if this is footer text
-        else if segment.font_size < footer_threshold {
-            // Handle footer text (you might want to store it separately or ignore it)
-            continue;
-        }
-        // Check if this is a new line
-        else if let Some(level) = heading_level {
-            // This is a heading
-            if !current_paragraph.trim().is_empty() {
-                document_structure.push(ContentOutput {
-                    headings: current_headings.clone(),
-                    paragraph: current_paragraph.trim().to_string(),
-                    page: segment.page_num,
-                });
-                current_paragraph.clear();
-                if is_bold_heading {
-                    current_headings.pop();
-                    is_bold_heading = false;
-                }
-            }
-
-            // Adjust the current_headings based on the new heading level
-            while current_headings.len() > level {
-                current_headings.pop();
-            }
-            if current_headings.len() == level {
-                current_headings.pop();
-            }
-
-            if !segment.content.trim().is_empty() {
-                current_headings.push(segment.content.trim().to_string());
-            }
-        } else {
-            if segment.is_bold && is_new_line {
-                // This is likely a bold heading
-                if !current_paragraph.trim().is_empty() {
-                    document_structure.push(ContentOutput {
-                        headings: current_headings.clone(),
-                        paragraph: current_paragraph.trim().to_string(),
-                        page: segment.page_num,
-                    });
-                    current_paragraph.clear();
-                }
-                if is_bold_heading {
-                    current_headings.pop();
-                }
-                if !segment.content.trim().is_empty() {
-                    current_headings.push(segment.content.trim().to_string());
-                    is_bold_heading = true;
-                }
-            } else {
-                // This is paragraph text or inline bold
-                if is_new_line && !current_paragraph.is_empty() {
+            TextLevel::Body | TextLevel::SubBody => {
+                if !current_paragraph.is_empty() {
                     current_paragraph.push(' ');
                 }
                 current_paragraph.push_str(&segment.content);
-                // current_paragraph.push('\n');
-                is_bold_heading = false;
+                last_page_num = segment.page_num;
             }
         }
-
-        last_y = segment.y;
-        last_x = segment.x;
     }
 
     // Push the last paragraph if it's not empty
-    if !current_paragraph.trim().is_empty() {
+    if !current_paragraph.is_empty() {
         document_structure.push(ContentOutput {
-            headings: current_headings,
+            headings: current_headings
+                .clone()
+                .into_iter()
+                .filter(|h| !h.is_empty())
+                .collect(),
             paragraph: current_paragraph.trim().to_string(),
-            page: 0,
+            page: last_page_num,
         });
     }
 
-    // Print the document structure (for debugging)
-    // for content in &document_structure {
-    //     println!("Headings: {:?}", content.headings);
-    //     println!("Paragraph: {}\n", content.paragraph);
-    //     println!("Page: {}\n", content.page);
-    // }
     // for each in text_segments {
+    //     // if each.font_size == text_height {
     //     println!("{:#?}", each);
+    //     // }
     // }
 
     Ok(document_structure)
