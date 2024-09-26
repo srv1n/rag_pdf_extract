@@ -2069,13 +2069,13 @@ impl<'a> Processor<'a> {
 
                                         if first_char {
                                             if (y - last_y).abs() > transformed_font_size * 1.5 {
-                                                current_line.push(' ')
+                                                current_line.push('\n')
                                             }
 
                                             if x < last_end
                                                 && (y - last_y).abs() > transformed_font_size * 0.5
                                             {
-                                                current_line.push(' ')
+                                                current_line.push('\n')
                                             }
 
                                             if x > last_end + transformed_font_size * 0.1 {
@@ -2198,12 +2198,12 @@ impl<'a> Processor<'a> {
 
                             if first_char {
                                 if (y - last_y).abs() > transformed_font_size * 1.5 {
-                                    current_line.push(' ')
+                                    current_line.push('\n')
                                 }
 
                                 if x < last_end && (y - last_y).abs() > transformed_font_size * 0.5
                                 {
-                                    current_line.push(' ')
+                                    current_line.push('\n')
                                 }
 
                                 if x > last_end + transformed_font_size * 0.1 {
@@ -3355,6 +3355,21 @@ pub fn output_doc(doc: &Document) -> Result<Vec<ContentOutput>, OutputError> {
                     current_paragraph.push(' ');
                 }
                 current_paragraph.push_str(&segment.content);
+
+                // Check if the paragraph length exceeds 1000 characters
+                // if current_paragraph.len() > 20000 {
+                //     document_structure.push(ContentOutput {
+                //         headings: current_headings
+                //             .clone()
+                //             .into_iter()
+                //             .filter(|h| !h.is_empty())
+                //             .collect(),
+                //         paragraph: current_paragraph.trim().to_string(),
+                //         page: last_page_num,
+                //     });
+                //     current_paragraph.clear();
+                // }
+
                 last_page_num = segment.page_num;
             }
         }
