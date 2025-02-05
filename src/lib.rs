@@ -6,12 +6,11 @@ use lopdf::content::{Content, Operation};
 use lopdf::encryption::DecryptionError;
 use lopdf::*;
 
-use ordered_float::OrderedFloat;
 use ocrs::{ImageSource, OcrEngine, OcrEngineParams};
-use rten::{ Model};
+use ordered_float::OrderedFloat;
+use rten::Model;
 #[allow(unused)]
 use rten_tensor::prelude::*;
-
 
 use std::fmt::{format, Debug, Formatter};
 use std::thread::current;
@@ -19,7 +18,7 @@ use std::thread::current;
 use euclid::vec2;
 use rayon::prelude::*;
 use std::collections::hash_map::Entry;
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque, HashSet};
 use std::fs::File;
 use std::marker::PhantomData;
 use std::rc::Rc;
@@ -37,6 +36,24 @@ mod form;
 mod glyphnames;
 mod zapfglyphnames;
 
+use lazy_static::lazy_static;
+use regex::Regex;
+
+lazy_static! {
+    static ref NUMBERED_HEADING: Regex = Regex::new(
+        r"(?x)
+        ^
+        (?P<number>
+            (?:\d+\.)+\d+         | # Matches 1.1, 2.3.4, etc.
+            [IVXLCDM]+\.          | # Matches VII.
+            (?:Section|Article|Chapter)\s+[A-Z0-9]+ | # Matches Section 2, Article B, etc.
+            \d+\s+[A-Z][A-Z\s]+      # Matches '1 UNITED STATES DISTRICT COURT SOUTHERN DISTRICT OF NEW YORK'
+        )
+        \s+(?P<title>.+)$
+        "
+    ).unwrap();
+}
+
 pub struct Space;
 pub type Transform = Transform2D<f64, Space, Space>;
 
@@ -48,7 +65,7 @@ pub struct OcrConfig {
 
 // Create a struct to hold the OCR engine instance
 pub struct OcrHandler {
-    pub engine: OcrEngine, 
+    pub engine: OcrEngine,
 }
 
 impl OcrHandler {
@@ -60,7 +77,7 @@ impl OcrHandler {
             None
         };
         let recognition_model = if let Some(path) = &config.recognition_model {
-            // Convert the loaded model to the expected type 
+            // Convert the loaded model to the expected type
             Some(Model::load_file(path)?)
         } else {
             None
@@ -95,7 +112,6 @@ impl OcrHandler {
         Ok(text)
     }
 }
-
 
 #[derive(Debug)]
 pub enum OutputError {
@@ -1467,15 +1483,18 @@ impl<'a> PdfImage<'a> {
         // First handle common compression filters
         let decoded_data = if let Some(filters) = &self.filters {
             let mut data = self.content.to_vec();
-            
+
             for filter in filters {
                 match filter.as_str() {
                     "DCTDecode" | "DCT" => {
                         // JPEG data
-                        return image::load_from_memory_with_format(&data, image::ImageFormat::Jpeg)
-                            .ok()
-                            .map(|img| img.into_rgb8());
-                    },
+                        return image::load_from_memory_with_format(
+                            &data,
+                            image::ImageFormat::Jpeg,
+                        )
+                        .ok()
+                        .map(|img| img.into_rgb8());
+                    }
                     // "JPXDecode" => {
                     //     // JPEG2000 data
                     //     return image::load_from_memory_with_format(&data, image::ImageFormat::)
@@ -1484,9 +1503,8 @@ impl<'a> PdfImage<'a> {
                     // },
                     "FlateDecode" => {
                         // Decompress using flate/zlib
-                        data = miniz_oxide::inflate::decompress_to_vec_zlib(&data)
-                            .ok()?;
-                    },
+                        data = miniz_oxide::inflate::decompress_to_vec_zlib(&data).ok()?;
+                    }
                     _ => return None, // Unsupported filter
                 }
             }
@@ -1504,16 +1522,20 @@ impl<'a> PdfImage<'a> {
                         for x in 0..self.width as u32 {
                             let pos = ((y * self.width as u32 + x) * 3) as usize;
                             if pos + 2 < decoded_data.len() {
-                                img.put_pixel(x, y, image::Rgb([
-                                    decoded_data[pos],
-                                    decoded_data[pos + 1],
-                                    decoded_data[pos + 2]
-                                ]));
+                                img.put_pixel(
+                                    x,
+                                    y,
+                                    image::Rgb([
+                                        decoded_data[pos],
+                                        decoded_data[pos + 1],
+                                        decoded_data[pos + 2],
+                                    ]),
+                                );
                             }
                         }
                     }
                     Some(img)
-                },
+                }
                 "DeviceGray" => {
                     let mut img = RgbImage::new(self.width as u32, self.height as u32);
                     for y in 0..self.height as u32 {
@@ -1526,7 +1548,7 @@ impl<'a> PdfImage<'a> {
                         }
                     }
                     Some(img)
-                },
+                }
                 _ => None, // Other color spaces not supported for now
             },
             None => None,
@@ -1546,13 +1568,13 @@ fn process_xobject(
     current_transformed_font_size: f64,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let xobject = doc.get_dict_in_dict(resources, b"XObject")?;
-    
+
     for (_, xvalue) in xobject.iter() {
         let id = xvalue.as_reference()?;
         let xvalue = doc.get_object(id)?;
         let xvalue = xvalue.as_stream()?;
         let dict = &xvalue.dict;
-        
+
         // Only process images
         if dict.get(b"Subtype")?.as_name()? != b"Image" {
             continue;
@@ -1563,18 +1585,20 @@ fn process_xobject(
         let height = dict.get(b"Height")?.as_i64()?;
         let color_space = match dict.get(b"ColorSpace") {
             Ok(cs) => match cs {
-                Object::Array(array) => Some(String::from_utf8_lossy(array[0].as_name()?).to_string()),
+                Object::Array(array) => {
+                    Some(String::from_utf8_lossy(array[0].as_name()?).to_string())
+                }
                 Object::Name(name) => Some(String::from_utf8_lossy(name).to_string()),
                 _ => None,
             },
             Err(_) => None,
         };
-        
+
         let bits_per_component = match dict.get(b"BitsPerComponent") {
             Ok(bpc) => Some(bpc.as_i64()?),
             Err(_) => None,
         };
-        
+
         let mut filters = vec![];
         if let Ok(filter) = dict.get(b"Filter") {
             match filter {
@@ -1621,6 +1645,8 @@ fn process_xobject(
                             font_name: "OCR".to_string(),
                             page_num,
                             cutat: "Image".to_string(),
+                            fill_color: None,
+                            stroke_color: None,
                         });
                     }
                 } else {
@@ -1631,7 +1657,7 @@ fn process_xobject(
             }
         }
     }
-    
+
     Ok(())
 }
 
@@ -1959,8 +1985,6 @@ fn make_colorspace<'a>(doc: &'a Document, name: &[u8], resources: &'a Dictionary
     }
 }
 
-
-
 #[derive(Debug, Clone)]
 struct TextSegment {
     content: String,
@@ -1973,6 +1997,8 @@ struct TextSegment {
     page_num: u32,
     cutat: String,
     // font_color: (f64, f64, f64),
+    fill_color: Option<(u8, u8, u8)>,
+    stroke_color: Option<(u8, u8, u8)>,
 }
 struct Processor<'a> {
     _none: PhantomData<&'a ()>,
@@ -2079,6 +2105,8 @@ impl<'a> Processor<'a> {
             media_box.ury - media_box.lly,
         );
         dlog!("MediaBox {:?}", media_box);
+        let mut layout_analyzer = LayoutAnalyzer::new(media_box.ury - media_box.lly);
+
         for operation in &content.operations {
             match operation.operator.as_ref() {
                 "BT" => {
@@ -2176,21 +2204,30 @@ impl<'a> Processor<'a> {
                             } else {
                                 (current_font.to_string(), new_font_name.to_string())
                             };
-                            text_segments.push(TextSegment {
-                                content: current_line.clone().trim().to_string(),
-                                font_size: current_font_size,
-                                transformed_font_size: current_transformed_font_size,
-                                x: current_x,
-                                y: current_y,
-                                is_bold: current_is_bold,
-                                font_name: current_font.clone(),
-                                page_num: page_num,
-                                cutat: format!(
-                                    "Tf, old value: {}, new value: {}",
-                                    oldvalue, newvalue
+                            let processed_fill_color = if gs.fill_color.len() >= 3 {
+                                (
+                                    (gs.fill_color[0] * 255.0).round() as u8,
+                                    (gs.fill_color[1] * 255.0).round() as u8,
+                                    (gs.fill_color[2] * 255.0).round() as u8,
                                 )
-                                .to_string(),
-                            });
+                            } else {
+                                (0, 0, 0) // Fallback to black if not enough color values are provided
+                            };
+                            // if is_visible_text(Some(processed_fill_color), (255, 255, 255)) {
+                                text_segments.push(TextSegment {
+                                    content: current_line.clone().trim().to_string(),
+                                    font_size: current_font_size,
+                                    transformed_font_size: current_transformed_font_size,
+                                    x: current_x,
+                                    y: current_y,
+                                    is_bold: current_is_bold,
+                                    font_name: current_font.clone(),
+                                    page_num: page_num,
+                                    cutat: "Tj".to_string(),
+                                    fill_color: Some(processed_fill_color),
+                                    stroke_color: None,
+                                });
+                            // }
                             current_line.clear();
                             current_is_bold = new_is_bold;
                             // current_font_name = new_font_name.clone();
@@ -2217,7 +2254,6 @@ impl<'a> Processor<'a> {
                         for e in array {
                             match e {
                                 &Object::String(ref s, _) => {
-                                   
                                     // let ts = &mut gs.ts;
                                     let font: &Rc<dyn PdfFont> = gs.ts.font.as_ref().unwrap();
                                     // let font_text = format!("{:#?}", font);
@@ -2261,21 +2297,33 @@ impl<'a> Processor<'a> {
                                                 //  && is_add
                                                 //     && current_y < self.current_font_size
                                                 {
-                                                    text_segments.push(TextSegment {
-                                                        content: current_line
-                                                            .clone()
-                                                            .trim()
-                                                            .to_string(),
-                                                        font_size: current_font_size,
-                                                        transformed_font_size:
-                                                            current_transformed_font_size,
-                                                        x: current_x,
-                                                        y: current_y,
-                                                        is_bold: current_is_bold,
-                                                        font_name: current_font.clone(),
-                                                        page_num: page_num,
-                                                        cutat: "TJ".to_string(),
-                                                    });
+                                                    let processed_fill_color = (
+                                                        (current_font_color.0 * 255.0) as u8,
+                                                        (current_font_color.1 * 255.0) as u8,
+                                                        (current_font_color.2 * 255.0) as u8,
+                                                    );
+                                                        // if is_visible_text(
+                                                        //     Some(processed_fill_color),
+                                                        //     (255, 255, 255),
+                                                        // ) {
+                                                        text_segments.push(TextSegment {
+                                                            content: current_line
+                                                                .clone()
+                                                                .trim()
+                                                                .to_string(),
+                                                            font_size: current_font_size,
+                                                            transformed_font_size:
+                                                                current_transformed_font_size,
+                                                            x: current_x,
+                                                            y: current_y,
+                                                            is_bold: current_is_bold,
+                                                            font_name: current_font.clone(),
+                                                            page_num: page_num,
+                                                            cutat: "Tj".to_string(),
+                                                            fill_color: Some(processed_fill_color),
+                                                            stroke_color: None,
+                                                        });
+                                                    // }
                                                 }
                                                 current_line.clear();
                                             }
@@ -2394,17 +2442,31 @@ impl<'a> Processor<'a> {
                                     if current_x > 0.0 && current_y > 0.0
                                     //     && current_y < self.current_font_size
                                     {
-                                        text_segments.push(TextSegment {
-                                            content: current_line.clone().trim().to_string(),
-                                            font_size: current_font_size,
-                                            transformed_font_size: current_transformed_font_size,
-                                            x: current_x,
-                                            y: current_y,
-                                            is_bold: current_is_bold,
-                                            font_name: current_font.clone(),
-                                            page_num: page_num,
-                                            cutat: "Tj".to_string(),
-                                        });
+                                        // Convert gs.fill_color (Vec<f64>) to a (u8, u8, u8) tuple:
+                                        let processed_fill_color = (
+                                            (current_font_color.0 * 255.0) as u8,
+                                            (current_font_color.1 * 255.0) as u8,
+                                            (current_font_color.2 * 255.0) as u8,
+                                        );
+                                        // if is_visible_text(
+                                        //     Some(processed_fill_color),
+                                        //     (255, 255, 255),
+                                        // ) {
+                                            text_segments.push(TextSegment {
+                                                content: current_line.clone().trim().to_string(),
+                                                font_size: current_font_size,
+                                                transformed_font_size:
+                                                    current_transformed_font_size,
+                                                x: current_x,
+                                                y: current_y,
+                                                is_bold: current_is_bold,
+                                                font_name: current_font.clone(),
+                                                page_num: page_num,
+                                                cutat: "Tj".to_string(),
+                                                fill_color: Some(processed_fill_color),
+                                                stroke_color: None,
+                                            });
+                                        // }
                                     }
                                     current_line.clear();
                                 }
@@ -2603,45 +2665,45 @@ impl<'a> Processor<'a> {
                 "EMC" => {
                     mc_stack.pop();
                 }
-          "Do" => {
-    // Only process XObject if OCR handler is available
-    if let Some(handler) = ocr_handler {
-        let position = gs.ts.tm.post_transform(&flip_ctm);
-        let (x, y) = (position.m31, position.m32);
-        
-        if let Err(e) = process_xobject(
-            &doc,
-            resources,
-            Some(handler),
-            text_segments,
-            (x, y),
-            page_num,
-            current_font_size,
-            current_transformed_font_size,
-        ) {
-            // Log error but continue processing
-            eprintln!("Failed to process image in PDF: {}", e);
-        }
-    }
-    
-    // Continue with normal processing regardless of OCR result
-    let xobject: &Dictionary = get(&doc, resources, b"XObject");
-    let name = operation.operands[0].as_name().unwrap();
-    let xf: &Stream = get(&doc, xobject, name);
-    let resources = maybe_get_obj(&doc, &xf.dict, b"Resources")
-        .and_then(|n| n.as_dict().ok())
-        .unwrap_or(resources);
-    let contents = get_contents(xf);
-    self.process_stream(
-        &doc,
-        ocr_handler,
-        contents,
-        resources,
-        &media_box,
-        page_num,
-        text_segments,
-    )?;
-}
+                "Do" => {
+                    // Only process XObject if OCR handler is available
+                    if let Some(handler) = ocr_handler {
+                        let position = gs.ts.tm.post_transform(&flip_ctm);
+                        let (x, y) = (position.m31, position.m32);
+
+                        if let Err(e) = process_xobject(
+                            &doc,
+                            resources,
+                            Some(handler),
+                            text_segments,
+                            (x, y),
+                            page_num,
+                            current_font_size,
+                            current_transformed_font_size,
+                        ) {
+                            // Log error but continue processing
+                            eprintln!("Failed to process image in PDF: {}", e);
+                        }
+                    }
+
+                    // Continue with normal processing regardless of OCR result
+                    let xobject: &Dictionary = get(&doc, resources, b"XObject");
+                    let name = operation.operands[0].as_name().unwrap();
+                    let xf: &Stream = get(&doc, xobject, name);
+                    let resources = maybe_get_obj(&doc, &xf.dict, b"Resources")
+                        .and_then(|n| n.as_dict().ok())
+                        .unwrap_or(resources);
+                    let contents = get_contents(xf);
+                    self.process_stream(
+                        &doc,
+                        ocr_handler,
+                        contents,
+                        resources,
+                        &media_box,
+                        page_num,
+                        text_segments,
+                    )?;
+                }
                 _ => {
                     dlog!("unknown operation {:?}", operation);
                 }
@@ -2652,24 +2714,54 @@ impl<'a> Processor<'a> {
         //     current_word.clear();
         // }
         if !current_line.is_empty() {
-            // text.push_str(&current_line);
-            // let mut content = current_line.clone();
-            // content.push_str(" Left Over");
-            if current_x > 0.0 && current_y > 0.0 {
+            // let processed_fill_color = if gs.fill_color.len() >= 3 {
+            //     (
+            //         (gs.fill_color[0] * 255.0).round() as u8,
+            //         (gs.fill_color[1] * 255.0).round() as u8,
+            //         (gs.fill_color[2] * 255.0).round() as u8,
+            //     )
+            // } else {
+            //     (0, 0, 0) // Fallback to black if not enough color values are provided
+            // };
+
+            // if is_visible_text(Some(processed_fill_color), (255, 255, 255)) {
                 text_segments.push(TextSegment {
-                    content: current_line.trim().to_string(),
+                    content: current_line.clone().trim().to_string(),
                     font_size: current_font_size,
                     transformed_font_size: current_transformed_font_size,
                     x: current_x,
                     y: current_y,
-                    is_bold: current_is_bold, // Placeholder value since current_is_bold is not available
+                    is_bold: current_is_bold,
                     font_name: current_font.clone(),
                     page_num: page_num,
-                    cutat: "final".to_string(),
+                    cutat: "Tj".to_string(),
+                    fill_color: None,
+                    stroke_color: None,
                 });
-            }
+            // }
             current_line.clear();
         }
+
+        // Update layout analyzer
+        // layout_analyzer.update_threshold(current_font_size);
+        // let is_section_break = layout_analyzer.is_section_break(current_y);
+
+        // if is_section_break {
+            // Add special marker for section boundaries
+            // text_segments.push(TextSegment {
+            //     content: "SECTION_BREAK".into(),
+            //     font_size: current_font_size,
+            //     transformed_font_size: current_transformed_font_size,
+            //     x: current_x,
+            //     y: current_y,
+            //     is_bold: false,
+            //     font_name: current_font.clone(),
+            //     page_num: page_num,
+            //     cutat: "SectionMarker".into(),
+            //     fill_color: None,
+            //     stroke_color: None,
+            // });
+        // }
 
         Ok(())
     }
@@ -3126,15 +3218,14 @@ pub fn print_metadata(doc: &Document) {
 /// Extract the text from a pdf at `path` and return a `String` with the results
 pub fn extract_text<P: std::convert::AsRef<std::path::Path>>(
     path: P,
-   ocr_handler: Option<&OcrHandler>,
-   
+    ocr_handler: Option<&OcrHandler>,
 ) -> Result<String, OutputError> {
     let mut s = String::new();
     {
         // let mut output = PlainTextOutput::new(&mut s);
         let mut doc = Document::load(path)?;
         maybe_decrypt(&mut doc)?;
-        output_doc(&doc, ocr_handler)  .map_err(|e| OutputError::Other(e.to_string()));
+        output_doc(&doc, ocr_handler).map_err(|e| OutputError::Other(e.to_string()));
     }
     Ok(s)
 }
@@ -3168,7 +3259,10 @@ fn maybe_decrypt(doc: &mut Document) -> Result<(), OutputError> {
 //     Ok(s)
 // }
 
-pub fn extract_text_from_mem(buffer: &[u8], ocr_handler: Option<&OcrHandler>) -> Result<String, OutputError> {
+pub fn extract_text_from_mem(
+    buffer: &[u8],
+    ocr_handler: Option<&OcrHandler>,
+) -> Result<String, OutputError> {
     let mut s = String::new();
     {
         // let mut output = PlainTextOutput::new(&mut s);
@@ -3219,12 +3313,12 @@ fn get_inherited<'a, T: FromObj<'a>>(
 //     output_doc(doc, ocr, detection_model, recognition_model)
 // }
 
-#[derive(Debug)]
-pub struct ContentOutput {
-    pub headings: Vec<String>,
-    pub paragraph: String,
-    pub page: u32,
-}
+// #[derive(Debug)]
+// pub struct ContentOutput {
+//     pub headings: Vec<String>,
+//     pub paragraph: String,
+//     pub page: u32,
+// }
 /// Parse a given document and output it to `output`
 
 fn calculate_document_stats(lines: &[TextSegment]) -> DocumentStats {
@@ -3373,6 +3467,18 @@ enum TextLevel {
     SubBody,
 }
 fn is_heading(segment: &TextSegment, doc_stats: &DocumentStats) -> TextLevel {
+    let fg_color = segment.fill_color.unwrap_or((0, 0, 0)); // default black
+    let bg_color = segment.stroke_color.unwrap_or((255, 255, 255)); // default white
+
+    // Calculate contrast ratio
+    let cr = contrast_ratio(fg_color, bg_color);
+
+    // Filter low-contrast text (adjust threshold as needed)
+    if cr < 1.5 {
+        // Catches near-invisible text but allows light gray
+        return TextLevel::Body;
+    }
+
     // Additional heading checks
     let is_short = segment.content.split_whitespace().count() < 10;
     // let not_short = segment.content.len() > 4;
@@ -3459,9 +3565,10 @@ fn is_heading(segment: &TextSegment, doc_stats: &DocumentStats) -> TextLevel {
 
 pub fn output_doc(
     doc: &Document,
-    ocr_handler: Option<&OcrHandler>
+    ocr_handler: Option<&OcrHandler>,
 ) -> Result<Vec<ContentOutput>, Box<dyn std::error::Error>> {
     let mut document_structure: Vec<ContentOutput> = Vec::new();
+
     // println!("Shaata");
     if doc.is_encrypted() {
         eprintln!("Encrypted documents must be decrypted with a password using {{extract_text|extract_text_from_mem|output_doc}}_encrypted");
@@ -3516,7 +3623,6 @@ pub fn output_doc(
                 &media_box,
                 *page_num,
                 &mut page_segments,
-                
             )
             .unwrap();
 
@@ -3544,6 +3650,63 @@ pub fn output_doc(
 
     // println!("processed_segments: {:#?}", processed_segments);
 
+    // Add these constants at the top level
+    const MIN_CONTRAST_RATIO: f64 = 4.5; // WCAG AA standard
+    const MIN_COLOR_DIFF: u8 = 30; // Minimum RGB difference
+
+    // Add these helper functions
+    fn calculate_luminance(color: (u8, u8, u8)) -> f64 {
+        let srgb = |c: u8| {
+            let c = c as f64 / 255.0;
+            if c <= 0.03928 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
+        };
+
+        0.2126 * srgb(color.0) + 0.7152 * srgb(color.1) + 0.0722 * srgb(color.2)
+    }
+
+    fn contrast_ratio(fg: (u8, u8, u8), bg: (u8, u8, u8)) -> f64 {
+        let l1 = calculate_luminance(fg);
+        let l2 = calculate_luminance(bg);
+        let (lighter, darker) = if l1 > l2 { (l1, l2) } else { (l2, l1) };
+        (lighter + 0.05) / (darker + 0.05)
+    }
+
+    fn color_difference(c1: (u8, u8, u8), c2: (u8, u8, u8)) -> u8 {
+        ((c1.0 as i16 - c2.0 as i16).abs()
+            + (c1.1 as i16 - c2.1 as i16).abs()
+            + (c1.2 as i16 - c2.2 as i16).abs()) as u8
+    }
+
+    fn is_visible_text(fill_color: Option<(u8, u8, u8)>, bg_color: (u8, u8, u8)) -> bool {
+        let fg_color = fill_color.unwrap_or((0, 0, 0)); // Default to black if no color specified
+
+        // Check if it's a cyan-like color (commonly used for masking)
+        let is_cyan_like = fg_color.0 < 50 && fg_color.1 < 50 && fg_color.2 > 100;
+        if is_cyan_like {
+            return false;
+        }
+
+        // Check contrast ratio
+        let cr = contrast_ratio(fg_color, bg_color);
+        if cr < MIN_CONTRAST_RATIO {
+            return false;
+        }
+
+        // Check absolute color difference
+        let cd = color_difference(fg_color, bg_color);
+        if cd < MIN_COLOR_DIFF {
+            return false;
+        }
+
+        true
+    }
+
+    let mut current_numbering: Vec<String> = vec![String::new(); 8]; // Track numbering per level
+
     for segment in text_segments {
         let level = is_heading(&segment, &doc_stats);
         match level {
@@ -3554,6 +3717,33 @@ pub fn output_doc(
             | TextLevel::H5
             | TextLevel::H6
             | TextLevel::H7 => {
+                // NEW SINGLE HEADING MODE:
+                // If there's already some paragraph content, flush it out with the last heading.
+                if !current_paragraph.is_empty() && current_paragraph.trim().len() > 35 {
+                    let last_heading = if current_headings[0].is_empty() {
+                        "".to_string()
+                    } else {
+                        current_headings[0].clone()
+                    };
+                    document_structure.push(ContentOutput {
+                        headings: if last_heading.is_empty() { vec![] } else { vec![last_heading] },
+                        paragraph: current_paragraph.trim().to_string(),
+                        page: segment.page_num,
+                        end_page: None,
+                    });
+                    current_paragraph.clear();
+                }
+
+                // Clear all headings so that we retain only the current one.
+                for h in current_headings.iter_mut() {
+                    *h = "".to_string();
+                }
+                current_headings[0] = segment.content.trim().to_string();
+
+                // -------------------------------------------------------------------------
+                // The code below implements the old multi-heading (stacked) behavior.
+                // Uncomment it if you need to revert to the multi-level headings later.
+                /*
                 let heading_level = match level {
                     TextLevel::H1 => 1,
                     TextLevel::H2 => 2,
@@ -3565,47 +3755,72 @@ pub fn output_doc(
                     _ => unreachable!(),
                 };
 
+                // Clear all lower heading levels immediately
+                for i in (heading_level + 1)..=7 {
+                    if i < current_headings.len() {
+                        current_headings[i].clear();
+                    }
+                }
+
+                // Only propagate heading if it's a new section starter
                 if !current_paragraph.is_empty() && current_paragraph.trim().len() > 35 {
                     document_structure.push(ContentOutput {
                         headings: current_headings
-                            .clone()
-                            .into_iter()
+                            .iter()
+                            .take(heading_level + 1)
                             .filter(|h| !h.is_empty())
+                            .cloned()
                             .collect(),
-                        paragraph: current_paragraph
-                            .trim()
-                            .split_whitespace()
-                            .collect::<Vec<&str>>()
-                            .join(" "),
+                        paragraph: current_paragraph.trim().to_string(),
                         page: segment.page_num,
                     });
                     current_paragraph.clear();
                     current_headings[heading_level] = segment.content.trim().to_string();
-                    for i in (heading_level + 1)..7 {
+                } else {
+                    // Merge with existing heading if same level
+                    if current_headings[heading_level].is_empty() {
+                        current_headings[heading_level] = segment.content.trim().to_string();
+                    } else {
+                        current_headings[heading_level] = format!(
+                            "{} {}",
+                            current_headings[heading_level],
+                            segment.content.trim()
+                        );
+                    }
+                }
+
+                // Clear any higher levels if this is a new top-level heading
+                if heading_level
+                    < current_headings
+                        .iter()
+                        .rposition(|h| !h.is_empty())
+                        .unwrap_or(0)
+                {
+                    for i in 0..heading_level {
                         current_headings[i].clear();
                     }
+                }
+                let is_numbered = NUMBERED_HEADING.is_match(&segment.content);
+                // Update numbering context
+                if is_numbered {
+                    current_numbering[heading_level] = extract_numbering(&segment.content);
+                    // Reset subordinate levels
+                    for i in (heading_level + 1)..current_numbering.len() {
+                        current_numbering[i].clear();
+                    }
+                }
 
-                    // current_headings.push(segment.content.trim().to_string());
-                } else {
+                // Add numbering to heading text
+                if !current_numbering[heading_level].is_empty() {
                     current_headings[heading_level] = format!(
                         "{} {}",
-                        current_headings[heading_level],
+                        current_numbering[heading_level],
                         segment.content.trim()
                     );
                 }
-
-                // Adjust heading level
+                */
             }
             TextLevel::Body | TextLevel::SubBody => {
-                // if last_y != segment.y {
-                //     last_y = segment.y;
-                //     last_end = 0.0;
-                //     current_paragraph.push('\n');
-                // }
-                // if last_end != segment.x {
-                //     last_end = segment.x;
-                //     current_paragraph.push(' ');
-                // }
                 if !current_paragraph.is_empty() {
                     current_paragraph.push(' ');
                 }
@@ -3640,14 +3855,9 @@ pub fn output_doc(
                 .collect(),
             paragraph: current_paragraph.trim().to_string(),
             page: last_page_num,
+            end_page: None,
         });
     }
-
-    // for each in text_segments {
-    //     // if each.font_size == text_height {
-    //     println!("{:#?}", each);
-    //     // }
-    // }
 
     Ok(document_structure)
 }
@@ -3656,7 +3866,7 @@ pub fn parse_pdf(
     file: &str,
     ocr: Option<bool>,
     detection_model: Option<String>,
-    recognition_model: Option<String>
+    recognition_model: Option<String>,
 ) -> Result<Vec<ContentOutput>, OutputError> {
     let path = path::Path::new(&file);
 
@@ -3668,14 +3878,373 @@ pub fn parse_pdf(
             detection_model,
             recognition_model,
         };
-        let ocr_handler = OcrHandler::new(&ocr_config)
-            .map_err(|e|{ println!("ocr_handler error: {}", e); OutputError::Other(e.to_string())})?;
-        
-        output_doc(&doc, Some(&ocr_handler))
-            .map_err(|e| OutputError::Other(e.to_string()))
+        let ocr_handler = OcrHandler::new(&ocr_config).map_err(|e| {
+            println!("ocr_handler error: {}", e);
+            OutputError::Other(e.to_string())
+        })?;
+
+        output_doc(&doc, Some(&ocr_handler)).map_err(|e| OutputError::Other(e.to_string()))
     } else {
-        
-        output_doc(&doc, None)
-            .map_err(|e| OutputError::Other(e.to_string()))
+        output_doc(&doc, None).map_err(|e| OutputError::Other(e.to_string()))
     }
+}
+
+// // Add near document processing logic
+// fn calculate_luminance(color: (u8, u8, u8)) -> f64 {
+//     let srgb = |c: u8| {
+//         let c = c as f64 / 255.0;
+//         if c <= 0.03928 {
+//             c / 12.92
+//         } else {
+//             ((c + 0.055) / 1.055).powf(2.4)
+//         }
+//     };
+
+//     0.2126 * srgb(color.0) + 0.7152 * srgb(color.1) + 0.0722 * srgb(color.2)
+// }
+
+// fn contrast_ratio(fg: (u8, u8, u8), bg: (u8, u8, u8)) -> f64 {
+//     let lum1 = calculate_luminance(fg);
+//     let lum2 = calculate_luminance(bg);
+//     let (lighter, darker) = if lum1 > lum2 {
+//         (lum1, lum2)
+//     } else {
+//         (lum2, lum1)
+//     };
+
+//     (lighter + 0.05) / (darker + 0.05)
+// }
+
+// Add these constants at the top level
+const MIN_CONTRAST_RATIO: f64 = 4.5; // WCAG AA standard
+const MIN_COLOR_DIFF: u8 = 30; // Minimum RGB difference
+
+// Add these helper functions
+fn calculate_luminance(color: (u8, u8, u8)) -> f64 {
+    let srgb = |c: u8| {
+        let c = c as f64 / 255.0;
+        if c <= 0.03928 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    };
+
+    0.2126 * srgb(color.0) + 0.7152 * srgb(color.1) + 0.0722 * srgb(color.2)
+}
+
+fn contrast_ratio(fg: (u8, u8, u8), bg: (u8, u8, u8)) -> f64 {
+    let l1 = calculate_luminance(fg);
+    let l2 = calculate_luminance(bg);
+    let (lighter, darker) = if l1 > l2 { (l1, l2) } else { (l2, l1) };
+    (lighter + 0.05) / (darker + 0.05)
+}
+
+fn color_difference(c1: (u8, u8, u8), c2: (u8, u8, u8)) -> u8 {
+    ((c1.0 as i16 - c2.0 as i16).abs()
+        + (c1.1 as i16 - c2.1 as i16).abs()
+        + (c1.2 as i16 - c2.2 as i16).abs()) as u8
+}
+
+fn is_visible_text(fill_color: Option<(u8, u8, u8)>, bg_color: (u8, u8, u8)) -> bool {
+    let fg_color = fill_color.unwrap_or((0, 0, 0)); // Default to black if no color specified
+
+    // Check if it's a cyan-like color (commonly used for masking)
+    let is_cyan_like = fg_color.0 < 50 && fg_color.1 < 50 && fg_color.2 > 100;
+    if is_cyan_like {
+        return false;
+    }
+
+    // Check contrast ratio
+    let cr = contrast_ratio(fg_color, bg_color);
+    if cr < MIN_CONTRAST_RATIO {
+        return false;
+    }
+
+    // Check absolute color difference
+    let cd = color_difference(fg_color, bg_color);
+    if cd < MIN_COLOR_DIFF {
+        return false;
+    }
+
+    true
+}
+
+// Modify your text segment processing to use this check
+// In your text processing loop:
+// let processed_fill_color = if gs.fill_color.len() >= 3 {
+//     (
+//         (gs.fill_color[0] * 255.0).round() as u8,
+//         (gs.fill_color[1] * 255.0).round() as u8,
+//         (gs.fill_color[2] * 255.0).round() as u8,
+//     )
+// } else {
+//     (0, 0, 0) // Default to black
+// };
+
+// // Only process text if it's visible
+// if is_visible_text(Some(processed_fill_color), (255, 255, 255)) {  // Assuming white background
+//     text_segments.push(TextSegment {
+//         content: current_line.clone().trim().to_string(),
+//         font_size: current_font_size,
+//         transformed_font_size: current_transformed_font_size,
+//         x: current_x,
+//         y: current_y,
+//         is_bold: current_is_bold,
+//         font_name: current_font.clone(),
+//         page_num: page_num,
+//         cutat: "Tj".to_string(),
+//         fill_color: Some(processed_fill_color),
+//         stroke_color: None,
+//     });
+// }
+
+#[derive(Clone)]
+struct LayoutAnalyzer {
+    last_y: f64,
+    y_gap_threshold: f64,
+    page_height: f64,
+}
+
+impl LayoutAnalyzer {
+    fn new(page_height: f64) -> Self {
+        Self {
+            last_y: f64::MAX,
+            y_gap_threshold: 0.0,
+            page_height,
+        }
+    }
+
+    fn update_threshold(&mut self, font_size: f64) {
+        // Dynamic gap threshold based on font size and page dimensions
+        self.y_gap_threshold = (font_size * 1.5).max(self.page_height * 0.03);
+    }
+
+    fn is_section_break(&mut self, current_y: f64) -> bool {
+        let abs_gap = (current_y - self.last_y).abs();
+        let is_large_gap = abs_gap > self.y_gap_threshold * 2.5;
+        self.last_y = current_y;
+        is_large_gap
+    }
+}
+
+fn is_valid_heading(text: &str, position: (f64, f64), page_width: f64) -> bool {
+    // 1. Positional checks
+    let (x_pos, y_pos) = position;
+    let x_center = page_width / 2.0;
+    let is_centered = (x_pos - x_center).abs() < (page_width * 0.15);
+
+    // 2. Text pattern checks
+    let is_short = text.len() <= 60;
+    let has_no_punctuation = !text.ends_with(&['.', '!', '?', ';', ',']);
+    let has_numbering = text.starts_with(|c: char| c.is_numeric() || c == '#');
+
+    // 3. Line isolation check (implemented later in layout analysis)
+
+    is_centered && is_short && has_no_punctuation && (has_numbering || text.to_uppercase() == text)
+}
+
+// Add helper function to extract numbering
+fn extract_numbering(text: &str) -> String {
+    use regex::Regex;
+
+    let re = Regex::new(r"^((?:\d+\.)+\d+|[IVXLCDM]+\.|(?:Section|Article|Chapter)\s+[A-Z0-9]+)")
+        .unwrap();
+    re.captures(text)
+        .and_then(|caps| caps.get(1))
+        .map(|m| m.as_str().trim().to_string())
+        .unwrap_or_default()
+}
+
+#[derive(Clone, Debug)]
+struct PageText {
+    segments: Vec<TextSegment>,
+    page_num: u32,
+    media_box: MediaBox,
+}
+
+struct PostProcessor {
+    header_threshold: f64,
+    footer_threshold: f64,
+    continuation_threshold: f64,
+}
+
+impl PostProcessor {
+    fn new() -> Self {
+        PostProcessor {
+            header_threshold: 0.85,  // Top 15% of page
+            footer_threshold: 0.15,   // Bottom 15% of page
+            continuation_threshold: 0.9, // Bottom 10% of page
+        }
+    }
+
+    fn process(&self, pages: Vec<PageText>) -> Vec<ContentOutput> {
+        // Sort pages and their segments
+        let mut sorted_pages = self.sort_and_filter(pages);
+        let mut document_structure = Vec::new();
+        let mut current_chunk = String::new();
+        let mut current_headings = Vec::new();
+        let mut current_page_start = 0;
+        let mut last_y = f64::MAX;
+
+        for (idx, page) in sorted_pages.clone().iter_mut().enumerate() {
+            for segment in &page.segments {
+                // Detect continued text
+                let is_continuation = if idx > 0 {
+                    let prev_page = &sorted_pages[idx-1];
+                    let prev_segment = prev_page.segments.last().unwrap();
+                    
+                    (segment.y > page.media_box.ury * self.continuation_threshold) &&
+                    (prev_segment.y < prev_page.media_box.lly * self.continuation_threshold) &&
+                    !ends_with_terminal_punctuation(&prev_segment.content) &&
+                    !segment.content.starts_with(|c: char| c.is_uppercase())
+                } else {
+                    false
+                };
+
+                if is_continuation {
+                    current_chunk.push_str(" ");
+                    current_chunk.push_str(&segment.content);
+                } else {
+                    if !current_chunk.is_empty() {
+                        document_structure.push(ContentOutput {
+                            headings: current_headings.clone(),
+                            paragraph: current_chunk.trim().to_string(),
+                            page: current_page_start,
+                            end_page: Some(sorted_pages[idx-1].page_num),
+                        });
+                        current_chunk.clear();
+                    }
+                    current_chunk = segment.content.clone();
+                    current_page_start = page.page_num;
+                }
+                last_y = segment.y;
+            }
+        }
+
+        // Add final chunk
+        if !current_chunk.is_empty() {
+            document_structure.push(ContentOutput {
+                headings: current_headings,
+                paragraph: current_chunk.trim().to_string(),
+                page: current_page_start,
+                end_page: Some(sorted_pages.last().unwrap().page_num),
+            });
+        }
+
+        document_structure
+    }
+
+    fn sort_and_filter(&self, mut pages: Vec<PageText>) -> Vec<PageText> {
+        // Sort pages by page number
+        pages.sort_by_key(|p| p.page_num);
+
+        // First pass to detect common headers/footers
+        let mut header_counts = HashMap::new();
+        let mut footer_counts = HashMap::new();
+
+        for page in &pages {
+            if let Some(header) = self.find_header_candidate(page) {
+                *header_counts.entry(header).or_insert(0) += 1;
+            }
+            if let Some(footer) = self.find_footer_candidate(page) {
+                *footer_counts.entry(footer).or_insert(0) += 1;
+            }
+        }
+
+        // Find headers/footers that appear on >50% of pages
+        let total_pages = pages.len() as f64;
+        let common_headers: HashSet<_> = header_counts.iter()
+            .filter(|(_, &count)| count as f64 / total_pages > 0.5)
+            .map(|(k, _)| k.clone())
+            .collect();
+        
+        let common_footers: HashSet<_> = footer_counts.iter()
+            .filter(|(_, &count)| count as f64 / total_pages > 0.5)
+            .map(|(k, _)| k.clone())
+            .collect();
+
+        // Filter out headers/footers from all pages
+        for page in &mut pages {
+            page.segments.retain(|seg| {
+                !common_headers.contains(&seg.content) &&
+                !common_footers.contains(&seg.content)
+            });
+        }
+
+        pages
+    }
+
+    fn find_header_candidate(&self, page: &PageText) -> Option<String> {
+        page.segments.iter()
+            .find(|seg| seg.y > page.media_box.ury * self.header_threshold)
+            .map(|seg| seg.content.clone())
+    }
+
+    fn find_footer_candidate(&self, page: &PageText) -> Option<String> {
+        page.segments.iter()
+            .find(|seg| seg.y < page.media_box.lly * self.footer_threshold)
+            .map(|seg| seg.content.clone())
+    }
+}
+
+fn ends_with_terminal_punctuation(s: &str) -> bool {
+    s.trim().ends_with(|c: char| c == '.' || c == '!' || c == '?')
+}
+
+// Modified ContentOutput struct
+#[derive(Debug)]
+pub struct ContentOutput {
+    pub headings: Vec<String>,
+    pub paragraph: String,
+    pub page: u32,
+    pub end_page: Option<u32>,  // None means single page
+}
+
+// Updated output_doc function
+pub fn output_doc2(
+    doc: &Document,
+    ocr_handler: Option<&OcrHandler>,
+) -> Result<Vec<ContentOutput>, Box<dyn std::error::Error>> {
+    let pages = doc.get_pages();
+    let empty_resources = &Dictionary::new();
+
+    // Parallel processing of individual pages
+    let page_texts: Vec<PageText> = pages.par_iter()
+        .map(|(page_num, page_id)| {
+            let page_dict = doc.get_object(*page_id).unwrap().as_dict().unwrap();
+            let resources = get_inherited(doc, page_dict, b"Resources").unwrap_or(empty_resources);
+            let media_box: Vec<f64> = get_inherited(doc, page_dict, b"MediaBox").expect("MediaBox");
+            let media_box = MediaBox {
+                llx: media_box[0],
+                lly: media_box[1],
+                urx: media_box[2],
+                ury: media_box[3],
+            };
+
+            let mut page_segments = Vec::new();
+            let mut processor = Processor::new();
+            processor.process_stream(
+                doc,
+                ocr_handler,
+                doc.get_page_content(*page_id).unwrap(),
+                resources,
+                &media_box,
+                page_dict.get(b"Parent").and_then(|p| p.as_reference()).map(|x| x.0).unwrap_or(0),
+                &mut page_segments,
+            ).unwrap();
+
+            PageText {
+                segments: page_segments,
+                page_num: *page_num,
+                media_box,
+            }
+        })
+        .collect();
+
+    // Sequential post-processing
+    let post_processor = PostProcessor::new();
+    let results = post_processor.process(page_texts);
+    
+    Ok(results)
 }

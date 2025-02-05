@@ -388,6 +388,7 @@ pub fn form_fields(
         headings: vec![],
         paragraph: text,
         page: 0,
+        end_page: None,
     });
     Ok(())
 }
