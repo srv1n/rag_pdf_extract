@@ -1,10 +1,17 @@
 use adobe_cmap_parser::{ByteMapping, CIDRange, CodeRange};
 use encoding_rs::UTF_16BE;
 use euclid::*;
+use image::RgbImage;
 use lopdf::content::{Content, Operation};
 use lopdf::encryption::DecryptionError;
 use lopdf::*;
+
 use ordered_float::OrderedFloat;
+use ocrs::{ImageSource, OcrEngine, OcrEngineParams};
+use rten::{ Model};
+#[allow(unused)]
+use rten_tensor::prelude::*;
+
 
 use std::fmt::{format, Debug, Formatter};
 use std::thread::current;
@@ -33,11 +40,70 @@ mod zapfglyphnames;
 pub struct Space;
 pub type Transform = Transform2D<f64, Space, Space>;
 
+// Add this struct to store OCR engine configuration
+pub struct OcrConfig {
+    pub detection_model: Option<String>,
+    pub recognition_model: Option<String>,
+}
+
+// Create a struct to hold the OCR engine instance
+pub struct OcrHandler {
+    pub engine: OcrEngine, 
+}
+
+impl OcrHandler {
+    fn new(config: &OcrConfig) -> Result<Self, Box<dyn std::error::Error>> {
+        let detection_model = if let Some(path) = &config.detection_model {
+            // Convert the loaded model to the expected type
+            Some(Model::load_file(path)?)
+        } else {
+            None
+        };
+        let recognition_model = if let Some(path) = &config.recognition_model {
+            // Convert the loaded model to the expected type 
+            Some(Model::load_file(path)?)
+        } else {
+            None
+        };
+
+        let engine = OcrEngine::new(OcrEngineParams {
+            detection_model,
+            recognition_model,
+            ..Default::default()
+        })?;
+
+        Ok(Self { engine })
+    }
+    fn process_image(&self, img: &RgbImage) -> Result<String, Box<dyn std::error::Error>> {
+        let img_source = ImageSource::from_bytes(img.as_raw(), img.dimensions())?;
+        let ocr_input = self.engine.prepare_input(img_source)?;
+
+        // Get text with layout information
+        let word_rects = self.engine.detect_words(&ocr_input)?;
+        let line_rects = self.engine.find_text_lines(&ocr_input, &word_rects);
+        let line_texts = self.engine.recognize_text(&ocr_input, &line_rects)?;
+
+        // Combine all text into a single string
+        let text: String = line_texts
+            .iter()
+            .flatten()
+            .filter(|l| l.to_string().len() > 1)
+            .map(|l| l.to_string())
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        Ok(text)
+    }
+}
+
+
 #[derive(Debug)]
 pub enum OutputError {
     FormatError(std::fmt::Error),
     IoError(std::io::Error),
     PdfError(lopdf::Error),
+    Custom(String),
+    Other(String), // Add this variant if it doesn't exist
 }
 
 impl std::fmt::Display for OutputError {
@@ -46,6 +112,8 @@ impl std::fmt::Display for OutputError {
             OutputError::FormatError(e) => write!(f, "Formating error: {}", e),
             OutputError::IoError(e) => write!(f, "IO error: {}", e),
             OutputError::PdfError(e) => write!(f, "PDF error: {}", e),
+            OutputError::Custom(e) => write!(f, "Custom error: {}", e),
+            OutputError::Other(e) => write!(f, "Other error: {}", e),
         }
     }
 }
@@ -629,7 +697,7 @@ impl<'a> PdfSimpleFont<'a> {
                 }
             }
             _ => {
-                panic!()
+                dlog!("unknown encoding {:?}", encoding);
             }
         }
 
@@ -1382,6 +1450,191 @@ fn get_contents(contents: &Stream) -> Vec<u8> {
     }
 }
 
+#[derive(Debug, Clone)]
+struct PdfImage<'a> {
+    pub id: ObjectId,
+    pub width: i64,
+    pub height: i64,
+    pub color_space: Option<String>,
+    pub filters: Option<Vec<String>>,
+    pub bits_per_component: Option<i64>,
+    pub content: &'a [u8],
+    pub origin_dict: &'a Dictionary,
+}
+
+impl<'a> PdfImage<'a> {
+    fn to_rgb_image(&self) -> Option<RgbImage> {
+        // First handle common compression filters
+        let decoded_data = if let Some(filters) = &self.filters {
+            let mut data = self.content.to_vec();
+            
+            for filter in filters {
+                match filter.as_str() {
+                    "DCTDecode" | "DCT" => {
+                        // JPEG data
+                        return image::load_from_memory_with_format(&data, image::ImageFormat::Jpeg)
+                            .ok()
+                            .map(|img| img.into_rgb8());
+                    },
+                    // "JPXDecode" => {
+                    //     // JPEG2000 data
+                    //     return image::load_from_memory_with_format(&data, image::ImageFormat::)
+                    //         .ok()
+                    //         .map(|img| img.into_rgb8());
+                    // },
+                    "FlateDecode" => {
+                        // Decompress using flate/zlib
+                        data = miniz_oxide::inflate::decompress_to_vec_zlib(&data)
+                            .ok()?;
+                    },
+                    _ => return None, // Unsupported filter
+                }
+            }
+            data
+        } else {
+            self.content.to_vec()
+        };
+
+        // Handle different color spaces
+        match &self.color_space {
+            Some(cs) => match cs.as_str() {
+                "DeviceRGB" => {
+                    let mut img = RgbImage::new(self.width as u32, self.height as u32);
+                    for y in 0..self.height as u32 {
+                        for x in 0..self.width as u32 {
+                            let pos = ((y * self.width as u32 + x) * 3) as usize;
+                            if pos + 2 < decoded_data.len() {
+                                img.put_pixel(x, y, image::Rgb([
+                                    decoded_data[pos],
+                                    decoded_data[pos + 1],
+                                    decoded_data[pos + 2]
+                                ]));
+                            }
+                        }
+                    }
+                    Some(img)
+                },
+                "DeviceGray" => {
+                    let mut img = RgbImage::new(self.width as u32, self.height as u32);
+                    for y in 0..self.height as u32 {
+                        for x in 0..self.width as u32 {
+                            let pos = (y * self.width as u32 + x) as usize;
+                            if pos < decoded_data.len() {
+                                let gray = decoded_data[pos];
+                                img.put_pixel(x, y, image::Rgb([gray, gray, gray]));
+                            }
+                        }
+                    }
+                    Some(img)
+                },
+                _ => None, // Other color spaces not supported for now
+            },
+            None => None,
+        }
+    }
+}
+
+// In your content processing function:
+fn process_xobject(
+    doc: &Document,
+    resources: &Dictionary,
+    ocr_handler: Option<&OcrHandler>,
+    text_segments: &mut Vec<TextSegment>,
+    position: (f64, f64),
+    page_num: u32,
+    current_font_size: f64,
+    current_transformed_font_size: f64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let xobject = doc.get_dict_in_dict(resources, b"XObject")?;
+    
+    for (_, xvalue) in xobject.iter() {
+        let id = xvalue.as_reference()?;
+        let xvalue = doc.get_object(id)?;
+        let xvalue = xvalue.as_stream()?;
+        let dict = &xvalue.dict;
+        
+        // Only process images
+        if dict.get(b"Subtype")?.as_name()? != b"Image" {
+            continue;
+        }
+
+        // Extract image information
+        let width = dict.get(b"Width")?.as_i64()?;
+        let height = dict.get(b"Height")?.as_i64()?;
+        let color_space = match dict.get(b"ColorSpace") {
+            Ok(cs) => match cs {
+                Object::Array(array) => Some(String::from_utf8_lossy(array[0].as_name()?).to_string()),
+                Object::Name(name) => Some(String::from_utf8_lossy(name).to_string()),
+                _ => None,
+            },
+            Err(_) => None,
+        };
+        
+        let bits_per_component = match dict.get(b"BitsPerComponent") {
+            Ok(bpc) => Some(bpc.as_i64()?),
+            Err(_) => None,
+        };
+        
+        let mut filters = vec![];
+        if let Ok(filter) = dict.get(b"Filter") {
+            match filter {
+                Object::Array(array) => {
+                    for obj in array.iter() {
+                        let name = obj.as_name()?;
+                        filters.push(String::from_utf8_lossy(name).to_string());
+                    }
+                }
+                Object::Name(name) => {
+                    filters.push(String::from_utf8_lossy(name).to_string());
+                }
+                _ => {}
+            }
+        };
+
+        let pdf_image = PdfImage {
+            id,
+            width,
+            height,
+            color_space,
+            bits_per_component,
+            filters: Some(filters),
+            content: &xvalue.content,
+            origin_dict: &xvalue.dict,
+        };
+
+        println!("ocr_handler before");
+        // Only attempt OCR if we have a handler
+        if let Some(handler) = ocr_handler {
+            println!("ocr_handler after");
+            if let Some(img) = pdf_image.to_rgb_image() {
+                println!("img");
+                if let Ok(ocr_text) = handler.process_image(&img) {
+                    println!("ocr_text");
+                    if !ocr_text.is_empty() {
+                        text_segments.push(TextSegment {
+                            content: ocr_text,
+                            font_size: current_font_size,
+                            transformed_font_size: current_transformed_font_size,
+                            x: position.0,
+                            y: position.1,
+                            is_bold: false,
+                            font_name: "OCR".to_string(),
+                            page_num,
+                            cutat: "Image".to_string(),
+                        });
+                    }
+                } else {
+                    if let Err(e) = handler.process_image(&img) {
+                        println!("OCR processing error: {}", e);
+                    }
+                }
+            }
+        }
+    }
+    
+    Ok(())
+}
+
 #[derive(Clone)]
 struct GraphicsState<'a> {
     ctm: Transform,
@@ -1706,6 +1959,8 @@ fn make_colorspace<'a>(doc: &'a Document, name: &[u8], resources: &'a Dictionary
     }
 }
 
+
+
 #[derive(Debug, Clone)]
 struct TextSegment {
     content: String,
@@ -1765,6 +2020,7 @@ impl<'a> Processor<'a> {
     fn process_stream(
         &mut self,
         doc: &'a Document,
+        ocr_handler: Option<&OcrHandler>,
         content: Vec<u8>,
         resources: &'a Dictionary,
         media_box: &MediaBox,
@@ -1961,47 +2217,7 @@ impl<'a> Processor<'a> {
                         for e in array {
                             match e {
                                 &Object::String(ref s, _) => {
-                                    // let ts = &mut gs.ts;
-                                    // let tsm: Transform2D<f64, Space, Space> =
-                                    //     Transform2D::row_major(
-                                    //         ts.horizontal_scaling,
-                                    //         0.,
-                                    //         0.,
-                                    //         1.0,
-                                    //         0.,
-                                    //         ts.rise,
-                                    //     );
-                                    // // Trm = Tsm × Tm × CTM
-                                    // let trm = tsm.post_transform(&ts.tm.post_transform(&gs.ctm));
-                                    // let font: &Rc<dyn PdfFont> = ts.font.as_ref().unwrap();
-                                    // let font_text = format!("{:#?}", font);
-                                    // first_char = true;
-
-                                    // for (c, length) in font.char_codes(s) {
-                                    //     let w0 = font.get_width(c) / 1000.;
-                                    //     let mut spacing = ts.character_spacing;
-                                    //     let is_space = c == 32 && length == 1;
-                                    //     if is_space {
-                                    //         spacing += ts.word_spacing;
-                                    //     }
-
-                                    //     let char = font.decode_char(c);
-
-                                    //     let position = trm.post_transform(&flip_ctm);
-                                    //     let transformed_font_size_vec =
-                                    //         trm.transform_vector(vec2(ts.font_size, ts.font_size));
-                                    //     // get the length of one sized of the square with the same area with a rectangle of size (x, y)
-                                    //     // let transformed_font_size = (transformed_font_size_vec.x
-                                    //     //     * transformed_font_size_vec.y)
-                                    //     //     .sqrt();
-                                    //     let (x, y) = (position.m31, position.m32);
-                                    //     let transformed_font_size = ((transformed_font_size_vec.x
-                                    //         * transformed_font_size_vec.y)
-                                    //         .sqrt()
-                                    //         * 100.0)
-                                    //         .round()
-                                    //         / 100.0;
-
+                                   
                                     // let ts = &mut gs.ts;
                                     let font: &Rc<dyn PdfFont> = gs.ts.font.as_ref().unwrap();
                                     // let font_text = format!("{:#?}", font);
@@ -2387,23 +2603,45 @@ impl<'a> Processor<'a> {
                 "EMC" => {
                     mc_stack.pop();
                 }
-                "Do" => {
-                    let xobject: &Dictionary = get(&doc, resources, b"XObject");
-                    let name = operation.operands[0].as_name().unwrap();
-                    let xf: &Stream = get(&doc, xobject, name);
-                    let resources = maybe_get_obj(&doc, &xf.dict, b"Resources")
-                        .and_then(|n| n.as_dict().ok())
-                        .unwrap_or(resources);
-                    let contents = get_contents(xf);
-                    self.process_stream(
-                        &doc,
-                        contents,
-                        resources,
-                        &media_box,
-                        page_num,
-                        text_segments,
-                    )?;
-                }
+          "Do" => {
+    // Only process XObject if OCR handler is available
+    if let Some(handler) = ocr_handler {
+        let position = gs.ts.tm.post_transform(&flip_ctm);
+        let (x, y) = (position.m31, position.m32);
+        
+        if let Err(e) = process_xobject(
+            &doc,
+            resources,
+            Some(handler),
+            text_segments,
+            (x, y),
+            page_num,
+            current_font_size,
+            current_transformed_font_size,
+        ) {
+            // Log error but continue processing
+            eprintln!("Failed to process image in PDF: {}", e);
+        }
+    }
+    
+    // Continue with normal processing regardless of OCR result
+    let xobject: &Dictionary = get(&doc, resources, b"XObject");
+    let name = operation.operands[0].as_name().unwrap();
+    let xf: &Stream = get(&doc, xobject, name);
+    let resources = maybe_get_obj(&doc, &xf.dict, b"Resources")
+        .and_then(|n| n.as_dict().ok())
+        .unwrap_or(resources);
+    let contents = get_contents(xf);
+    self.process_stream(
+        &doc,
+        ocr_handler,
+        contents,
+        resources,
+        &media_box,
+        page_num,
+        text_segments,
+    )?;
+}
                 _ => {
                     dlog!("unknown operation {:?}", operation);
                 }
@@ -2888,13 +3126,15 @@ pub fn print_metadata(doc: &Document) {
 /// Extract the text from a pdf at `path` and return a `String` with the results
 pub fn extract_text<P: std::convert::AsRef<std::path::Path>>(
     path: P,
+   ocr_handler: Option<&OcrHandler>,
+   
 ) -> Result<String, OutputError> {
     let mut s = String::new();
     {
         // let mut output = PlainTextOutput::new(&mut s);
         let mut doc = Document::load(path)?;
         maybe_decrypt(&mut doc)?;
-        output_doc(&doc)?;
+        output_doc(&doc, ocr_handler)  .map_err(|e| OutputError::Other(e.to_string()));
     }
     Ok(s)
 }
@@ -2915,42 +3155,42 @@ fn maybe_decrypt(doc: &mut Document) -> Result<(), OutputError> {
     Ok(())
 }
 
-pub fn extract_text_encrypted<P: std::convert::AsRef<std::path::Path>, PW: AsRef<[u8]>>(
-    path: P,
-    password: PW,
-) -> Result<String, OutputError> {
-    let mut s = String::new();
-    {
-        // let mut output = PlainTextOutput::new(&mut s);
-        let mut doc = Document::load(path)?;
-        output_doc_encrypted(&mut doc, password)?;
-    }
-    Ok(s)
-}
+// pub fn extract_text_encrypted<P: std::convert::AsRef<std::path::Path>, PW: AsRef<[u8]>>(
+//     path: P,
+//     password: PW,
+// ) -> Result<String, OutputError> {
+//     let mut s = String::new();
+//     {
+//         // let mut output = PlainTextOutput::new(&mut s);
+//         let mut doc = Document::load(path)?;
+//         output_doc_encrypted(&mut doc, password)?;
+//     }
+//     Ok(s)
+// }
 
-pub fn extract_text_from_mem(buffer: &[u8]) -> Result<String, OutputError> {
+pub fn extract_text_from_mem(buffer: &[u8], ocr_handler: Option<&OcrHandler>) -> Result<String, OutputError> {
     let mut s = String::new();
     {
         // let mut output = PlainTextOutput::new(&mut s);
         let mut doc = Document::load_mem(buffer)?;
         maybe_decrypt(&mut doc)?;
-        output_doc(&doc)?;
+        output_doc(&doc, ocr_handler).map_err(|e| OutputError::Other(e.to_string()));
     }
     Ok(s)
 }
 
-pub fn extract_text_from_mem_encrypted<PW: AsRef<[u8]>>(
-    buffer: &[u8],
-    password: PW,
-) -> Result<String, OutputError> {
-    let mut s = String::new();
-    {
-        // let mut output = PlainTextOutput::new(&mut s);
-        let mut doc = Document::load_mem(buffer)?;
-        output_doc_encrypted(&mut doc, password)?;
-    }
-    Ok(s)
-}
+// pub fn extract_text_from_mem_encrypted<PW: AsRef<[u8]>>(
+//     buffer: &[u8],
+//     password: PW,
+// ) -> Result<String, OutputError> {
+//     let mut s = String::new();
+//     {
+//         // let mut output = PlainTextOutput::new(&mut s);
+//         let mut doc = Document::load_mem(buffer)?;
+//         output_doc_encrypted(&mut doc, password)?;
+//     }
+//     Ok(s)
+// }
 
 fn get_inherited<'a, T: FromObj<'a>>(
     doc: &'a Document,
@@ -2970,14 +3210,14 @@ fn get_inherited<'a, T: FromObj<'a>>(
     }
 }
 
-pub fn output_doc_encrypted<PW: AsRef<[u8]>>(
-    doc: &mut Document,
-    // output: &mut dyn OutputDev,
-    password: PW,
-) -> Result<Vec<ContentOutput>, OutputError> {
-    doc.decrypt(password)?;
-    output_doc(doc)
-}
+// pub fn output_doc_encrypted<PW: AsRef<[u8]>>(
+//     doc: &mut Document,
+//     // output: &mut dyn OutputDev,
+//     password: PW,
+// ) -> Result<Vec<ContentOutput>, OutputError> {
+//     doc.decrypt(password)?;
+//     output_doc(doc, ocr, detection_model, recognition_model)
+// }
 
 #[derive(Debug)]
 pub struct ContentOutput {
@@ -3217,7 +3457,10 @@ fn is_heading(segment: &TextSegment, doc_stats: &DocumentStats) -> TextLevel {
     }
 }
 
-pub fn output_doc(doc: &Document) -> Result<Vec<ContentOutput>, OutputError> {
+pub fn output_doc(
+    doc: &Document,
+    ocr_handler: Option<&OcrHandler>
+) -> Result<Vec<ContentOutput>, Box<dyn std::error::Error>> {
     let mut document_structure: Vec<ContentOutput> = Vec::new();
     // println!("Shaata");
     if doc.is_encrypted() {
@@ -3267,11 +3510,13 @@ pub fn output_doc(doc: &Document) -> Result<Vec<ContentOutput>, OutputError> {
             // We can't use the output device directly in parallel, so we'll skip those calls
             p.process_stream(
                 &doc,
+                ocr_handler,
                 doc.get_page_content(*dict.1).unwrap(),
                 resources,
                 &media_box,
                 *page_num,
                 &mut page_segments,
+                
             )
             .unwrap();
 
@@ -3288,7 +3533,8 @@ pub fn output_doc(doc: &Document) -> Result<Vec<ContentOutput>, OutputError> {
 
     // let footer_threshold = doc_stats.median_line_height * 0.8; // Adjust this value as needed
     let mut last_page_num = 0;
-
+    let mut last_y = 0.0;
+    let mut last_end = 0.0;
     let doc_stats = calculate_document_stats(&text_segments.clone());
 
     // for segment in text_segments.clone() {
@@ -3351,6 +3597,15 @@ pub fn output_doc(doc: &Document) -> Result<Vec<ContentOutput>, OutputError> {
                 // Adjust heading level
             }
             TextLevel::Body | TextLevel::SubBody => {
+                // if last_y != segment.y {
+                //     last_y = segment.y;
+                //     last_end = 0.0;
+                //     current_paragraph.push('\n');
+                // }
+                // if last_end != segment.x {
+                //     last_end = segment.x;
+                //     current_paragraph.push(' ');
+                // }
                 if !current_paragraph.is_empty() {
                     current_paragraph.push(' ');
                 }
@@ -3397,11 +3652,30 @@ pub fn output_doc(doc: &Document) -> Result<Vec<ContentOutput>, OutputError> {
     Ok(document_structure)
 }
 
-pub fn parse_pdf(file: &str) -> Result<Vec<ContentOutput>, OutputError> {
+pub fn parse_pdf(
+    file: &str,
+    ocr: Option<bool>,
+    detection_model: Option<String>,
+    recognition_model: Option<String>
+) -> Result<Vec<ContentOutput>, OutputError> {
     let path = path::Path::new(&file);
 
-    let doc = Document::load(path).unwrap();
+    let doc = Document::load(path)?;
 
-    let document_structure = output_doc(&doc);
-    document_structure
+    if ocr.unwrap_or(false) {
+        println!("ocr");
+        let ocr_config = OcrConfig {
+            detection_model,
+            recognition_model,
+        };
+        let ocr_handler = OcrHandler::new(&ocr_config)
+            .map_err(|e|{ println!("ocr_handler error: {}", e); OutputError::Other(e.to_string())})?;
+        
+        output_doc(&doc, Some(&ocr_handler))
+            .map_err(|e| OutputError::Other(e.to_string()))
+    } else {
+        
+        output_doc(&doc, None)
+            .map_err(|e| OutputError::Other(e.to_string()))
+    }
 }
