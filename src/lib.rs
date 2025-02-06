@@ -11,7 +11,7 @@ use ordered_float::OrderedFloat;
 use rten::Model;
 #[allow(unused)]
 use rten_tensor::prelude::*;
-
+use itertools::Itertools;
 use std::fmt::{format, Debug, Formatter};
 use std::thread::current;
 
@@ -49,7 +49,7 @@ lazy_static! {
             (?:Section|Article|Chapter)\s+[A-Z0-9]+ | # Matches Section 2, Article B, etc.
             \d+\s+[A-Z][A-Z\s]+      # Matches '1 UNITED STATES DISTRICT COURT SOUTHERN DISTRICT OF NEW YORK'
         )
-        \s+(?P<title>.+)$
+       
         "
     ).unwrap();
 }
@@ -2107,6 +2107,9 @@ impl<'a> Processor<'a> {
         dlog!("MediaBox {:?}", media_box);
         let mut layout_analyzer = LayoutAnalyzer::new(media_box.ury - media_box.lly);
 
+        // Add to Processor struct
+        let mut last_vertical_gap: Option<f64> = None;
+
         for operation in &content.operations {
             match operation.operator.as_ref() {
                 "BT" => {
@@ -2187,54 +2190,38 @@ impl<'a> Processor<'a> {
                     // let is_add =
                     //     self.is_visible_text(&tlm, current_font_size, &current_color, media_box);
 
-                    if (new_is_bold != current_is_bold
-                        || new_font_size != current_font_size
-                        || new_font_name != current_font)
-                        && !current_line.trim().is_empty()
-                    // && is_add
-                    {
-                        if current_x > 0.0 && current_y > 0.0
-                        //     && current_y < self.current_font_size
-                        {
-                            // reason is if boldchange, fontsize change or font change
-                            let (oldvalue, newvalue) = if current_is_bold != new_is_bold {
-                                (current_is_bold.to_string(), new_is_bold.to_string())
-                            } else if new_font_size != current_font_size {
-                                (current_font_size.to_string(), new_font_size.to_string())
-                            } else {
-                                (current_font.to_string(), new_font_name.to_string())
-                            };
-                            let processed_fill_color = if gs.fill_color.len() >= 3 {
-                                (
-                                    (gs.fill_color[0] * 255.0).round() as u8,
-                                    (gs.fill_color[1] * 255.0).round() as u8,
-                                    (gs.fill_color[2] * 255.0).round() as u8,
-                                )
-                            } else {
-                                (0, 0, 0) // Fallback to black if not enough color values are provided
-                            };
-                            // if is_visible_text(Some(processed_fill_color), (255, 255, 255)) {
-                                text_segments.push(TextSegment {
-                                    content: current_line.clone().trim().to_string(),
-                                    font_size: current_font_size,
-                                    transformed_font_size: current_transformed_font_size,
-                                    x: current_x,
-                                    y: current_y,
-                                    is_bold: current_is_bold,
-                                    font_name: current_font.clone(),
-                                    page_num: page_num,
-                                    cutat: "Tj".to_string(),
-                                    fill_color: Some(processed_fill_color),
-                                    stroke_color: None,
-                                });
-                            // }
-                            current_line.clear();
-                            current_is_bold = new_is_bold;
-                            // current_font_name = new_font_name.clone();
-                            current_font = new_font_name;
-                            current_font_size = new_font_size;
-                        }
-                    }
+                   if (new_is_bold != current_is_bold || new_font_size != current_font_size || new_font_name != current_font)
+    && !current_line.trim().is_empty()
+{
+    // Only cut a new text segment if we are actually on a new line.
+    // Here we check if the vertical difference is significant compared to the font size.
+   
+        if current_x > 0.0 && current_y > 0.0 {
+            // Process the fill color as before.
+           
+            // Push the current line as a new TextSegment.
+            text_segments.push(TextSegment {
+                content: current_line.clone().trim().to_string(),
+                font_size: current_font_size,
+                transformed_font_size: current_transformed_font_size,
+                x: current_x,
+                y: current_y,
+                is_bold: current_is_bold,
+                font_name: current_font.clone(),
+                page_num: page_num,
+                cutat: "Tj".to_string(),
+                fill_color: None,
+                stroke_color: None,
+            });
+            current_line.clear();
+        }
+   
+    // Whether or not we pushed a new segment, update our current font properties
+    // so that subsequent text uses the new style.
+    current_is_bold = new_is_bold;
+    current_font = new_font_name;
+    current_font_size = new_font_size;
+}
 
                     gs.ts.font = Some(font.clone());
 
@@ -3462,24 +3449,28 @@ enum TextLevel {
     H4,
     H5,
     H6,
-    H7,
     Body,
     SubBody,
 }
 fn is_heading(segment: &TextSegment, doc_stats: &DocumentStats) -> TextLevel {
-    let fg_color = segment.fill_color.unwrap_or((0, 0, 0)); // default black
-    let bg_color = segment.stroke_color.unwrap_or((255, 255, 255)); // default white
+    // let fg_color = segment.fill_color.unwrap_or((0, 0, 0)); // default black
+    // let bg_color = segment.stroke_color.unwrap_or((255, 255, 255)); // default white
 
-    // Calculate contrast ratio
-    let cr = contrast_ratio(fg_color, bg_color);
+    // // Calculate contrast ratio
+    // let cr = contrast_ratio(fg_color, bg_color);
 
-    // Filter low-contrast text (adjust threshold as needed)
-    if cr < 1.5 {
-        // Catches near-invisible text but allows light gray
-        return TextLevel::Body;
-    }
+    // // Filter low-contrast text (adjust threshold as needed)
+    // if cr < 1.5 {
+    //     // Catches near-invisible text but allows light gray
+    //     return TextLevel::Body;
+    // }
 
     // Additional heading checks
+
+    // if segment.content first char is lower case then it is not a heading
+   
+
+
     let is_short = segment.content.split_whitespace().count() < 10;
     // let not_short = segment.content.len() > 4;
     let starts_with_alphanum = segment
@@ -3504,44 +3495,54 @@ fn is_heading(segment: &TextSegment, doc_stats: &DocumentStats) -> TextLevel {
     fn is_roman_numeral(s: &str) -> bool {
         let valid_chars = ['I', 'V', 'X'];
         !s.is_empty() && s.chars().all(|c| valid_chars.contains(&c))
+        
     }
 
+    let is_numbered = NUMBERED_HEADING.is_match(&segment.content);
+
     let is_potential_heading =
-        is_short && starts_with_alphanum && is_valid_short_content(&segment.content);
+        is_short && (starts_with_alphanum && is_valid_short_content(&segment.content) || is_numbered);
+        
 
     // Check if the segment matches the body font and size
     if segment.font_name == doc_stats.body_font
         && (segment.transformed_font_size - doc_stats.body_transformed_size).abs() < 0.1
     {
         // If it matches body font and size, check if it's bold
-        if segment.is_bold && is_potential_heading {
-            return TextLevel::H7;
-        } else {
-            return TextLevel::Body;
-        }
+        // if segment.is_bold && is_potential_heading {
+        //     return TextLevel::H6;
+        // } else {
+        //     return TextLevel::Body;
+        // }
+        return TextLevel::Body;
     }
     // If it's smaller than the body text, consider it sub-body
     else if segment.transformed_font_size < doc_stats.body_transformed_size {
         return TextLevel::SubBody;
-    } else if (segment.transformed_font_size - doc_stats.body_transformed_size).abs() < 0.1 {
-        if segment.is_bold && is_potential_heading {
-            return TextLevel::H7;
+    } else 
+    if (segment.transformed_font_size - doc_stats.body_transformed_size).abs() < 0.1 {
+        if segment.is_bold  {
+            if !segment.content.chars().next().unwrap().is_lowercase() && is_potential_heading {
+                return TextLevel::H6;
+            } else {
+                return TextLevel::Body;
+            }
         } else {
             return TextLevel::Body;
         }
     }
     // Find the closest heading level
-    else if is_potential_heading {
-        let closest_threshold = doc_stats
-            .transformed_thresholds
-            .iter()
-            .min_by(|&&a, &&b| {
-                (a - segment.transformed_font_size)
-                    .abs()
-                    .partial_cmp(&(b - segment.transformed_font_size).abs())
-                    .unwrap()
-            })
-            .unwrap();
+    else  
+    if is_potential_heading {
+    let closest_threshold = match doc_stats.transformed_thresholds.iter().min_by(|&&a, &&b| {
+    (a - segment.transformed_font_size)
+        .abs()
+        .partial_cmp(&(b - segment.transformed_font_size).abs())
+        .unwrap()
+}) {
+    Some(threshold) => threshold,
+    None => return TextLevel::Body,
+};
 
         let index = doc_stats
             .transformed_thresholds
@@ -3561,6 +3562,12 @@ fn is_heading(segment: &TextSegment, doc_stats: &DocumentStats) -> TextLevel {
         // If we can't determine a specific level, return Body as fallback
         return TextLevel::Body;
     }
+
+    // if is_numbered {
+    //     return TextLevel::H1;
+    // } else {
+    //     return TextLevel::Body;
+    // }
 }
 
 pub fn output_doc(
@@ -3579,7 +3586,7 @@ pub fn output_doc(
     // trim to only first page
     // let pages: BTreeMap<u32, (u32, u16)> = pages
     //     .iter()
-    //     .filter(|(&k, _)| k >= 1 && k <= 60)
+    //     .filter(|(&k, _)| k >= 1 && k <= 3)
     //     .map(|(&k, &v)| (k, v))
     //     .collect();
     // let toc = doc.get_toc();
@@ -3593,13 +3600,14 @@ pub fn output_doc(
     };
 
     // Process pages in parallel
-    let text_segments: Vec<TextSegment> = pages
+     // Change from flat_map to map to preserve page boundaries
+    let page_results: Vec<(u32, Vec<TextSegment>)> = pages
         .par_iter()
-        .flat_map(|dict| {
+        .map(|dict| {
             let page_num = dict.0;
             let page_dict = doc.get_object(*dict.1).unwrap().as_dict().unwrap();
             let resources = get_inherited(doc, page_dict, b"Resources").unwrap_or(empty_resources);
-
+            
             let media_box: Vec<f64> = get_inherited(doc, page_dict, b"MediaBox").expect("MediaBox");
             let media_box = MediaBox {
                 llx: media_box[0],
@@ -3608,13 +3616,9 @@ pub fn output_doc(
                 ury: media_box[3],
             };
 
-            // let art_box = get::<Option<Vec<f64>>>(&doc, page_dict, b"ArtBox")
-            //     .map(|x| (x[0], x[1], x[2], x[3]));
-
             let mut p = Processor::new();
             let mut page_segments = Vec::new();
-
-            // We can't use the output device directly in parallel, so we'll skip those calls
+            
             p.process_stream(
                 &doc,
                 ocr_handler,
@@ -3626,8 +3630,15 @@ pub fn output_doc(
             )
             .unwrap();
 
-            page_segments
+            (*dict.0, page_segments)  // Return tuple of (page_num, segments)
         })
+        .collect();
+
+    // Sort by page number and flatten while maintaining order
+    let text_segments: Vec<TextSegment> = page_results
+        .into_iter()
+        .sorted_by_key(|(page_num, _)| *page_num)
+        .flat_map(|(_, segments)| segments)
         .collect();
 
     // The rest of the function remains sequential to ensure that the document structure is created in the correct order
@@ -3705,7 +3716,7 @@ pub fn output_doc(
         true
     }
 
-    let mut current_numbering: Vec<String> = vec![String::new(); 8]; // Track numbering per level
+    // let mut current_numbering: Vec<String> = vec![String::new(); 8]; // Track numbering per level
 
     for segment in text_segments {
         let level = is_heading(&segment, &doc_stats);
@@ -3716,7 +3727,7 @@ pub fn output_doc(
             | TextLevel::H4
             | TextLevel::H5
             | TextLevel::H6
-            | TextLevel::H7 => {
+         => {
                 // NEW SINGLE HEADING MODE:
                 // If there's already some paragraph content, flush it out with the last heading.
                 if !current_paragraph.is_empty() && current_paragraph.trim().len() > 35 {
@@ -4202,49 +4213,49 @@ pub struct ContentOutput {
 }
 
 // Updated output_doc function
-pub fn output_doc2(
-    doc: &Document,
-    ocr_handler: Option<&OcrHandler>,
-) -> Result<Vec<ContentOutput>, Box<dyn std::error::Error>> {
-    let pages = doc.get_pages();
-    let empty_resources = &Dictionary::new();
+// pub fn output_doc(
+//     doc: &Document,
+//     ocr_handler: Option<&OcrHandler>,
+// ) -> Result<Vec<ContentOutput>, Box<dyn std::error::Error>> {
+//     let pages = doc.get_pages();
+//     let empty_resources = &Dictionary::new();
 
-    // Parallel processing of individual pages
-    let page_texts: Vec<PageText> = pages.par_iter()
-        .map(|(page_num, page_id)| {
-            let page_dict = doc.get_object(*page_id).unwrap().as_dict().unwrap();
-            let resources = get_inherited(doc, page_dict, b"Resources").unwrap_or(empty_resources);
-            let media_box: Vec<f64> = get_inherited(doc, page_dict, b"MediaBox").expect("MediaBox");
-            let media_box = MediaBox {
-                llx: media_box[0],
-                lly: media_box[1],
-                urx: media_box[2],
-                ury: media_box[3],
-            };
+//     // Parallel processing of individual pages
+//     let page_texts: Vec<PageText> = pages.par_iter()
+//         .map(|(page_num, page_id)| {
+//             let page_dict = doc.get_object(*page_id).unwrap().as_dict().unwrap();
+//             let resources = get_inherited(doc, page_dict, b"Resources").unwrap_or(empty_resources);
+//             let media_box: Vec<f64> = get_inherited(doc, page_dict, b"MediaBox").expect("MediaBox");
+//             let media_box = MediaBox {
+//                 llx: media_box[0],
+//                 lly: media_box[1],
+//                 urx: media_box[2],
+//                 ury: media_box[3],
+//             };
 
-            let mut page_segments = Vec::new();
-            let mut processor = Processor::new();
-            processor.process_stream(
-                doc,
-                ocr_handler,
-                doc.get_page_content(*page_id).unwrap(),
-                resources,
-                &media_box,
-                page_dict.get(b"Parent").and_then(|p| p.as_reference()).map(|x| x.0).unwrap_or(0),
-                &mut page_segments,
-            ).unwrap();
+//             let mut page_segments = Vec::new();
+//             let mut processor = Processor::new();
+//             processor.process_stream(
+//                 doc,
+//                 ocr_handler,
+//                 doc.get_page_content(*page_id).unwrap(),
+//                 resources,
+//                 &media_box,
+//                 page_dict.get(b"Parent").and_then(|p| p.as_reference()).map(|x| x.0).unwrap_or(0),
+//                 &mut page_segments,
+//             ).unwrap();
 
-            PageText {
-                segments: page_segments,
-                page_num: *page_num,
-                media_box,
-            }
-        })
-        .collect();
+//             PageText {
+//                 segments: page_segments,
+//                 page_num: *page_num,
+//                 media_box,
+//             }
+//         })
+//         .collect();
 
-    // Sequential post-processing
-    let post_processor = PostProcessor::new();
-    let results = post_processor.process(page_texts);
+//     // Sequential post-processing
+//     let post_processor = PostProcessor::new();
+//     let results = post_processor.process(page_texts);
     
-    Ok(results)
-}
+//     Ok(results)
+// }
