@@ -1646,6 +1646,8 @@ fn process_xobject(
                             y: position.1,
                             is_bold: false,
                             font_name: "OCR".to_string(),
+                            font_weight: FontWeight::Regular,
+                            is_italic: false,
                             page_num,
                             cutat: "Image".to_string(),
                             fill_color: None,
@@ -2002,6 +2004,8 @@ struct TextSegment {
     y: f64,
     is_bold: bool,
     font_name: String, // New field to store the font name
+    font_weight: FontWeight,
+    is_italic: bool,
     page_num: u32,
     cutat: String,
     // font_color: (f64, f64, f64),
@@ -2030,6 +2034,8 @@ impl<'a> Processor<'a> {
         y: f64,
         is_bold: bool,
         font_name: String,
+        font_weight: FontWeight,
+        is_italic: bool,
         page_num: u32,
         cutat: String,
         fill_color: Option<(u8, u8, u8)>,
@@ -2057,6 +2063,8 @@ impl<'a> Processor<'a> {
             y,
             is_bold,
             font_name,
+            font_weight,
+            is_italic,
             page_num,
             cutat,
             fill_color,
@@ -2124,6 +2132,8 @@ impl<'a> Processor<'a> {
         let mut current_y = 0.0;
         let mut first_char = false;
         let mut current_font = String::new();
+        let mut current_font_weight = FontWeight::Regular;
+        let mut current_is_italic = false;
         let mut current_color = (0.0, 0.0, 0.0); // Default to black
         let mut is_clipping = false;
         let mut current_transform = Transform::default();
@@ -2132,7 +2142,6 @@ impl<'a> Processor<'a> {
         let mut current_segment_start = 0usize; // Start position of current segment
 
         let content = Content::decode(&content).unwrap();
-        let mut font_table = HashMap::new();
         let mut gs: GraphicsState = GraphicsState {
             ts: TextState {
                 font: None,
@@ -2238,20 +2247,20 @@ impl<'a> Processor<'a> {
                 "Tf" => {
                     let fonts: &Dictionary = get(&doc, resources, b"Font");
                     let name = operation.operands[0].as_name().unwrap();
-                    let font = font_table
-                        .entry(name.to_owned())
-                        .or_insert_with(|| make_font(doc, get::<&Dictionary>(doc, fonts, name)))
-                        .clone();
+                    let font = make_font(doc, get::<&Dictionary>(doc, fonts, name));
 
                     let new_font_size =
                         (as_num(&operation.operands[1]) * 100.0_f64).round() / 100.0;
-                    let new_is_bold = format!("{:?}", font).to_lowercase().contains("bold");
                     let new_font_name = String::from_utf8_lossy(name).into_owned();
+                    let font_info = FontInfo::from_font_name(&new_font_name);
+                    let new_is_bold = font_info.weight.is_bold();
+                    let new_font_weight = font_info.weight.clone();
+                    let new_is_italic = font_info.is_italic;
 
                     // let is_add =
                     //     self.is_visible_text(&tlm, current_font_size, &current_color, media_box);
 
-                   if (new_is_bold != current_is_bold || new_font_size != current_font_size || new_font_name != current_font)
+                   if (new_is_bold != current_is_bold || new_font_size != current_font_size || new_font_name != current_font || new_font_weight != current_font_weight || new_is_italic != current_is_italic)
     && !current_line.trim().is_empty()
 {
     // Only cut a new text segment if we are actually on a new line.
@@ -2279,6 +2288,8 @@ impl<'a> Processor<'a> {
                 y: current_y,
                 is_bold: current_is_bold,
                 font_name: current_font.clone(),
+                font_weight: current_font_weight.clone(),
+                is_italic: current_is_italic,
                 page_num: page_num,
                 cutat: "Tj".to_string(),
                 fill_color: None,
@@ -2297,6 +2308,8 @@ impl<'a> Processor<'a> {
     current_is_bold = new_is_bold;
     current_font = new_font_name;
     current_font_size = new_font_size;
+    current_font_weight = new_font_weight;
+    current_is_italic = new_is_italic;
 }
 
                     gs.ts.font = Some(font.clone());
@@ -2378,6 +2391,8 @@ impl<'a> Processor<'a> {
                                                             current_y,
                                                             current_is_bold,
                                                             current_font.clone(),
+                                                            current_font_weight.clone(),
+                                                            current_is_italic,
                                                             page_num,
                                                             "Tj".to_string(),
                                                             Some(processed_fill_color),
@@ -2528,6 +2543,8 @@ impl<'a> Processor<'a> {
                                                 current_y,
                                                 current_is_bold,
                                                 current_font.clone(),
+                                                current_font_weight.clone(),
+                                                current_is_italic,
                                                 page_num,
                                                 "Tj".to_string(),
                                                 Some(processed_fill_color),
@@ -2806,6 +2823,8 @@ impl<'a> Processor<'a> {
                     current_y,
                     current_is_bold,
                     current_font.clone(),
+                    current_font_weight.clone(),
+                    current_is_italic,
                     page_num,
                     "Tj".to_string(),
                     None,
@@ -3728,6 +3747,31 @@ pub fn output_doc(
         .sorted_by_key(|(page_num, _)| *page_num)
         .flat_map(|(_, segments)| segments)
         .collect();
+    
+    // Create header/footer detector and analyze the document
+    let mut header_footer_detector = HeaderFooterDetector::new(pages.len());
+    
+    // Feed all text segments to the detector
+    for segment in &text_segments {
+        // Get the page height from the media box (this is approximate)
+        let page_height = 800.0; // Default page height, could be extracted from media box
+        header_footer_detector.add_occurrence(
+            &segment.content,
+            segment.page_num,
+            segment.y,
+            segment.font_size,
+            page_height
+        );
+    }
+    
+    // Get the detected headers and footers
+    let headers_footers = header_footer_detector.analyze();
+    
+    // Filter out headers and footers from text segments
+    let text_segments: Vec<TextSegment> = text_segments
+        .into_iter()
+        .filter(|seg| !headers_footers.contains(&seg.content))
+        .collect();
 
     // The rest of the function remains sequential to ensure that the document structure is created in the correct order
     // The rest of the function remains sequential to ensure that the document structure is created in the correct order
@@ -4241,6 +4285,7 @@ struct PostProcessor {
     header_threshold: f64,
     footer_threshold: f64,
     continuation_threshold: f64,
+    header_footer_detector: Option<HeaderFooterDetector>,
 }
 
 impl PostProcessor {
@@ -4249,12 +4294,27 @@ impl PostProcessor {
             header_threshold: 0.85,  // Top 15% of page
             footer_threshold: 0.15,   // Bottom 15% of page
             continuation_threshold: 0.9, // Top/Bottom 10% of page for continuation detection
+            header_footer_detector: None,
         }
+    }
+
+    fn with_header_footer_detector(mut self, detector: HeaderFooterDetector) -> Self {
+        self.header_footer_detector = Some(detector);
+        self
     }
 
     fn process(&self, pages: Vec<PageText>) -> Vec<ContentOutput> {
         // Sort pages and their segments
-        let mut sorted_pages = self.sort_and_filter(pages);
+        let sorted_pages = self.sort_and_filter(pages);
+        
+        // Filter out detected headers/footers if detector is available
+        let sorted_pages = if let Some(detector) = &self.header_footer_detector {
+            let headers_footers = detector.analyze();
+            self.filter_headers_footers(sorted_pages, headers_footers)
+        } else {
+            sorted_pages
+        };
+        
         let mut document_structure = Vec::new();
         let mut current_chunk = String::new();
         let mut current_headings = Vec::new();
@@ -4267,7 +4327,7 @@ impl PostProcessor {
         let mut section_start_char_pos: Option<usize> = None;
         let mut section_end_char_pos: Option<usize> = None;
 
-        for (idx, page) in sorted_pages.clone().iter_mut().enumerate() {
+        for (idx, page) in sorted_pages.clone().iter().enumerate() {
             for segment in &page.segments {
                 // Detect continued text
                 let is_continuation = if idx > 0 && !sorted_pages[idx-1].segments.is_empty() {
@@ -4436,6 +4496,15 @@ impl PostProcessor {
         pages
     }
 
+    fn filter_headers_footers(&self, mut pages: Vec<PageText>, headers_footers: HashSet<String>) -> Vec<PageText> {
+        for page in &mut pages {
+            page.segments.retain(|seg| {
+                !headers_footers.contains(&seg.content)
+            });
+        }
+        pages
+    }
+
     fn find_header_candidate(&self, page: &PageText) -> Option<String> {
         page.segments.iter()
             .find(|seg| seg.y > page.media_box.ury * self.header_threshold)
@@ -4451,6 +4520,242 @@ impl PostProcessor {
 
 fn ends_with_terminal_punctuation(s: &str) -> bool {
     s.trim().ends_with(|c: char| c == '.' || c == '!' || c == '?')
+}
+
+// Improved font weight detection
+#[derive(Debug, Clone, PartialEq)]
+enum FontWeight {
+    Thin,       // 100
+    ExtraLight, // 200
+    Light,      // 300
+    Regular,    // 400
+    Medium,     // 500
+    SemiBold,   // 600
+    Bold,       // 700
+    ExtraBold,  // 800
+    Black,      // 900
+}
+
+impl FontWeight {
+    fn from_font_name(font_name: &str) -> Self {
+        let name_lower = font_name.to_lowercase();
+        
+        // Check for weight keywords in order of specificity
+        if name_lower.contains("thin") || name_lower.contains("hairline") {
+            FontWeight::Thin
+        } else if name_lower.contains("extralight") || name_lower.contains("ultralight") {
+            FontWeight::ExtraLight
+        } else if name_lower.contains("light") {
+            FontWeight::Light
+        } else if name_lower.contains("black") || name_lower.contains("heavy") {
+            FontWeight::Black
+        } else if name_lower.contains("extrabold") || name_lower.contains("ultrabold") {
+            FontWeight::ExtraBold
+        } else if name_lower.contains("bold") || name_lower.contains("demi") {
+            FontWeight::Bold
+        } else if name_lower.contains("semibold") || name_lower.contains("demibold") {
+            FontWeight::SemiBold
+        } else if name_lower.contains("medium") {
+            FontWeight::Medium
+        } else if name_lower.contains("regular") || name_lower.contains("normal") || name_lower.contains("book") {
+            FontWeight::Regular
+        } else {
+            // Default to regular if no weight indicator found
+            FontWeight::Regular
+        }
+    }
+    
+    fn to_numeric(&self) -> u16 {
+        match self {
+            FontWeight::Thin => 100,
+            FontWeight::ExtraLight => 200,
+            FontWeight::Light => 300,
+            FontWeight::Regular => 400,
+            FontWeight::Medium => 500,
+            FontWeight::SemiBold => 600,
+            FontWeight::Bold => 700,
+            FontWeight::ExtraBold => 800,
+            FontWeight::Black => 900,
+        }
+    }
+    
+    fn is_bold(&self) -> bool {
+        self.to_numeric() >= 600
+    }
+}
+
+// Font analysis structures
+#[derive(Debug, Clone)]
+struct FontInfo {
+    name: String,
+    family: String,
+    weight: FontWeight,
+    is_italic: bool,
+}
+
+impl FontInfo {
+    fn from_font_name(font_name: &str) -> Self {
+        let weight = FontWeight::from_font_name(font_name);
+        let is_italic = font_name.to_lowercase().contains("italic") || 
+                       font_name.to_lowercase().contains("oblique");
+        
+        // Try to extract font family by removing weight and style indicators
+        let family = Self::extract_font_family(font_name);
+        
+        FontInfo {
+            name: font_name.to_string(),
+            family,
+            weight,
+            is_italic,
+        }
+    }
+    
+    fn extract_font_family(font_name: &str) -> String {
+        // Remove common weight and style suffixes
+        let suffixes = [
+            "-Bold", "-Regular", "-Light", "-Medium", "-Heavy", "-Black",
+            "-Italic", "-Oblique", "-Roman", "-Book", "-Demi", "-Semi",
+            "Bold", "Regular", "Light", "Medium", "Heavy", "Black",
+            "Italic", "Oblique", "Roman", "Book", "Demi", "Semi"
+        ];
+        
+        let mut family = font_name.to_string();
+        for suffix in &suffixes {
+            if family.ends_with(suffix) {
+                family = family[..family.len() - suffix.len()].to_string();
+                family = family.trim_end_matches('-').to_string();
+            }
+        }
+        
+        family
+    }
+}
+
+// Improved header/footer detection structures
+#[derive(Debug, Clone)]
+struct HeaderFooterPattern {
+    regex: Regex,
+    pattern_type: HeaderFooterType,
+    confidence: f64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum HeaderFooterType {
+    PageNumber,
+    Date,
+    Title,
+    Copyright,
+    ChapterTitle,
+    Other,
+}
+
+struct HeaderFooterDetector {
+    patterns: Vec<HeaderFooterPattern>,
+    occurrence_map: HashMap<String, Vec<PageOccurrence>>,
+    page_count: usize,
+}
+
+#[derive(Debug, Clone)]
+struct PageOccurrence {
+    page_num: u32,
+    position: f64,
+    font_size: f64,
+    is_top: bool,
+}
+
+impl HeaderFooterDetector {
+    fn new(page_count: usize) -> Self {
+        let patterns = vec![
+            HeaderFooterPattern {
+                regex: Regex::new(r"^(?:Page\s+)?(\d+)(?:\s+of\s+\d+)?$").unwrap(),
+                pattern_type: HeaderFooterType::PageNumber,
+                confidence: 0.9,
+            },
+            HeaderFooterPattern {
+                regex: Regex::new(r"^-\s*\d+\s*-$").unwrap(),
+                pattern_type: HeaderFooterType::PageNumber,
+                confidence: 0.9,
+            },
+            HeaderFooterPattern {
+                regex: Regex::new(r"^\[\d+\]$").unwrap(),
+                pattern_type: HeaderFooterType::PageNumber,
+                confidence: 0.9,
+            },
+            HeaderFooterPattern {
+                regex: Regex::new(r"^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$").unwrap(),
+                pattern_type: HeaderFooterType::Date,
+                confidence: 0.8,
+            },
+            HeaderFooterPattern {
+                regex: Regex::new(r"^(?:Chapter|Section|Part)\s+\d+").unwrap(),
+                pattern_type: HeaderFooterType::ChapterTitle,
+                confidence: 0.85,
+            },
+            HeaderFooterPattern {
+                regex: Regex::new(r"(?i)^©|copyright\s+\d{4}").unwrap(),
+                pattern_type: HeaderFooterType::Copyright,
+                confidence: 0.9,
+            },
+        ];
+
+        HeaderFooterDetector {
+            patterns,
+            occurrence_map: HashMap::new(),
+            page_count,
+        }
+    }
+
+    fn add_occurrence(&mut self, text: &str, page_num: u32, position: f64, font_size: f64, page_height: f64) {
+        let is_top = position > page_height * 0.85;
+        let occurrence = PageOccurrence {
+            page_num,
+            position,
+            font_size,
+            is_top,
+        };
+
+        self.occurrence_map
+            .entry(text.to_string())
+            .or_insert_with(Vec::new)
+            .push(occurrence);
+    }
+
+    fn analyze(&self) -> HashSet<String> {
+        let mut headers_footers = HashSet::new();
+        let min_occurrence_ratio = 0.5;
+
+        for (text, occurrences) in &self.occurrence_map {
+            let occurrence_count = occurrences.len();
+            let occurrence_ratio = occurrence_count as f64 / self.page_count as f64;
+
+            if occurrence_ratio >= min_occurrence_ratio {
+                // Check if positions are consistent
+                let positions: Vec<f64> = occurrences.iter().map(|o| o.position).collect();
+                let avg_position = positions.iter().sum::<f64>() / positions.len() as f64;
+                let position_variance = positions.iter()
+                    .map(|p| (p - avg_position).powi(2))
+                    .sum::<f64>() / positions.len() as f64;
+                
+                // Low variance means consistent positioning
+                if position_variance < 100.0 {
+                    // Check against patterns for higher confidence
+                    let mut pattern_matched = false;
+                    for pattern in &self.patterns {
+                        if pattern.regex.is_match(text) {
+                            pattern_matched = true;
+                            break;
+                        }
+                    }
+
+                    if pattern_matched || occurrence_ratio >= 0.8 {
+                        headers_footers.insert(text.clone());
+                    }
+                }
+            }
+        }
+
+        headers_footers
+    }
 }
 
 // Modified ContentOutput struct with position tracking
