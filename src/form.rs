@@ -389,6 +389,9 @@ pub fn form_fields(
         paragraph: text,
         page: 0,
         end_page: None,
+        page_char_start: None,
+        page_char_end: None,
+        bbox: None,
     });
     Ok(())
 }

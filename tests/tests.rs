@@ -69,7 +69,7 @@ impl ExpectedText<'_> {
         } else {
             format!("tests/docs/{}", filename)
         };
-        let out = extract_text(file_path)
+        let out = extract_text(file_path, None)
             .unwrap_or_else(|e| panic!("Failed to extract text from {}, {}", filename, e));
         println!("{}", out);
         assert!(

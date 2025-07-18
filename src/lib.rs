@@ -1563,9 +1563,11 @@ fn process_xobject(
     ocr_handler: Option<&OcrHandler>,
     text_segments: &mut Vec<TextSegment>,
     position: (f64, f64),
+    size: (f64, f64),
     page_num: u32,
     current_font_size: f64,
     current_transformed_font_size: f64,
+    page_char_counter: &mut usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let xobject = doc.get_dict_in_dict(resources, b"XObject")?;
 
@@ -1635,6 +1637,7 @@ fn process_xobject(
                 if let Ok(ocr_text) = handler.process_image(&img) {
                     println!("ocr_text");
                     if !ocr_text.is_empty() {
+                        let ocr_text_len = ocr_text.chars().count();
                         text_segments.push(TextSegment {
                             content: ocr_text,
                             font_size: current_font_size,
@@ -1647,7 +1650,12 @@ fn process_xobject(
                             cutat: "Image".to_string(),
                             fill_color: None,
                             stroke_color: None,
+                            char_start: *page_char_counter,
+                            char_end: *page_char_counter + ocr_text_len,
+                            width: size.0,
+                            height: size.1,
                         });
+                        *page_char_counter += ocr_text_len;
                     }
                 } else {
                     if let Err(e) = handler.process_image(&img) {
@@ -1999,6 +2007,11 @@ struct TextSegment {
     // font_color: (f64, f64, f64),
     fill_color: Option<(u8, u8, u8)>,
     stroke_color: Option<(u8, u8, u8)>,
+    // Position tracking
+    char_start: usize,    // Character position in page
+    char_end: usize,      // End character position in page
+    width: f64,           // Width of text segment
+    height: f64,          // Height of text segment
 }
 struct Processor<'a> {
     _none: PhantomData<&'a ()>,
@@ -2007,6 +2020,52 @@ struct Processor<'a> {
 impl<'a> Processor<'a> {
     fn new() -> Processor<'a> {
         Processor { _none: PhantomData }
+    }
+
+    fn create_text_segment(
+        content: String,
+        font_size: f64,
+        transformed_font_size: f64,
+        x: f64,
+        y: f64,
+        is_bold: bool,
+        font_name: String,
+        page_num: u32,
+        cutat: String,
+        fill_color: Option<(u8, u8, u8)>,
+        stroke_color: Option<(u8, u8, u8)>,
+        char_start: usize,
+        char_end: usize,
+    ) -> TextSegment {
+        let char_count = content.chars().count();
+        // Calculate approximate width based on average character width
+        // For multi-line segments, we need a better approximation
+        let avg_chars_per_line = 80.0; // Typical line length
+        let lines = (char_count as f64 / avg_chars_per_line).max(1.0);
+        let approx_width = if lines > 1.0 {
+            // For multi-line text, use average line width
+            avg_chars_per_line * font_size * 0.6
+        } else {
+            // For single line, use actual character count
+            char_count as f64 * font_size * 0.6
+        };
+        TextSegment {
+            content,
+            font_size,
+            transformed_font_size,
+            x,
+            y,
+            is_bold,
+            font_name,
+            page_num,
+            cutat,
+            fill_color,
+            stroke_color,
+            char_start,
+            char_end,
+            width: approx_width,
+            height: font_size,
+        }
     }
 
     fn is_visible_text(
@@ -2069,6 +2128,8 @@ impl<'a> Processor<'a> {
         let mut is_clipping = false;
         let mut current_transform = Transform::default();
         let mut current_font_color = (0.0, 0.0, 0.0); // Default to black
+        let mut page_char_counter = 0usize; // Track character position in page
+        let mut current_segment_start = 0usize; // Start position of current segment
 
         let content = Content::decode(&content).unwrap();
         let mut font_table = HashMap::new();
@@ -2200,8 +2261,18 @@ impl<'a> Processor<'a> {
             // Process the fill color as before.
            
             // Push the current line as a new TextSegment.
+            let content_str = current_line.clone().trim().to_string();
+            let char_count = content_str.chars().count();
+            // Calculate approximate width - for multi-line segments, use average line width
+            let avg_chars_per_line = 80.0;
+            let lines = (char_count as f64 / avg_chars_per_line).max(1.0);
+            let approx_width = if lines > 1.0 {
+                avg_chars_per_line * current_font_size * 0.6
+            } else {
+                char_count as f64 * current_font_size * 0.6
+            };
             text_segments.push(TextSegment {
-                content: current_line.clone().trim().to_string(),
+                content: content_str,
                 font_size: current_font_size,
                 transformed_font_size: current_transformed_font_size,
                 x: current_x,
@@ -2212,7 +2283,12 @@ impl<'a> Processor<'a> {
                 cutat: "Tj".to_string(),
                 fill_color: None,
                 stroke_color: None,
+                char_start: current_segment_start,
+                char_end: page_char_counter,
+                width: approx_width,
+                height: current_font_size,
             });
+            current_segment_start = page_char_counter;
             current_line.clear();
         }
    
@@ -2293,23 +2369,23 @@ impl<'a> Processor<'a> {
                                                         //     Some(processed_fill_color),
                                                         //     (255, 255, 255),
                                                         // ) {
-                                                        text_segments.push(TextSegment {
-                                                            content: current_line
-                                                                .clone()
-                                                                .trim()
-                                                                .to_string(),
-                                                            font_size: current_font_size,
-                                                            transformed_font_size:
-                                                                current_transformed_font_size,
-                                                            x: current_x,
-                                                            y: current_y,
-                                                            is_bold: current_is_bold,
-                                                            font_name: current_font.clone(),
-                                                            page_num: page_num,
-                                                            cutat: "Tj".to_string(),
-                                                            fill_color: Some(processed_fill_color),
-                                                            stroke_color: None,
-                                                        });
+                                                        let content_str = current_line.clone().trim().to_string();
+                                                        text_segments.push(Self::create_text_segment(
+                                                            content_str,
+                                                            current_font_size,
+                                                            current_transformed_font_size,
+                                                            current_x,
+                                                            current_y,
+                                                            current_is_bold,
+                                                            current_font.clone(),
+                                                            page_num,
+                                                            "Tj".to_string(),
+                                                            Some(processed_fill_color),
+                                                            None,
+                                                            current_segment_start,
+                                                            page_char_counter,
+                                                        ));
+                                                        current_segment_start = page_char_counter;
                                                     // }
                                                 }
                                                 current_line.clear();
@@ -2320,17 +2396,20 @@ impl<'a> Processor<'a> {
 
                                         if first_char {
                                             if (y - last_y).abs() > transformed_font_size * 1.5 {
-                                                current_line.push('\n')
+                                                current_line.push('\n');
+                                                page_char_counter += 1;
                                             }
 
                                             if x < last_end
                                                 && (y - last_y).abs() > transformed_font_size * 0.5
                                             {
-                                                current_line.push('\n')
+                                                current_line.push('\n');
+                                                page_char_counter += 1;
                                             }
 
                                             if x > last_end + transformed_font_size * 0.1 {
-                                                current_line.push(' ')
+                                                current_line.push(' ');
+                                                page_char_counter += 1;
                                             }
 
                                             current_x = (x * 100.00).round() / 100.0;
@@ -2339,6 +2418,7 @@ impl<'a> Processor<'a> {
 
                                         if is_add {
                                             current_line.push_str(&char);
+                                            page_char_counter += char.chars().count();
                                         }
                                         first_char = false;
 
@@ -2439,20 +2519,23 @@ impl<'a> Processor<'a> {
                                         //     Some(processed_fill_color),
                                         //     (255, 255, 255),
                                         // ) {
-                                            text_segments.push(TextSegment {
-                                                content: current_line.clone().trim().to_string(),
-                                                font_size: current_font_size,
-                                                transformed_font_size:
-                                                    current_transformed_font_size,
-                                                x: current_x,
-                                                y: current_y,
-                                                is_bold: current_is_bold,
-                                                font_name: current_font.clone(),
-                                                page_num: page_num,
-                                                cutat: "Tj".to_string(),
-                                                fill_color: Some(processed_fill_color),
-                                                stroke_color: None,
-                                            });
+                                            let content_str = current_line.clone().trim().to_string();
+                                            text_segments.push(Self::create_text_segment(
+                                                content_str,
+                                                current_font_size,
+                                                current_transformed_font_size,
+                                                current_x,
+                                                current_y,
+                                                current_is_bold,
+                                                current_font.clone(),
+                                                page_num,
+                                                "Tj".to_string(),
+                                                Some(processed_fill_color),
+                                                None,
+                                                current_segment_start,
+                                                page_char_counter,
+                                            ));
+                                            current_segment_start = page_char_counter;
                                         // }
                                     }
                                     current_line.clear();
@@ -2664,9 +2747,11 @@ impl<'a> Processor<'a> {
                             Some(handler),
                             text_segments,
                             (x, y),
+                            (100.0, 100.0), // TODO: Get actual image size
                             page_num,
                             current_font_size,
                             current_transformed_font_size,
+                            &mut page_char_counter,
                         ) {
                             // Log error but continue processing
                             eprintln!("Failed to process image in PDF: {}", e);
@@ -2712,19 +2797,22 @@ impl<'a> Processor<'a> {
             // };
 
             // if is_visible_text(Some(processed_fill_color), (255, 255, 255)) {
-                text_segments.push(TextSegment {
-                    content: current_line.clone().trim().to_string(),
-                    font_size: current_font_size,
-                    transformed_font_size: current_transformed_font_size,
-                    x: current_x,
-                    y: current_y,
-                    is_bold: current_is_bold,
-                    font_name: current_font.clone(),
-                    page_num: page_num,
-                    cutat: "Tj".to_string(),
-                    fill_color: None,
-                    stroke_color: None,
-                });
+                let content_str = current_line.clone().trim().to_string();
+                text_segments.push(Self::create_text_segment(
+                    content_str,
+                    current_font_size,
+                    current_transformed_font_size,
+                    current_x,
+                    current_y,
+                    current_is_bold,
+                    current_font.clone(),
+                    page_num,
+                    "Tj".to_string(),
+                    None,
+                    None,
+                    current_segment_start,
+                    page_char_counter,
+                ));
             // }
             current_line.clear();
         }
@@ -3647,6 +3735,7 @@ pub fn output_doc(
 
     let mut current_headings: Vec<String> = vec![String::new(); 8];
     let mut current_paragraph = String::new();
+    let mut current_segments: Vec<TextSegment> = Vec::new(); // Track segments that form current paragraph
 
     // let footer_threshold = doc_stats.median_line_height * 0.8; // Adjust this value as needed
     let mut last_page_num = 0;
@@ -3736,13 +3825,52 @@ pub fn output_doc(
                     } else {
                         current_headings[0].clone()
                     };
-                    document_structure.push(ContentOutput {
+                    
+                    // Calculate position data from segments
+                    let (page_char_start, page_char_end, bbox) = if !current_segments.is_empty() {
+                        let first_seg = &current_segments[0];
+                        let last_seg = current_segments.last().unwrap();
+                        
+                        // Get character positions
+                        let char_start = first_seg.char_start;
+                        let char_end = last_seg.char_end;
+                        
+                        // Calculate bounding box that encompasses all segments
+                        let min_x = current_segments.iter().map(|s| s.x).fold(f64::INFINITY, f64::min);
+                        let max_x = current_segments.iter().map(|s| s.x + s.width).fold(f64::NEG_INFINITY, f64::max);
+                        let min_y = current_segments.iter().map(|s| s.y).fold(f64::INFINITY, f64::min);
+                        let max_y = current_segments.iter().map(|s| s.y + s.height).fold(f64::NEG_INFINITY, f64::max);
+                        
+                        // eprintln!("DEBUG: Position tracking - char_start: {}, char_end: {}, bbox: ({}, {}, {}, {})", 
+                        //     char_start, char_end, min_x, min_y, max_x - min_x, max_y - min_y);
+                        
+                        let bbox = Some(BoundingBox {
+                            x: min_x,
+                            y: min_y,
+                            width: max_x - min_x,
+                            height: max_y - min_y,
+                        });
+                        
+                        (Some(char_start), Some(char_end), bbox)
+                    } else {
+                        // eprintln!("DEBUG: No segments for position tracking");
+                        (None, None, None)
+                    };
+                    
+                    let output = ContentOutput {
                         headings: if last_heading.is_empty() { vec![] } else { vec![last_heading] },
                         paragraph: current_paragraph.trim().to_string(),
                         page: segment.page_num,
                         end_page: None,
-                    });
+                        page_char_start,
+                        page_char_end,
+                        bbox,
+                    };
+                    eprintln!("DEBUG: Creating ContentOutput with positions - start: {:?}, end: {:?}, bbox: {:?}", 
+                        output.page_char_start, output.page_char_end, output.bbox);
+                    document_structure.push(output);
                     current_paragraph.clear();
+                    current_segments.clear();
                 }
 
                 // Clear all headings so that we retain only the current one.
@@ -3836,6 +3964,11 @@ pub fn output_doc(
                     current_paragraph.push(' ');
                 }
                 current_paragraph.push_str(&segment.content);
+                
+                // Track this segment for position calculation
+                // eprintln!("DEBUG: Adding segment - char_start: {}, char_end: {}, x: {}, y: {}", 
+                //     segment.char_start, segment.char_end, segment.x, segment.y);
+                current_segments.push(segment.clone());
 
                 // Check if the paragraph length exceeds 1000 characters
                 // if current_paragraph.len() > 20000 {
@@ -3858,6 +3991,33 @@ pub fn output_doc(
 
     // Push the last paragraph if it's not empty
     if !current_paragraph.is_empty() {
+        // Calculate position data from segments
+        let (page_char_start, page_char_end, bbox) = if !current_segments.is_empty() {
+            let first_seg = &current_segments[0];
+            let last_seg = current_segments.last().unwrap();
+            
+            // Get character positions
+            let char_start = first_seg.char_start;
+            let char_end = last_seg.char_end;
+            
+            // Calculate bounding box that encompasses all segments
+            let min_x = current_segments.iter().map(|s| s.x).fold(f64::INFINITY, f64::min);
+            let max_x = current_segments.iter().map(|s| s.x + s.width).fold(f64::NEG_INFINITY, f64::max);
+            let min_y = current_segments.iter().map(|s| s.y).fold(f64::INFINITY, f64::min);
+            let max_y = current_segments.iter().map(|s| s.y + s.height).fold(f64::NEG_INFINITY, f64::max);
+            
+            let bbox = Some(BoundingBox {
+                x: min_x,
+                y: min_y,
+                width: max_x - min_x,
+                height: max_y - min_y,
+            });
+            
+            (Some(char_start), Some(char_end), bbox)
+        } else {
+            (None, None, None)
+        };
+        
         document_structure.push(ContentOutput {
             headings: current_headings
                 .clone()
@@ -3867,6 +4027,9 @@ pub fn output_doc(
             paragraph: current_paragraph.trim().to_string(),
             page: last_page_num,
             end_page: None,
+            page_char_start,
+            page_char_end,
+            bbox,
         });
     }
 
@@ -4085,7 +4248,7 @@ impl PostProcessor {
         PostProcessor {
             header_threshold: 0.85,  // Top 15% of page
             footer_threshold: 0.15,   // Bottom 15% of page
-            continuation_threshold: 0.9, // Bottom 10% of page
+            continuation_threshold: 0.9, // Top/Bottom 10% of page for continuation detection
         }
     }
 
@@ -4095,18 +4258,30 @@ impl PostProcessor {
         let mut document_structure = Vec::new();
         let mut current_chunk = String::new();
         let mut current_headings = Vec::new();
-        let mut current_page_start = 0;
+        // Initialize with first page number if available
+        let mut current_page_start = sorted_pages.first().map(|p| p.page_num).unwrap_or(1);
         let mut last_y = f64::MAX;
+        
+        // Track position data for multi-page sections
+        let mut section_segments: Vec<TextSegment> = Vec::new();
+        let mut section_start_char_pos: Option<usize> = None;
+        let mut section_end_char_pos: Option<usize> = None;
 
         for (idx, page) in sorted_pages.clone().iter_mut().enumerate() {
             for segment in &page.segments {
                 // Detect continued text
-                let is_continuation = if idx > 0 {
+                let is_continuation = if idx > 0 && !sorted_pages[idx-1].segments.is_empty() {
                     let prev_page = &sorted_pages[idx-1];
                     let prev_segment = prev_page.segments.last().unwrap();
                     
-                    (segment.y > page.media_box.ury * self.continuation_threshold) &&
-                    (prev_segment.y < prev_page.media_box.lly * self.continuation_threshold) &&
+                    // Note: Y coordinates are flipped (0 at top, increases downward)
+                    // Check if current segment is at TOP of page (small Y value)
+                    let at_top_of_page = segment.y < page.media_box.ury * (1.0 - self.continuation_threshold);
+                    // Check if previous segment was at BOTTOM of previous page (large Y value)
+                    let prev_at_bottom = prev_segment.y > prev_page.media_box.ury * self.continuation_threshold;
+                    
+                    at_top_of_page &&
+                    prev_at_bottom &&
                     !ends_with_terminal_punctuation(&prev_segment.content) &&
                     !segment.content.starts_with(|c: char| c.is_uppercase())
                 } else {
@@ -4116,18 +4291,59 @@ impl PostProcessor {
                 if is_continuation {
                     current_chunk.push_str(" ");
                     current_chunk.push_str(&segment.content);
+                    section_segments.push(segment.clone());
+                    if section_end_char_pos.is_some() || segment.char_end > 0 {
+                        section_end_char_pos = Some(segment.char_end);
+                    }
                 } else {
                     if !current_chunk.is_empty() {
+                        // Calculate bounding box from segments on the starting page only
+                        let bbox = if !section_segments.is_empty() {
+                            // Filter segments to only include those from the starting page
+                            let start_page_segments: Vec<&TextSegment> = section_segments.iter()
+                                .filter(|s| s.page_num == current_page_start)
+                                .collect();
+                            
+                            if !start_page_segments.is_empty() {
+                                let min_x = start_page_segments.iter().map(|s| s.x).fold(f64::INFINITY, f64::min);
+                                let max_x = start_page_segments.iter().map(|s| s.x + s.width).fold(f64::NEG_INFINITY, f64::max);
+                                let min_y = start_page_segments.iter().map(|s| s.y).fold(f64::INFINITY, f64::min);
+                                let max_y = start_page_segments.iter().map(|s| s.y + s.height).fold(f64::NEG_INFINITY, f64::max);
+                                
+                                Some(BoundingBox {
+                                    x: min_x,
+                                    y: min_y,
+                                    width: max_x - min_x,
+                                    height: max_y - min_y,
+                                })
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        };
+                        
                         document_structure.push(ContentOutput {
                             headings: current_headings.clone(),
                             paragraph: current_chunk.trim().to_string(),
                             page: current_page_start,
-                            end_page: Some(sorted_pages[idx-1].page_num),
+                            end_page: if sorted_pages[idx-1].page_num != current_page_start {
+                                Some(sorted_pages[idx-1].page_num)
+                            } else {
+                                None
+                            },
+                            page_char_start: section_start_char_pos,
+                            page_char_end: section_end_char_pos,
+                            bbox,
                         });
                         current_chunk.clear();
+                        section_segments.clear();
                     }
                     current_chunk = segment.content.clone();
                     current_page_start = page.page_num;
+                    section_segments = vec![segment.clone()];
+                    section_start_char_pos = Some(segment.char_start);
+                    section_end_char_pos = Some(segment.char_end);
                 }
                 last_y = segment.y;
             }
@@ -4135,11 +4351,45 @@ impl PostProcessor {
 
         // Add final chunk
         if !current_chunk.is_empty() {
+            // Calculate bounding box from segments on the starting page only
+            let bbox = if !section_segments.is_empty() {
+                // Filter segments to only include those from the starting page
+                let start_page_segments: Vec<&TextSegment> = section_segments.iter()
+                    .filter(|s| s.page_num == current_page_start)
+                    .collect();
+                
+                if !start_page_segments.is_empty() {
+                    let min_x = start_page_segments.iter().map(|s| s.x).fold(f64::INFINITY, f64::min);
+                    let max_x = start_page_segments.iter().map(|s| s.x + s.width).fold(f64::NEG_INFINITY, f64::max);
+                    let min_y = start_page_segments.iter().map(|s| s.y).fold(f64::INFINITY, f64::min);
+                    let max_y = start_page_segments.iter().map(|s| s.y + s.height).fold(f64::NEG_INFINITY, f64::max);
+                    
+                    Some(BoundingBox {
+                        x: min_x,
+                        y: min_y,
+                        width: max_x - min_x,
+                        height: max_y - min_y,
+                    })
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+            
+            let last_page = sorted_pages.last().unwrap().page_num;
             document_structure.push(ContentOutput {
                 headings: current_headings,
                 paragraph: current_chunk.trim().to_string(),
                 page: current_page_start,
-                end_page: Some(sorted_pages.last().unwrap().page_num),
+                end_page: if last_page != current_page_start {
+                    Some(last_page)
+                } else {
+                    None
+                },
+                page_char_start: section_start_char_pos,
+                page_char_end: section_end_char_pos,
+                bbox,
             });
         }
 
@@ -4203,13 +4453,25 @@ fn ends_with_terminal_punctuation(s: &str) -> bool {
     s.trim().ends_with(|c: char| c == '.' || c == '!' || c == '?')
 }
 
-// Modified ContentOutput struct
+// Modified ContentOutput struct with position tracking
 #[derive(Debug)]
 pub struct ContentOutput {
     pub headings: Vec<String>,
     pub paragraph: String,
     pub page: u32,
     pub end_page: Option<u32>,  // None means single page
+    // New position tracking fields
+    pub page_char_start: Option<usize>,  // Character position from start of page
+    pub page_char_end: Option<usize>,    // Character position end on page
+    pub bbox: Option<BoundingBox>,       // Bounding box for visual highlighting
+}
+
+#[derive(Debug, Clone)]
+pub struct BoundingBox {
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
 }
 
 // Updated output_doc function
