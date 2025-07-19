@@ -2,7 +2,7 @@ use pdf_extract::*;
 
 fn main() {
     //let output_kind = "svg";
-    let file = "1.pdf";
+    let file = "8.pdf";
     // let file = "test-ocr.pdf";
 
     // let output_kind = env::args().nth(2).unwrap_or_else(|| "txt".to_owned());

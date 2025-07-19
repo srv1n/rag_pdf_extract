@@ -56,6 +56,39 @@ lazy_static! {
 pub struct Space;
 pub type Transform = Transform2D<f64, Space, Space>;
 
+// Constants for text extraction
+const SPACE_THRESHOLD_RATIO: f64 = 0.25; // Typical space is 25% of font size
+const MIN_SPACE_GAP: f64 = 0.1; // Minimum 10% of font size to be considered a gap
+const PARAGRAPH_GAP_RATIO: f64 = 1.5; // Paragraph break if gap is 150% of font size
+const LINE_HEIGHT_RATIO: f64 = 1.2; // Normal line height is ~120% of font size
+const SAME_LINE_THRESHOLD: f64 = 0.5; // Consider same line if Y difference < 50% font size
+
+// Helper function to determine if there's a space between characters
+fn should_insert_space(current_x: f64, last_end: f64, font_size: f64) -> bool {
+    let gap = current_x - last_end;
+    // Use adaptive threshold based on font size
+    // Smaller fonts tend to have tighter spacing
+    let threshold = if font_size < 10.0 {
+        font_size * MIN_SPACE_GAP
+    } else {
+        font_size * SPACE_THRESHOLD_RATIO
+    };
+    gap > threshold
+}
+
+// Helper function to determine if there's a paragraph break
+fn is_paragraph_break(current_y: f64, last_y: f64, font_size: f64) -> bool {
+    let y_gap = (current_y - last_y).abs();
+    y_gap > font_size * PARAGRAPH_GAP_RATIO
+}
+
+// Helper function to determine if we've moved to a new line
+fn is_new_line(current_x: f64, last_end: f64, current_y: f64, last_y: f64, font_size: f64) -> bool {
+    let y_diff = (current_y - last_y).abs();
+    // New line if we've moved down/up significantly and moved back to the left
+    y_diff > font_size * SAME_LINE_THRESHOLD && current_x < last_end
+}
+
 // Add this struct to store OCR engine configuration
 pub struct OcrConfig {
     pub detection_model: Option<String>,
@@ -2423,19 +2456,18 @@ impl<'a> Processor<'a> {
                                         }
 
                                         if first_char {
-                                            if (y - last_y).abs() > transformed_font_size * 1.5 {
+                                            // Check for paragraph break (large vertical gap)
+                                            if is_paragraph_break(y, last_y, transformed_font_size) {
                                                 current_line.push('\n');
                                                 page_char_counter += 1;
                                             }
-
-                                            if x < last_end
-                                                && (y - last_y).abs() > transformed_font_size * 0.5
-                                            {
+                                            // Check for new line (moved down and back to left)
+                                            else if is_new_line(x, last_end, y, last_y, transformed_font_size) {
                                                 current_line.push('\n');
                                                 page_char_counter += 1;
                                             }
-
-                                            if x > last_end + transformed_font_size * 0.1 {
+                                            // Check for space between words on same line
+                                            else if should_insert_space(x, last_end, transformed_font_size) {
                                                 current_line.push(' ');
                                                 page_char_counter += 1;
                                             }
@@ -2575,16 +2607,16 @@ impl<'a> Processor<'a> {
                             }
 
                             if first_char {
-                                if (y - last_y).abs() > transformed_font_size * 1.5 {
+                                // Check for paragraph break (large vertical gap)
+                                if is_paragraph_break(y, last_y, transformed_font_size) {
                                     current_line.push('\n')
                                 }
-
-                                if x < last_end && (y - last_y).abs() > transformed_font_size * 0.5
-                                {
+                                // Check for new line (moved down and back to left)
+                                else if is_new_line(x, last_end, y, last_y, transformed_font_size) {
                                     current_line.push('\n')
                                 }
-
-                                if x > last_end + transformed_font_size * 0.1 {
+                                // Check for space between words on same line
+                                else if should_insert_space(x, last_end, transformed_font_size) {
                                     current_line.push(' ')
                                 }
 
@@ -2766,10 +2798,36 @@ impl<'a> Processor<'a> {
                     mc_stack.pop();
                 }
                 "Do" => {
+                    let xobject: &Dictionary = get(&doc, resources, b"XObject");
+                    let name = operation.operands[0].as_name().unwrap();
+                    let xf: &Stream = get(&doc, xobject, name);
+                    
                     // Only process XObject if OCR handler is available
                     if let Some(handler) = ocr_handler {
                         let position = gs.ts.tm.post_transform(&flip_ctm);
                         let (x, y) = (position.m31, position.m32);
+                        
+                        // Extract dimensions if this is an image
+                        let size = if let Ok(subtype) = xf.dict.get(b"Subtype") {
+                            if let Ok(subtype_name) = subtype.as_name() {
+                                if subtype_name == b"Image" {
+                                    if let (Ok(width), Ok(height)) = (
+                                        xf.dict.get(b"Width").and_then(|w| w.as_i64()),
+                                        xf.dict.get(b"Height").and_then(|h| h.as_i64())
+                                    ) {
+                                        (width as f64, height as f64)
+                                    } else {
+                                        (100.0, 100.0) // Fallback if dimensions not found
+                                    }
+                                } else {
+                                    (100.0, 100.0) // Not an image
+                                }
+                            } else {
+                                (100.0, 100.0) // Invalid subtype
+                            }
+                        } else {
+                            (100.0, 100.0) // No subtype
+                        };
 
                         if let Err(e) = process_xobject(
                             &doc,
@@ -2777,7 +2835,7 @@ impl<'a> Processor<'a> {
                             Some(handler),
                             text_segments,
                             (x, y),
-                            (100.0, 100.0), // TODO: Get actual image size
+                            size,
                             page_num,
                             current_font_size,
                             current_transformed_font_size,
@@ -2789,9 +2847,6 @@ impl<'a> Processor<'a> {
                     }
 
                     // Continue with normal processing regardless of OCR result
-                    let xobject: &Dictionary = get(&doc, resources, b"XObject");
-                    let name = operation.operands[0].as_name().unwrap();
-                    let xf: &Stream = get(&doc, xobject, name);
                     let resources = maybe_get_obj(&doc, &xf.dict, b"Resources")
                         .and_then(|n| n.as_dict().ok())
                         .unwrap_or(resources);
@@ -3257,21 +3312,26 @@ impl<W: ConvertToFmt> OutputDev for PlainTextOutput<W> {
         use std::fmt::Write;
         //dlog!("last_end: {} x: {}, width: {}", self.last_end, x, width);
         if self.first_char {
-            if (y - self.last_y).abs() > transformed_font_size * 1.5 {
+            // Check for paragraph break
+            if is_paragraph_break(y, self.last_y, transformed_font_size) {
                 write!(self.writer, "\n")?;
             }
 
-            // we've moved to the left and down
-            if x < self.last_end && (y - self.last_y).abs() > transformed_font_size * 0.5 {
+            // we've moved to the left and down (new line)
+            if is_new_line(x, self.last_end, y, self.last_y, transformed_font_size) {
                 write!(self.writer, " ")?;
             }
 
-            if x > self.last_end + transformed_font_size * 0.1 {
+            if should_insert_space(x, self.last_end, transformed_font_size) {
                 dlog!(
                     "width: {}, space: {}, thresh: {}",
                     width,
                     x - self.last_end,
-                    transformed_font_size * 0.1
+                    if transformed_font_size < 10.0 { 
+                        transformed_font_size * MIN_SPACE_GAP 
+                    } else { 
+                        transformed_font_size * SPACE_THRESHOLD_RATIO 
+                    }
                 );
                 write!(self.writer, " ")?;
             }
