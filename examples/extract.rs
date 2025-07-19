@@ -11,10 +11,11 @@ fn main() {
  
     let muta = docs.len();
     for item in docs {
-        println!("\n\nHeadings: {:#?}", item.headings);
-        println!("\n{}", item.paragraph.replace("\\n", "\n"));
-        println!("\nPage: {:#?}", item.page);
-        println!("{}", item.paragraph.len());
+        // println!("\n\nHeadings: {:#?}", item.headings);
+        // println!("\n{}", item.paragraph.replace("\\n", "\n"));
+        // println!("\nPage: {:#?}", item.page);
+        // println!("{}", item.paragraph.len());
+        println!("{:#?}", item);
     }
     // println!("Length of shata: {}", muta);
 }

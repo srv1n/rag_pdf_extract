@@ -3950,45 +3950,81 @@ pub fn output_doc(
                         current_headings[0].clone()
                     };
                     
-                    // Calculate position data from segments
-                    let (page_char_start, page_char_end, bbox) = if !current_segments.is_empty() {
-                        let first_seg = &current_segments[0];
-                        let last_seg = current_segments.last().unwrap();
-                        
-                        // Get character positions
-                        let char_start = first_seg.char_start;
-                        let char_end = last_seg.char_end;
-                        
-                        // Calculate bounding box that encompasses all segments
-                        let min_x = current_segments.iter().map(|s| s.x).fold(f64::INFINITY, f64::min);
-                        let max_x = current_segments.iter().map(|s| s.x + s.width).fold(f64::NEG_INFINITY, f64::max);
-                        let min_y = current_segments.iter().map(|s| s.y).fold(f64::INFINITY, f64::min);
-                        let max_y = current_segments.iter().map(|s| s.y + s.height).fold(f64::NEG_INFINITY, f64::max);
-                        
-                        // eprintln!("DEBUG: Position tracking - char_start: {}, char_end: {}, bbox: ({}, {}, {}, {})", 
-                        //     char_start, char_end, min_x, min_y, max_x - min_x, max_y - min_y);
-                        
-                        let bbox = Some(BoundingBox {
-                            x: min_x,
-                            y: min_y,
-                            width: max_x - min_x,
-                            height: max_y - min_y,
-                        });
-                        
-                        (Some(char_start), Some(char_end), bbox)
-                    } else {
-                        // eprintln!("DEBUG: No segments for position tracking");
-                        (None, None, None)
-                    };
+                    // Calculate position data from segments with proper multi-page handling
+                    let (start_page, end_page, page_char_start, page_char_end, bbox, page_positions) = 
+                        if !current_segments.is_empty() {
+                            let first_seg = &current_segments[0];
+                            let last_seg = current_segments.last().unwrap();
+                            
+                            // Get the actual start and end pages from content
+                            let start_page = first_seg.page_num;
+                            let end_page = if last_seg.page_num != start_page { 
+                                Some(last_seg.page_num) 
+                            } else { 
+                                None 
+                            };
+                            
+                            // Get character positions (page-relative)
+                            let char_start = first_seg.char_start;
+                            let char_end = last_seg.char_end;
+                            
+                            // Build per-page position info
+                            let mut page_positions = Vec::new();
+                            let mut current_page = first_seg.page_num;
+                            let mut page_segments = Vec::new();
+                            
+                            for seg in &current_segments {
+                                if seg.page_num != current_page {
+                                    // Process segments for the previous page
+                                    if !page_segments.is_empty() {
+                                        let page_bbox = calculate_bbox_for_segments(&page_segments);
+                                        page_positions.push(PagePosition {
+                                            page: current_page,
+                                            char_start: page_segments[0].char_start,
+                                            char_end: page_segments.last().unwrap().char_end,
+                                            bbox: page_bbox,
+                                        });
+                                    }
+                                    // Start new page
+                                    current_page = seg.page_num;
+                                    page_segments.clear();
+                                }
+                                page_segments.push(seg.clone());
+                            }
+                            
+                            // Don't forget the last page
+                            if !page_segments.is_empty() {
+                                let page_bbox = calculate_bbox_for_segments(&page_segments);
+                                page_positions.push(PagePosition {
+                                    page: current_page,
+                                    char_start: page_segments[0].char_start,
+                                    char_end: page_segments.last().unwrap().char_end,
+                                    bbox: page_bbox,
+                                });
+                            }
+                            
+                            // Overall bounding box (for single-page content)
+                            let bbox = if end_page.is_none() {
+                                Some(calculate_bbox_for_segments(&current_segments))
+                            } else {
+                                None // Multi-page content doesn't have a single bbox
+                            };
+                            
+                            (start_page, end_page, Some(char_start), Some(char_end), bbox, page_positions)
+                        } else {
+                            // eprintln!("DEBUG: No segments for position tracking");
+                            (segment.page_num, None, None, None, None, Vec::new())
+                        };
                     
                     let output = ContentOutput {
                         headings: if last_heading.is_empty() { vec![] } else { vec![last_heading] },
                         paragraph: current_paragraph.trim().to_string(),
-                        page: segment.page_num,
-                        end_page: None,
+                        page: start_page,
+                        end_page,
                         page_char_start,
                         page_char_end,
                         bbox,
+                        page_positions,
                     };
                     eprintln!("DEBUG: Creating ContentOutput with positions - start: {:?}, end: {:?}, bbox: {:?}", 
                         output.page_char_start, output.page_char_end, output.bbox);
@@ -4115,32 +4151,70 @@ pub fn output_doc(
 
     // Push the last paragraph if it's not empty
     if !current_paragraph.is_empty() {
-        // Calculate position data from segments
-        let (page_char_start, page_char_end, bbox) = if !current_segments.is_empty() {
-            let first_seg = &current_segments[0];
-            let last_seg = current_segments.last().unwrap();
-            
-            // Get character positions
-            let char_start = first_seg.char_start;
-            let char_end = last_seg.char_end;
-            
-            // Calculate bounding box that encompasses all segments
-            let min_x = current_segments.iter().map(|s| s.x).fold(f64::INFINITY, f64::min);
-            let max_x = current_segments.iter().map(|s| s.x + s.width).fold(f64::NEG_INFINITY, f64::max);
-            let min_y = current_segments.iter().map(|s| s.y).fold(f64::INFINITY, f64::min);
-            let max_y = current_segments.iter().map(|s| s.y + s.height).fold(f64::NEG_INFINITY, f64::max);
-            
-            let bbox = Some(BoundingBox {
-                x: min_x,
-                y: min_y,
-                width: max_x - min_x,
-                height: max_y - min_y,
-            });
-            
-            (Some(char_start), Some(char_end), bbox)
-        } else {
-            (None, None, None)
-        };
+        // Calculate position data from segments with proper multi-page handling
+        let (start_page, end_page, page_char_start, page_char_end, bbox, page_positions) = 
+            if !current_segments.is_empty() {
+                let first_seg = &current_segments[0];
+                let last_seg = current_segments.last().unwrap();
+                
+                // Get the actual start and end pages from content
+                let start_page = first_seg.page_num;
+                let end_page = if last_seg.page_num != start_page { 
+                    Some(last_seg.page_num) 
+                } else { 
+                    None 
+                };
+                
+                // Get character positions (page-relative)
+                let char_start = first_seg.char_start;
+                let char_end = last_seg.char_end;
+                
+                // Build per-page position info
+                let mut page_positions = Vec::new();
+                let mut current_page = first_seg.page_num;
+                let mut page_segments = Vec::new();
+                
+                for seg in &current_segments {
+                    if seg.page_num != current_page {
+                        // Process segments for the previous page
+                        if !page_segments.is_empty() {
+                            let page_bbox = calculate_bbox_for_segments(&page_segments);
+                            page_positions.push(PagePosition {
+                                page: current_page,
+                                char_start: page_segments[0].char_start,
+                                char_end: page_segments.last().unwrap().char_end,
+                                bbox: page_bbox,
+                            });
+                        }
+                        // Start new page
+                        current_page = seg.page_num;
+                        page_segments.clear();
+                    }
+                    page_segments.push(seg.clone());
+                }
+                
+                // Don't forget the last page
+                if !page_segments.is_empty() {
+                    let page_bbox = calculate_bbox_for_segments(&page_segments);
+                    page_positions.push(PagePosition {
+                        page: current_page,
+                        char_start: page_segments[0].char_start,
+                        char_end: page_segments.last().unwrap().char_end,
+                        bbox: page_bbox,
+                    });
+                }
+                
+                // Overall bounding box (for single-page content)
+                let bbox = if end_page.is_none() {
+                    Some(calculate_bbox_for_segments(&current_segments))
+                } else {
+                    None // Multi-page content doesn't have a single bbox
+                };
+                
+                (start_page, end_page, Some(char_start), Some(char_end), bbox, page_positions)
+            } else {
+                (last_page_num, None, None, None, None, Vec::new())
+            };
         
         document_structure.push(ContentOutput {
             headings: current_headings
@@ -4149,11 +4223,12 @@ pub fn output_doc(
                 .filter(|h| !h.is_empty())
                 .collect(),
             paragraph: current_paragraph.trim().to_string(),
-            page: last_page_num,
-            end_page: None,
+            page: start_page,
+            end_page,
             page_char_start,
             page_char_end,
             bbox,
+            page_positions,
         });
     }
 
@@ -4475,6 +4550,7 @@ impl PostProcessor {
                             page_char_start: section_start_char_pos,
                             page_char_end: section_end_char_pos,
                             bbox,
+                            page_positions: vec![], // TODO: Implement for PostProcessor
                         });
                         current_chunk.clear();
                         section_segments.clear();
@@ -4530,6 +4606,7 @@ impl PostProcessor {
                 page_char_start: section_start_char_pos,
                 page_char_end: section_end_char_pos,
                 bbox,
+                page_positions: vec![], // TODO: Implement for PostProcessor
             });
         }
 
@@ -4838,6 +4915,21 @@ impl HeaderFooterDetector {
     }
 }
 
+// Helper function to calculate bounding box for a set of segments
+fn calculate_bbox_for_segments(segments: &[TextSegment]) -> BoundingBox {
+    let min_x = segments.iter().map(|s| s.x).fold(f64::INFINITY, f64::min);
+    let max_x = segments.iter().map(|s| s.x + s.width).fold(f64::NEG_INFINITY, f64::max);
+    let min_y = segments.iter().map(|s| s.y).fold(f64::INFINITY, f64::min);
+    let max_y = segments.iter().map(|s| s.y + s.height).fold(f64::NEG_INFINITY, f64::max);
+    
+    BoundingBox {
+        x: min_x,
+        y: min_y,
+        width: max_x - min_x,
+        height: max_y - min_y,
+    }
+}
+
 // Modified ContentOutput struct with position tracking
 #[derive(Debug)]
 pub struct ContentOutput {
@@ -4846,9 +4938,19 @@ pub struct ContentOutput {
     pub page: u32,
     pub end_page: Option<u32>,  // None means single page
     // New position tracking fields
-    pub page_char_start: Option<usize>,  // Character position from start of page
-    pub page_char_end: Option<usize>,    // Character position end on page
+    pub page_char_start: Option<usize>,  // Character position from start of first page
+    pub page_char_end: Option<usize>,    // Character position end on last page
     pub bbox: Option<BoundingBox>,       // Bounding box for visual highlighting
+    // Enhanced multi-page tracking
+    pub page_positions: Vec<PagePosition>, // Per-page position info for multi-page content
+}
+
+#[derive(Debug, Clone)]
+pub struct PagePosition {
+    pub page: u32,
+    pub char_start: usize,
+    pub char_end: usize,
+    pub bbox: BoundingBox,
 }
 
 #[derive(Debug, Clone)]

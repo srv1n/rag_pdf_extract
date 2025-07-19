@@ -392,6 +392,7 @@ pub fn form_fields(
         page_char_start: None,
         page_char_end: None,
         bbox: None,
+        page_positions: vec![],
     });
     Ok(())
 }
