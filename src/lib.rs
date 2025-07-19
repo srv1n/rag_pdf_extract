@@ -11,7 +11,6 @@ use ordered_float::OrderedFloat;
 use rten::Model;
 #[allow(unused)]
 use rten_tensor::prelude::*;
-use itertools::Itertools;
 use std::fmt::{Debug, Formatter};
 
 use euclid::vec2;
@@ -34,9 +33,14 @@ mod core_fonts;
 mod form;
 mod glyphnames;
 mod zapfglyphnames;
+mod text_splitting;
 
 use lazy_static::lazy_static;
 use regex::Regex;
+use crate::text_splitting::{
+    preprocess_text, count_words, estimate_tokens_from_words, 
+    should_check_tokens, TokenCounter, SplitConfig
+};
 
 lazy_static! {
     static ref NUMBERED_HEADING: Regex = Regex::new(
@@ -3392,7 +3396,7 @@ pub fn extract_text<P: std::convert::AsRef<std::path::Path>>(
         // let mut output = PlainTextOutput::new(&mut s);
         let mut doc = Document::load(path)?;
         maybe_decrypt(&mut doc)?;
-        output_doc(&doc, ocr_handler).map_err(|e| OutputError::Other(e.to_string()));
+        output_doc(&doc, ocr_handler, None).map_err(|e| OutputError::Other(e.to_string()));
     }
     Ok(s)
 }
@@ -3435,7 +3439,7 @@ pub fn extract_text_from_mem(
         // let mut output = PlainTextOutput::new(&mut s);
         let mut doc = Document::load_mem(buffer)?;
         maybe_decrypt(&mut doc)?;
-        output_doc(&doc, ocr_handler).map_err(|e| OutputError::Other(e.to_string()));
+        output_doc(&doc, ocr_handler, None).map_err(|e| OutputError::Other(e.to_string()));
     }
     Ok(s)
 }
@@ -3752,6 +3756,7 @@ fn is_heading(segment: &TextSegment, doc_stats: &DocumentStats) -> TextLevel {
 pub fn output_doc(
     doc: &Document,
     ocr_handler: Option<&OcrHandler>,
+    max_tokens: Option<usize>,
 ) -> Result<Vec<ContentOutput>, Box<dyn std::error::Error>> {
     let mut document_structure: Vec<ContentOutput> = Vec::new();
 
@@ -3814,9 +3819,10 @@ pub fn output_doc(
         .collect();
 
     // Sort by page number and flatten while maintaining order
-    let text_segments: Vec<TextSegment> = page_results
+    let mut page_results_vec: Vec<_> = page_results.into_iter().collect();
+    page_results_vec.sort_by_key(|(page_num, _)| *page_num);
+    let text_segments: Vec<TextSegment> = page_results_vec
         .into_iter()
-        .sorted_by_key(|(page_num, _)| *page_num)
         .flat_map(|(_, segments)| segments)
         .collect();
     
@@ -3852,6 +3858,16 @@ pub fn output_doc(
     let mut current_headings: Vec<String> = vec![String::new(); 8];
     let mut current_paragraph = String::new();
     let mut current_segments: Vec<TextSegment> = Vec::new(); // Track segments that form current paragraph
+
+    // Chunk tracking variables
+    let split_config = SplitConfig::default();
+    let max_tokens = max_tokens.unwrap_or(usize::MAX); // No limit if not specified
+    let mut current_word_count = 0;
+    let mut token_counter = if max_tokens < usize::MAX {
+        Some(TokenCounter::new().unwrap())
+    } else {
+        None
+    };
 
     // let footer_threshold = doc_stats.median_line_height * 0.8; // Adjust this value as needed
     let mut last_page_num = 0;
@@ -3921,6 +3937,93 @@ pub fn output_doc(
         true
     }
 
+    // Helper function to flush a chunk
+    let mut flush_chunk = |paragraph: &str, 
+                           segments: &[TextSegment], 
+                           headings: &[String], 
+                           document_structure: &mut Vec<ContentOutput>| {
+        if paragraph.trim().is_empty() || segments.is_empty() {
+            return;
+        }
+        
+        // Calculate position data from segments with proper multi-page handling
+        let first_seg = &segments[0];
+        let last_seg = segments.last().unwrap();
+        
+        // Get the actual start and end pages from content
+        let start_page = first_seg.page_num;
+        let end_page = if last_seg.page_num != start_page { 
+            Some(last_seg.page_num) 
+        } else { 
+            None 
+        };
+        
+        // Get character positions (page-relative)
+        let char_start = first_seg.char_start;
+        let char_end = last_seg.char_end;
+        
+        // Build per-page position info
+        let mut page_positions = Vec::new();
+        let mut current_page = first_seg.page_num;
+        let mut page_segments = Vec::new();
+        
+        for seg in segments {
+            if seg.page_num != current_page {
+                // Process segments for the previous page
+                if !page_segments.is_empty() {
+                    let page_bbox = calculate_bbox_for_segments(&page_segments);
+                    page_positions.push(PagePosition {
+                        page: current_page,
+                        char_start: page_segments[0].char_start,
+                        char_end: page_segments.last().unwrap().char_end,
+                        bbox: page_bbox,
+                    });
+                }
+                // Start new page
+                current_page = seg.page_num;
+                page_segments.clear();
+            }
+            page_segments.push(seg.clone());
+        }
+        
+        // Don't forget the last page
+        if !page_segments.is_empty() {
+            let page_bbox = calculate_bbox_for_segments(&page_segments);
+            page_positions.push(PagePosition {
+                page: current_page,
+                char_start: page_segments[0].char_start,
+                char_end: page_segments.last().unwrap().char_end,
+                bbox: page_bbox,
+            });
+        }
+        
+        // Overall bounding box (for single-page content)
+        let bbox = if end_page.is_none() {
+            Some(calculate_bbox_for_segments(segments))
+        } else {
+            None // Multi-page content doesn't have a single bbox
+        };
+        
+        // Get the last non-empty heading
+        let heading = headings.iter()
+            .find(|h| !h.is_empty())
+            .cloned()
+            .unwrap_or_default();
+        
+        let output = ContentOutput {
+            headings: if heading.is_empty() { vec![] } else { vec![heading] },
+            paragraph: preprocess_text(paragraph).trim().to_string(),
+            page: start_page,
+            end_page,
+            page_char_start: Some(char_start),
+            page_char_end: Some(char_end),
+            bbox,
+            page_positions,
+        };
+        
+        document_structure.push(output);
+    };
+
     // let mut current_numbering: Vec<String> = vec![String::new(); 8]; // Track numbering per level
 
     for segment in text_segments {
@@ -3944,6 +4047,14 @@ pub fn output_doc(
                 // NEW SINGLE HEADING MODE:
                 // If there's already some paragraph content, flush it out with the last heading.
                 if !current_paragraph.is_empty() && current_paragraph.trim().len() > 35 {
+                    flush_chunk(&current_paragraph, &current_segments, &current_headings, &mut document_structure);
+                    current_paragraph.clear();
+                    current_segments.clear();
+                    current_word_count = 0;
+                }
+                    
+                    // OLD CODE REPLACED WITH flush_chunk call above
+                    /*
                     let last_heading = if current_headings[0].is_empty() {
                         "".to_string()
                     } else {
@@ -4032,6 +4143,7 @@ pub fn output_doc(
                     current_paragraph.clear();
                     current_segments.clear();
                 }
+                */
 
                 // Clear all headings so that we retain only the current one.
                 for h in current_headings.iter_mut() {
@@ -4120,29 +4232,48 @@ pub fn output_doc(
                 */
             }
             TextLevel::Body | TextLevel::SubBody => {
+                // Check if adding this segment would exceed the token limit
+                let segment_word_count = count_words(&segment.content);
+                let new_word_count = current_word_count + segment_word_count;
+                let estimated_tokens = estimate_tokens_from_words(new_word_count, split_config.words_to_tokens_ratio);
+                
+                // Check if we should verify with actual token count
+                let should_flush = if max_tokens < usize::MAX && should_check_tokens(estimated_tokens, max_tokens, split_config.check_threshold) {
+                    // Do actual token count check
+                    if let Some(ref mut counter) = token_counter {
+                        let test_text = if current_paragraph.is_empty() {
+                            segment.content.clone()
+                        } else {
+                            format!("{} {}", current_paragraph, segment.content)
+                        };
+                        let processed_text = preprocess_text(&test_text);
+                        counter.count_tokens(&processed_text) > max_tokens
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                };
+                
+                if should_flush && !current_paragraph.is_empty() {
+                    // Flush current chunk before adding new segment
+                    flush_chunk(&current_paragraph, &current_segments, &current_headings, &mut document_structure);
+                    current_paragraph.clear();
+                    current_segments.clear();
+                    current_word_count = 0;
+                }
+                
+                // Add segment to current chunk
                 if !current_paragraph.is_empty() {
                     current_paragraph.push(' ');
                 }
                 current_paragraph.push_str(&segment.content);
+                current_word_count += segment_word_count;
                 
                 // Track this segment for position calculation
                 // eprintln!("DEBUG: Adding segment - char_start: {}, char_end: {}, x: {}, y: {}", 
                 //     segment.char_start, segment.char_end, segment.x, segment.y);
                 current_segments.push(segment.clone());
-
-                // Check if the paragraph length exceeds 1000 characters
-                // if current_paragraph.len() > 20000 {
-                //     document_structure.push(ContentOutput {
-                //         headings: current_headings
-                //             .clone()
-                //             .into_iter()
-                //             .filter(|h| !h.is_empty())
-                //             .collect(),
-                //         paragraph: current_paragraph.trim().to_string(),
-                //         page: last_page_num,
-                //     });
-                //     current_paragraph.clear();
-                // }
 
                 last_page_num = segment.page_num;
             }
@@ -4151,6 +4282,10 @@ pub fn output_doc(
 
     // Push the last paragraph if it's not empty
     if !current_paragraph.is_empty() {
+        flush_chunk(&current_paragraph, &current_segments, &current_headings, &mut document_structure);
+    }
+    
+    /* OLD CODE REPLACED WITH flush_chunk
         // Calculate position data from segments with proper multi-page handling
         let (start_page, end_page, page_char_start, page_char_end, bbox, page_positions) = 
             if !current_segments.is_empty() {
@@ -4231,6 +4366,7 @@ pub fn output_doc(
             page_positions,
         });
     }
+    */
 
     Ok(document_structure)
 }
@@ -4240,6 +4376,7 @@ pub fn parse_pdf(
     ocr: Option<bool>,
     detection_model: Option<String>,
     recognition_model: Option<String>,
+    max_tokens: Option<usize>,
 ) -> Result<Vec<ContentOutput>, OutputError> {
     let path = path::Path::new(&file);
 
@@ -4256,9 +4393,9 @@ pub fn parse_pdf(
             OutputError::Other(e.to_string())
         })?;
 
-        output_doc(&doc, Some(&ocr_handler)).map_err(|e| OutputError::Other(e.to_string()))
+        output_doc(&doc, Some(&ocr_handler), max_tokens).map_err(|e| OutputError::Other(e.to_string()))
     } else {
-        output_doc(&doc, None).map_err(|e| OutputError::Other(e.to_string()))
+        output_doc(&doc, None, max_tokens).map_err(|e| OutputError::Other(e.to_string()))
     }
 }
 

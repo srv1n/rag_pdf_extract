@@ -35,7 +35,8 @@ lexopt = "0.3.0"
 miniz_oxide = "0.8.0"
 regex = "1.11.1"
 lazy_static = "1.5.0"
-itertools = "0.12"
+text-splitter = { version = "0.27.0", features = ["tiktoken-rs"] }
+tiktoken-rs = "0.7"
 
 [dev-dependencies]
 ureq = "2.6.2"

@@ -6,7 +6,7 @@ fn main() {
     let file = "1.pdf";
     let search_term = "family court";
     
-    let docs = parse_pdf(file, None, None, None).unwrap();
+    let docs = parse_pdf(file, None, None, None, None).unwrap();
     
     for (idx, doc) in docs.iter().enumerate() {
         // Search in the paragraph
