@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, fmt::format};
+use std::collections::VecDeque;
 
 use lopdf::{Document, Object, ObjectId};
 use std::str;
@@ -257,7 +257,7 @@ fn get_field_value(field: &lopdf::Dictionary) -> Option<String> {
         .map(|s| s.unwrap().into_owned())
     {
         Ok(s) => Some(s),
-        Err(e) => None,
+        Err(_e) => None,
     }
 }
 

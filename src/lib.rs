@@ -2,7 +2,7 @@ use adobe_cmap_parser::{ByteMapping, CIDRange, CodeRange};
 use encoding_rs::UTF_16BE;
 use euclid::*;
 use image::RgbImage;
-use lopdf::content::{Content, Operation};
+use lopdf::content::Content;
 use lopdf::encryption::DecryptionError;
 use lopdf::*;
 
@@ -12,13 +12,12 @@ use rten::Model;
 #[allow(unused)]
 use rten_tensor::prelude::*;
 use itertools::Itertools;
-use std::fmt::{format, Debug, Formatter};
-use std::thread::current;
+use std::fmt::{Debug, Formatter};
 
 use euclid::vec2;
 use rayon::prelude::*;
 use std::collections::hash_map::Entry;
-use std::collections::{BTreeMap, HashMap, VecDeque, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::marker::PhantomData;
 use std::rc::Rc;
@@ -2253,7 +2252,21 @@ impl<'a> Processor<'a> {
                         (as_num(&operation.operands[1]) * 100.0_f64).round() / 100.0;
                     let new_font_name = String::from_utf8_lossy(name).into_owned();
                     let font_info = FontInfo::from_font_name(&new_font_name);
-                    let new_is_bold = font_info.weight.is_bold();
+                    
+                    // Enhanced bold detection: first try font name analysis, then fallback to font object debug
+                    let mut new_is_bold = font_info.weight.is_bold();
+                    if !new_is_bold {
+                        // Fallback to checking the font object's debug representation
+                        // This catches cases where bold info is in font descriptors but not in the name
+                        let font_debug = format!("{:?}", font).to_lowercase();
+                        new_is_bold = font_debug.contains("bold");
+                        
+                        // Debug output to help diagnose bold detection issues
+                        if new_is_bold {
+                            eprintln!("Bold detected via font debug for font: {} (weight: {:?})", new_font_name, font_info.weight);
+                        }
+                    }
+                    
                     let new_font_weight = font_info.weight.clone();
                     let new_is_italic = font_info.is_italic;
 
@@ -3616,12 +3629,11 @@ fn is_heading(segment: &TextSegment, doc_stats: &DocumentStats) -> TextLevel {
         && (segment.transformed_font_size - doc_stats.body_transformed_size).abs() < 0.1
     {
         // If it matches body font and size, check if it's bold
-        // if segment.is_bold && is_potential_heading {
-        //     return TextLevel::H6;
-        // } else {
-        //     return TextLevel::Body;
-        // }
-        return TextLevel::Body;
+        if segment.is_bold && is_potential_heading {
+            return TextLevel::H6;
+        } else {
+            return TextLevel::Body;
+        }
     }
     // If it's smaller than the body text, consider it sub-body
     else if segment.transformed_font_size < doc_stats.body_transformed_size {
@@ -3853,6 +3865,14 @@ pub fn output_doc(
 
     for segment in text_segments {
         let level = is_heading(&segment, &doc_stats);
+        
+        // Debug output for heading detection
+        // if level != TextLevel::Body && level != TextLevel::SubBody {
+        //     eprintln!("DEBUG: Detected heading level {:?} for text: {} (bold: {}, size: {})", 
+        //         level, &segment.content.chars().take(50).collect::<String>(), 
+        //         segment.is_bold, segment.transformed_font_size);
+        // }
+        
         match level {
             TextLevel::H1
             | TextLevel::H2
