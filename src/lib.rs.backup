@@ -1,6 +1,7 @@
 use adobe_cmap_parser::{ByteMapping, CIDRange, CodeRange};
 use encoding_rs::UTF_16BE;
 use euclid::*;
+use image::RgbImage;
 use lopdf::content::Content;
 use lopdf::encryption::DecryptionError;
 use lopdf::*;
@@ -739,7 +740,7 @@ impl<'a> PdfSimpleFont<'a> {
                                             }
                                         }
                                         _ => {
-                                            warn!(
+                                            println!(
                                                 "unknown glyph name '{}' for font {}",
                                                 name, base_name
                                             );
@@ -1101,7 +1102,7 @@ impl<'a> PdfFont for PdfSimpleFont<'a> {
                         .map(|x| &x[..])
                         .expect("missing unicode map and encoding");
                     let s = to_utf8(encoding, &slice);
-                    trace!("falling back to encoding {} -> {:?}", char, s);
+                    println!("falling back to encoding {} -> {:?}", char, s);
                     s
                 }
                 Some(s) => s.clone(),
@@ -1599,6 +1600,7 @@ fn build_image_ctm(page_rotate: i32) -> Transform {
 /// Decode PDF stream data, handling compression and PNG predictors
 fn decode_stream(img: &PdfImage) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     use miniz_oxide::inflate::decompress_to_vec_zlib;
+    use std::io::Read;
     
     let mut data = img.content.to_vec();
     
@@ -1743,9 +1745,6 @@ fn decode_stream(img: &PdfImage) -> Result<Vec<u8>, Box<dyn std::error::Error>> 
     Ok(data)
 }
 
-// In your content processing function:
-fn process_xobject(
-    doc: &Document,
     resources: &Dictionary,
     ocr_handler: Option<&OcrHandler>,
     text_segments: &mut Vec<TextSegment>,
@@ -1757,9 +1756,7 @@ fn process_xobject(
     page_char_counter: &mut usize,
     current_transform: &Transform,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    debug!("process_xobject called for page {}", page_num);
     let xobject = doc.get_dict_in_dict(resources, b"XObject")?;
-    debug!("Found XObject dictionary with {} entries", xobject.len());
 
     for (_, xvalue) in xobject.iter() {
         let id = xvalue.as_reference()?;
@@ -1768,23 +1765,13 @@ fn process_xobject(
         let dict = &xvalue.dict;
 
         // Only process images
-        let subtype = dict.get(b"Subtype")?.as_name()?;
-        debug!("XObject subtype: {:?}", String::from_utf8_lossy(subtype));
-        if subtype != b"Image" {
+        if dict.get(b"Subtype")?.as_name()? != b"Image" {
             continue;
         }
-        debug!("Found Image XObject!");
 
         // Extract image information
         let width = dict.get(b"Width")?.as_i64()?;
         let height = dict.get(b"Height")?.as_i64()?;
-        info!("Found image: {}x{} pixels", width, height);
-        
-        // Skip extremely large images that might cause issues
-        if width > 10000 || height > 10000 {
-            warn!("Skipping extremely large image: {}x{}", width, height);
-            continue;
-        }
         let color_space = match dict.get(b"ColorSpace") {
             Ok(cs) => match cs {
                 Object::Array(array) => {
@@ -1849,24 +1836,20 @@ fn process_xobject(
             decode_predictor,
         };
 
-        debug!("OCR handler check before");
+        println!("ocr_handler before");
         // Only attempt OCR if we have a handler
         if let Some(handler) = ocr_handler {
-            debug!("OCR handler check after");
-            debug!("Attempting image conversion: {}x{} filters={:?}", 
+            println!("ocr_handler after");
+            println!("🖼️  ATTEMPTING IMAGE CONVERSION: {}x{} filters={:?}", 
                      pdf_image.width, pdf_image.height, pdf_image.filters);
-            // Pass the current transform to properly orient the image
-            let det = current_transform.m11 * current_transform.m22 - current_transform.m12 * current_transform.m21;
-            debug!("Image transform CTM: [{:.3} {:.3} {:.3} {:.3} {:.1} {:.1}] det={:.3}", 
-                   current_transform.m11, current_transform.m12, 
-                   current_transform.m21, current_transform.m22,
-                   current_transform.m31, current_transform.m32, det);
-            match pdf_image.to_rgb_image(Some(current_transform)) {
+            // Extract image without any transformation - let it come out as stored in PDF
+            debug!("Extracting image without transformation");
+            match pdf_image.to_rgb_image(None) {
                 Ok(img) => {
                     debug!("Successful image conversion {}x{}", img.dimensions().0, img.dimensions().1);
                     if let Ok(ocr_text) = handler.process_image(&img) {
                     if !ocr_text.is_empty() {
-                        info!("OCR extracted text (Page {}, Position {:.1},{:.1}): '{}'", 
+                        println!("🔍 OCR EXTRACTED TEXT (Page {}, Position {:.1},{:.1}): '{}'", 
                                 page_num, position.0, position.1, ocr_text);
                         let ocr_text_len = ocr_text.chars().count();
                         let word_count = unicode_count_words(&ocr_text);
@@ -1895,11 +1878,11 @@ fn process_xobject(
                 } else {
                     match handler.process_image(&img) {
                         Ok(text) if text.is_empty() => {
-                            debug!("OCR: No text detected in image at page {} position ({:.1},{:.1})", 
+                            println!("⚪ OCR: No text detected in image at page {} position ({:.1},{:.1})", 
                                     page_num, position.0, position.1);
                         }
                         Err(e) => {
-                            error!("OCR error at page {} position ({:.1},{:.1}): {}", 
+                            println!("❌ OCR ERROR at page {} position ({:.1},{:.1}): {}", 
                                     page_num, position.0, position.1, e);
                         }
                         _ => {
@@ -2425,15 +2408,6 @@ impl<'a> Processor<'a> {
         
         // Store page rotation for image processing (images don't need Y-flip)
         let page_rotation_only = build_image_ctm(page_rotate);
-        
-        // Debug: Log both CTMs to understand the issue
-        let det_initial = initial_ctm.m11 * initial_ctm.m22 - initial_ctm.m12 * initial_ctm.m21;
-        let det_image = page_rotation_only.m11 * page_rotation_only.m22 - page_rotation_only.m12 * page_rotation_only.m21;
-        debug!("Initial CTM (with Y-flip): det={:.3}, CTM=[{:.3} {:.3} {:.3} {:.3} {:.1} {:.1}]", 
-               det_initial, initial_ctm.m11, initial_ctm.m12, initial_ctm.m21, initial_ctm.m22, initial_ctm.m31, initial_ctm.m32);
-        debug!("Image CTM (no Y-flip): det={:.3}, CTM=[{:.3} {:.3} {:.3} {:.3} {:.1} {:.1}]", 
-               det_image, page_rotation_only.m11, page_rotation_only.m12, page_rotation_only.m21, page_rotation_only.m22, 
-               page_rotation_only.m31, page_rotation_only.m32);
         
         let mut gs: GraphicsState = GraphicsState {
             ts: TextState {
@@ -3103,15 +3077,6 @@ impl<'a> Processor<'a> {
                             (100.0, 100.0) // No subtype
                         };
 
-                        // Debug: Log the current CTM to understand what transformations are applied
-                        debug!("Current graphics state CTM: [{:.3} {:.3} {:.3} {:.3} {:.1} {:.1}]",
-                               gs.ctm.m11, gs.ctm.m12, gs.ctm.m21, gs.ctm.m22, gs.ctm.m31, gs.ctm.m32);
-                        
-                        // The PDF coordinate system and image coordinate system may differ
-                        // We need to detect the correct orientation based on the CTM
-                        // For now, pass the current CTM to let the image processor figure it out
-                        let image_transform = gs.ctm.clone();
-                        
                         if let Err(e) = process_xobject(
                             &doc,
                             resources,
@@ -3123,7 +3088,7 @@ impl<'a> Processor<'a> {
                             current_font_size,
                             current_transformed_font_size,
                             &mut page_char_counter,
-                            &image_transform,  // Use CTM without Y-flip for images
+                            &page_rotation_only,  // Fixed: Use page rotation without Y-flip for images
                         ) {
                             // Log error but continue processing
                             eprintln!("Failed to process image in PDF: {}", e);

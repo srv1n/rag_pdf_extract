@@ -2,8 +2,10 @@ use std::collections::VecDeque;
 
 use lopdf::{Document, Object, ObjectId};
 use std::str;
+use log::debug;
 
-use crate::{ContentOutput, OutputError};
+use crate::{OutputError};
+use crate::document::processing::ContentOutput;
 #[derive(Debug)]
 /// Errors that may occur while loading a PDF
 pub enum LoadError {
@@ -251,14 +253,13 @@ fn is_required(field: &lopdf::Dictionary) -> bool {
 }
 
 fn get_field_value(field: &lopdf::Dictionary) -> Option<String> {
-    match field
+    field
         .get(b"V")
-        .and_then(|v| Ok(v.as_string().ok()))
-        .map(|s| s.unwrap().into_owned())
-    {
-        Ok(s) => Some(s),
-        Err(_e) => None,
-    }
+        .ok()?
+        .as_str()
+        .ok()
+        .and_then(|bytes| std::str::from_utf8(bytes).ok())
+        .map(|s| s.to_owned())
 }
 
 fn get_field_values(field: &lopdf::Dictionary) -> Vec<String> {
@@ -308,7 +309,7 @@ pub fn form_fields(
     document_structure: &mut Vec<ContentOutput>,
 ) -> Result<(), OutputError> {
     let form = Form::load_doc(doc.clone())?;
-    println!("form len: {}", form.len());
+    debug!("Form length: {}", form.len());
     let mut text = String::new();
     for i in 0..form.len() {
         // let page = form.doc.;

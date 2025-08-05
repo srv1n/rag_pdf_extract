@@ -9,9 +9,10 @@ fn main() {
 
     // Handle help
     if args.len() > 1 && (args[1] == "--help" || args[1] == "-h") {
-        println!("Usage: {} [PDF_FILE] [MAX_TOKENS]", args[0]);
+        println!("Usage: {} [PDF_FILE] [MAX_TOKENS] [--ocr DETECTION_MODEL RECOGNITION_MODEL]", args[0]);
         println!("  PDF_FILE: Path to PDF file (default: 9.pdf)");
         println!("  MAX_TOKENS: Maximum tokens per chunk (default: 500)");
+        println!("  --ocr: Enable OCR with detection and recognition models");
         process::exit(0);
     }
 
@@ -22,16 +23,29 @@ fn main() {
         .and_then(|s| s.parse::<usize>().ok())
         .or(Some(500));
 
+    // Check for OCR flag
+    let ocr_config = if args.len() > 3 && args[3] == "--ocr" && args.len() >= 6 {
+        Some(OcrConfig {
+            detection_model: Some(args[4].clone()),
+            recognition_model: Some(args[5].clone()),
+        })
+    } else {
+        None
+    };
+
     println!("=== Extracting PDF: {} ===", file);
     if let Some(tokens) = max_tokens {
         println!("Max tokens per chunk: {}", tokens);
     } else {
         println!("No token limit (natural paragraph chunking)");
     }
+    if ocr_config.is_some() {
+        println!("OCR enabled with models");
+    }
     println!();
 
     // Parse the PDF
-    let docs = match parse_pdf(file, 1, "file", None, None, None, max_tokens) {
+    let docs = match parse_pdf(file, 1, "file", ocr_config, None, None, max_tokens) {
         Ok(docs) => docs,
         Err(e) => {
             eprintln!("Error parsing PDF: {}", e);

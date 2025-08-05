@@ -1,7 +1,8 @@
-use regex::Regex;
-use text_splitter::{TextSplitter, ChunkConfig};
-use tiktoken_rs::cl100k_base;
 use lazy_static::lazy_static;
+use regex::Regex;
+use std::collections::HashSet;
+use text_splitter::{ChunkConfig, TextSplitter};
+use tiktoken_rs::{get_bpe_from_model, CoreBPE};
 
 lazy_static! {
     static ref RE_WHITESPACES: Regex = Regex::new(r"\s+").unwrap();
@@ -14,36 +15,39 @@ lazy_static! {
 #[derive(Debug, Clone)]
 pub struct SplitConfig {
     pub max_tokens: usize,
-    pub words_to_tokens_ratio: f64,  // Conservative estimate: 1 word ≈ 1.5 tokens
-    pub check_threshold: f64,        // Check with tiktoken when at 80% of limit
+    pub words_to_tokens_ratio: f64, // Conservative estimate: 1 word ≈ 1.5 tokens
+    pub check_threshold: f64,       // Check with tiktoken when at 80% of limit
 }
 
 impl Default for SplitConfig {
     fn default() -> Self {
         Self {
             max_tokens: 300,
-            words_to_tokens_ratio: 1.5,  // Conservative: assume 1 word = 1.5 tokens
-            check_threshold: 0.8,         // Check when at 80% of limit
+            words_to_tokens_ratio: 1.5, // Conservative: assume 1 word = 1.5 tokens
+            check_threshold: 0.7,       // Check when at 70% of limit for stricter enforcement
         }
     }
 }
 
 /// Preprocess text EXACTLY like the implementation you provided
 pub fn preprocess_text(text: &str) -> String {
+    // First handle hyphenated words at line breaks
+    let text = fix_hyphenated_words(text);
+    
     // Handle repeated characters without backreferences
     let mut cleaned_text = String::new();
     let mut chars = text.chars().peekable();
-    
+
     while let Some(ch) = chars.next() {
         cleaned_text.push(ch);
         let mut count = 1;
-        
+
         // Count consecutive identical characters
         while chars.peek() == Some(&ch) {
             chars.next();
             count += 1;
         }
-        
+
         // If we had 4 or more of the same character, replace with exactly 3
         if count >= 4 {
             // We already pushed one, so push 2 more
@@ -56,20 +60,57 @@ pub fn preprocess_text(text: &str) -> String {
             }
         }
     }
-    
+
     // Apply the other regex replacements
     let cleaned_text = RE_WHITESPACES.replace_all(&cleaned_text, " ");
     let cleaned_text = RE_DASHES.replace_all(&cleaned_text, "-");
     let cleaned_text = RE_UNDERSCORES.replace_all(&cleaned_text, "_");
     let cleaned_text = RE_XO.replace_all(&cleaned_text, r"\ 0");
-    
+
     cleaned_text.trim().to_string()
 }
 
+/// Fix hyphenated words that are split across lines
+fn fix_hyphenated_words(text: &str) -> String {
+    lazy_static! {
+        // Match word-hyphen at end of line followed by continuation on next line
+        static ref HYPHEN_NEWLINE: Regex = Regex::new(r"(\w+)-\s*\n\s*(\w+)").unwrap();
+    }
+    
+    // Replace hyphen-newline-word patterns with just the combined word
+    HYPHEN_NEWLINE.replace_all(text, "$1$2").to_string()
+}
+
 /// Get a text splitter configured like the implementation you provided
-pub fn get_text_splitter(max_tokens: usize) -> Result<TextSplitter<tiktoken_rs::CoreBPE>, Box<dyn std::error::Error>> {
-    let tokenizer = cl100k_base()?;
-    Ok(TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer)))
+pub fn get_text_splitter(
+    max_tokens: usize,
+) -> Result<TextSplitter<tiktoken_rs::CoreBPE>, Box<dyn std::error::Error>> {
+    let tokenizer = get_bpe_from_model("gpt-4o")?;
+    Ok(TextSplitter::new(
+        ChunkConfig::new(max_tokens).with_sizer(tokenizer),
+    ))
+}
+
+lazy_static! {
+    /// Create a shared tokenizer instance for efficiency
+    static ref SHARED_TOKENIZER: Option<CoreBPE> = {
+        match get_bpe_from_model("gpt-4o") {
+            Ok(tokenizer) => Some(tokenizer),
+            Err(_) => None,
+        }
+    };
+}
+
+/// Get a text splitter using the shared tokenizer
+pub fn get_text_splitter_shared(
+    max_tokens: usize,
+) -> Result<TextSplitter<tiktoken_rs::CoreBPE>, Box<dyn std::error::Error>> {
+    match &*SHARED_TOKENIZER {
+        Some(tokenizer) => Ok(TextSplitter::new(
+            ChunkConfig::new(max_tokens).with_sizer(tokenizer.clone()),
+        )),
+        None => get_text_splitter(max_tokens), // Fallback to creating new tokenizer
+    }
 }
 
 /// Estimate token count from word count using heuristic
@@ -89,52 +130,65 @@ pub fn should_check_tokens(estimated_tokens: usize, max_tokens: usize, threshold
 
 /// Get actual token count using tiktoken
 pub fn get_token_count(text: &str) -> Result<usize, Box<dyn std::error::Error>> {
-    let tokenizer = cl100k_base()?;
-    let tokens = tokenizer.encode_with_special_tokens(text);
+    let tokenizer = get_bpe_from_model("gpt-4o")?;
+    let allowed_special = HashSet::new();
+    let (tokens, _) = tokenizer.encode(text, &allowed_special);
     Ok(tokens.len())
 }
 
 /// Efficient token counting with caching for repeated checks
 pub struct TokenCounter {
-    tokenizer: tiktoken_rs::CoreBPE,
-    cache: std::collections::HashMap<String, usize>,
+    bpe: tiktoken_rs::CoreBPE,
+    cache: std::collections::HashMap<u64, usize>,
 }
 
 impl TokenCounter {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        Ok(Self {
-            tokenizer: cl100k_base()?,
+        let bpe = get_bpe_from_model("gpt-4o")?; // Using gpt-4o tokenizer
+        Ok(TokenCounter { 
+            bpe,
             cache: std::collections::HashMap::new(),
         })
     }
-    
+
     pub fn count_tokens(&mut self, text: &str) -> usize {
-        if let Some(&count) = self.cache.get(text) {
+        // Use a fast hash for caching
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        
+        let mut hasher = DefaultHasher::new();
+        text.hash(&mut hasher);
+        let hash = hasher.finish();
+        
+        // Check cache first
+        if let Some(&count) = self.cache.get(&hash) {
             return count;
         }
         
-        let tokens = self.tokenizer.encode_with_special_tokens(text);
+        // Count tokens
+        let allowed_special = HashSet::new();
+        let (tokens, _) = self.bpe.encode(text, &allowed_special);
         let count = tokens.len();
         
-        // Only cache small texts to avoid memory bloat
-        if text.len() < 1000 {
-            self.cache.insert(text.to_string(), count);
+        // Cache the result (limit cache size to prevent memory issues)
+        if self.cache.len() < 10000 {
+            self.cache.insert(hash, count);
         }
         
         count
     }
     
-    /// Estimate if adding new text would exceed limit
-    pub fn would_exceed_limit(&mut self, current_text: &str, new_text: &str, max_tokens: usize) -> bool {
-        let combined = format!("{} {}", current_text, new_text);
-        self.count_tokens(&combined) > max_tokens
+    pub fn estimate_tokens(&self, text: &str) -> usize {
+        // Fast estimation without actual tokenization
+        let word_count = count_words(text);
+        estimate_tokens_from_words(word_count, 1.5)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_preprocess_text() {
         assert_eq!(preprocess_text("hello    world"), "hello world");
@@ -144,7 +198,7 @@ mod tests {
         assert_eq!(preprocess_text("aaa"), "aaa");
         assert_eq!(preprocess_text("aa"), "aa");
     }
-    
+
     #[test]
     fn test_word_count() {
         assert_eq!(count_words("hello world"), 2);

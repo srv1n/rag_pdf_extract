@@ -1,6 +1,7 @@
 use adobe_cmap_parser::{ByteMapping, CIDRange, CodeRange};
 use encoding_rs::UTF_16BE;
 use euclid::*;
+use image::RgbImage;
 use lopdf::content::Content;
 use lopdf::encryption::DecryptionError;
 use lopdf::*;
@@ -739,7 +740,7 @@ impl<'a> PdfSimpleFont<'a> {
                                             }
                                         }
                                         _ => {
-                                            warn!(
+                                            println!(
                                                 "unknown glyph name '{}' for font {}",
                                                 name, base_name
                                             );
@@ -1101,7 +1102,7 @@ impl<'a> PdfFont for PdfSimpleFont<'a> {
                         .map(|x| &x[..])
                         .expect("missing unicode map and encoding");
                     let s = to_utf8(encoding, &slice);
-                    trace!("falling back to encoding {} -> {:?}", char, s);
+                    println!("falling back to encoding {} -> {:?}", char, s);
                     s
                 }
                 Some(s) => s.clone(),
@@ -1599,6 +1600,7 @@ fn build_image_ctm(page_rotate: i32) -> Transform {
 /// Decode PDF stream data, handling compression and PNG predictors
 fn decode_stream(img: &PdfImage) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     use miniz_oxide::inflate::decompress_to_vec_zlib;
+    use std::io::Read;
     
     let mut data = img.content.to_vec();
     
@@ -1743,6 +1745,225 @@ fn decode_stream(img: &PdfImage) -> Result<Vec<u8>, Box<dyn std::error::Error>> 
     Ok(data)
 }
 
+// PdfImage implementation moved to pdf_image.rs
+            let mut data = self.content.to_vec();
+            println!("🔍 IMAGE DEBUG: Original data length: {}", data.len());
+
+            for filter in filters {
+                println!("🔍 IMAGE DEBUG: Processing filter: {}", filter);
+                match filter.as_str() {
+                    "DCTDecode" | "DCT" => {
+                        println!("🔍 IMAGE DEBUG: Handling DCTDecode (JPEG)");
+                        // JPEG data
+                        let mut img = image::load_from_memory_with_format(
+                            &data,
+                            image::ImageFormat::Jpeg,
+                        )
+                        .ok()
+                        .map(|img| img.into_rgb8())?;
+                        
+                        // Step 4: Handle /Decode array flips
+                        let decode_mirror = self.origin_dict
+                            .get(b"Decode")
+                            .ok()
+                            .and_then(|o| o.as_array().ok())
+                            .map(|a| {
+                                if a.len() >= 2 {
+                                    matches!(
+                                        (a.get(0).and_then(|o| o.as_i64().ok()), 
+                                         a.get(1).and_then(|o| o.as_i64().ok())),
+                                        (Some(1), Some(0))
+                                    )
+                                } else {
+                                    false
+                                }
+                            })
+                            .unwrap_or(false);
+                        
+                        if decode_mirror {
+                            println!("🔍 IMAGE DEBUG: /Decode [1 0] detected - applying vertical flip before rotation");
+                            img = image::imageops::flip_vertical(&img);
+                        }
+                        
+                        // Apply transformation if provided
+                        if let Some(transform) = transform {
+                            println!("🔍 IMAGE DEBUG: Applying transformation matrix: {:?}", transform);
+                            img = apply_transform_to_image(img, transform);
+                        }
+                        
+                        
+                        // EXPORT DEBUG IMAGE to local directory
+                        let debug_dir = "./debug_images";
+                        if let Err(e) = std::fs::create_dir_all(debug_dir) {
+                            println!("🔍 IMAGE DEBUG: Failed to create debug directory: {}", e);
+                        } else {
+                            let timestamp = std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap()
+                                .as_millis();
+                            let filename = format!("{}/raw_extracted_image_{}x{}_{}.png", 
+                                                 debug_dir, img.width(), img.height(), timestamp);
+                            if let Err(e) = img.save(&filename) {
+                                println!("🔍 IMAGE DEBUG: Failed to save raw extracted image: {}", e);
+                            } else {
+                                println!("🔍 IMAGE DEBUG: ✅ Saved raw extracted image (before rotation correction): {}", filename);
+                            }
+                        }
+                        
+                        return Some(img);
+                    }
+                    // "JPXDecode" => {
+                    //     // JPEG2000 data
+                    //     return image::load_from_memory_with_format(&data, image::ImageFormat::)
+                    //         .ok()
+                    //         .map(|img| img.into_rgb8());
+                    // },
+                    "FlateDecode" => {
+                        println!("🔍 IMAGE DEBUG: Decompressing FlateDecode");
+                        // Decompress using flate/zlib
+                        match miniz_oxide::inflate::decompress_to_vec_zlib(&data) {
+                            Ok(decompressed) => {
+                                println!("🔍 IMAGE DEBUG: FlateDecode successful - {} -> {} bytes", 
+                                        data.len(), decompressed.len());
+                                data = decompressed;
+                            }
+                            Err(e) => {
+                                println!("❌ IMAGE DEBUG: FlateDecode failed: {:?}", e);
+                                return None;
+                            }
+                        }
+                    }
+                    _ => {
+                        println!("❌ IMAGE DEBUG: Unsupported filter: {}", filter);
+                        return None; // Unsupported filter
+                    }
+                }
+            }
+            data
+        } else {
+            println!("🔍 IMAGE DEBUG: No filters, using raw data");
+            self.content.to_vec()
+        };
+
+        println!("🔍 IMAGE DEBUG: Decoded data length: {}", decoded_data.len());
+        
+        // Handle different color spaces
+        match &self.color_space {
+            Some(cs) => {
+                println!("🔍 IMAGE DEBUG: Processing color space: {}", cs);
+                match cs.as_str() {
+                    "DeviceRGB" | "ICCBased" => {
+                        // ICCBased color spaces are often RGB, treat them like DeviceRGB
+                        println!("🔍 IMAGE DEBUG: Creating RGB image ({})", cs);
+                        let expected_size = (self.width as usize) * (self.height as usize) * 3;
+                        println!("🔍 IMAGE DEBUG: Expected RGB data size: {}, actual: {}", expected_size, decoded_data.len());
+                        
+                        let mut img = RgbImage::new(self.width as u32, self.height as u32);
+                        for y in 0..self.height as u32 {
+                            for x in 0..self.width as u32 {
+                                let pos = ((y * self.width as u32 + x) * 3) as usize;
+                                if pos + 2 < decoded_data.len() {
+                                    img.put_pixel(
+                                        x,
+                                        y,
+                                        image::Rgb([
+                                            decoded_data[pos],
+                                            decoded_data[pos + 1],
+                                            decoded_data[pos + 2],
+                                        ]),
+                                    );
+                                }
+                            }
+                        }
+                        println!("✅ IMAGE DEBUG: RGB image ({}) created successfully", cs);
+                        
+                        // Apply transformation if provided  
+                        let final_img = if let Some(transform) = transform {
+                            println!("🔍 IMAGE DEBUG: Applying transformation to RGB image");
+                            apply_transform_to_image(img, transform)
+                        } else {
+                            img
+                        };
+                        
+                        // EXPORT DEBUG IMAGE to local directory
+                        let debug_dir = "./debug_images";
+                        if let Err(e) = std::fs::create_dir_all(debug_dir) {
+                            println!("🔍 IMAGE DEBUG: Failed to create debug directory: {}", e);
+                        } else {
+                            let timestamp = std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap()
+                                .as_millis();
+                            let filename = format!("{}/raw_rgb_{}x{}_{}.png", 
+                                                 debug_dir, final_img.width(), final_img.height(), timestamp);
+                            if let Err(e) = final_img.save(&filename) {
+                                println!("🔍 IMAGE DEBUG: Failed to save raw RGB image: {}", e);
+                            } else {
+                                println!("🔍 IMAGE DEBUG: ✅ Saved raw RGB image (before rotation correction): {}", filename);
+                            }
+                        }
+                        
+                        Some(final_img)
+                    }
+                    "DeviceGray" => {
+                        println!("🔍 IMAGE DEBUG: Creating DeviceGray image");
+                        let expected_size = (self.width as usize) * (self.height as usize);
+                        println!("🔍 IMAGE DEBUG: Expected Gray data size: {}, actual: {}", expected_size, decoded_data.len());
+                        
+                        let mut img = RgbImage::new(self.width as u32, self.height as u32);
+                        for y in 0..self.height as u32 {
+                            for x in 0..self.width as u32 {
+                                let pos = (y * self.width as u32 + x) as usize;
+                                if pos < decoded_data.len() {
+                                    let gray = decoded_data[pos];
+                                    img.put_pixel(x, y, image::Rgb([gray, gray, gray]));
+                                }
+                            }
+                        }
+                        println!("✅ IMAGE DEBUG: DeviceGray image created successfully");
+                        
+                        // Apply transformation if provided  
+                        let final_img = if let Some(transform) = transform {
+                            println!("🔍 IMAGE DEBUG: Applying transformation to Gray image");
+                            apply_transform_to_image(img, transform)
+                        } else {
+                            img
+                        };
+                        
+                        // EXPORT DEBUG IMAGE to local directory
+                        let debug_dir = "./debug_images";
+                        if let Err(e) = std::fs::create_dir_all(debug_dir) {
+                            println!("🔍 IMAGE DEBUG: Failed to create debug directory: {}", e);
+                        } else {
+                            let timestamp = std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap()
+                                .as_millis();
+                            let filename = format!("{}/raw_gray_{}x{}_{}.png", 
+                                                 debug_dir, final_img.width(), final_img.height(), timestamp);
+                            if let Err(e) = final_img.save(&filename) {
+                                println!("🔍 IMAGE DEBUG: Failed to save raw grayscale image: {}", e);
+                            } else {
+                                println!("🔍 IMAGE DEBUG: ✅ Saved raw grayscale image (before rotation correction): {}", filename);
+                            }
+                        }
+                        
+                        Some(final_img)
+                    }
+                    _ => {
+                        println!("❌ IMAGE DEBUG: Unsupported color space: {}", cs);
+                        None // Other color spaces not supported for now
+                    }
+                }
+            },
+            None => {
+                println!("❌ IMAGE DEBUG: No color space specified");
+                None
+            }
+        }
+    }
+}
+
 // In your content processing function:
 fn process_xobject(
     doc: &Document,
@@ -1757,9 +1978,7 @@ fn process_xobject(
     page_char_counter: &mut usize,
     current_transform: &Transform,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    debug!("process_xobject called for page {}", page_num);
     let xobject = doc.get_dict_in_dict(resources, b"XObject")?;
-    debug!("Found XObject dictionary with {} entries", xobject.len());
 
     for (_, xvalue) in xobject.iter() {
         let id = xvalue.as_reference()?;
@@ -1768,23 +1987,13 @@ fn process_xobject(
         let dict = &xvalue.dict;
 
         // Only process images
-        let subtype = dict.get(b"Subtype")?.as_name()?;
-        debug!("XObject subtype: {:?}", String::from_utf8_lossy(subtype));
-        if subtype != b"Image" {
+        if dict.get(b"Subtype")?.as_name()? != b"Image" {
             continue;
         }
-        debug!("Found Image XObject!");
 
         // Extract image information
         let width = dict.get(b"Width")?.as_i64()?;
         let height = dict.get(b"Height")?.as_i64()?;
-        info!("Found image: {}x{} pixels", width, height);
-        
-        // Skip extremely large images that might cause issues
-        if width > 10000 || height > 10000 {
-            warn!("Skipping extremely large image: {}x{}", width, height);
-            continue;
-        }
         let color_space = match dict.get(b"ColorSpace") {
             Ok(cs) => match cs {
                 Object::Array(array) => {
@@ -1849,24 +2058,19 @@ fn process_xobject(
             decode_predictor,
         };
 
-        debug!("OCR handler check before");
+        println!("ocr_handler before");
         // Only attempt OCR if we have a handler
         if let Some(handler) = ocr_handler {
-            debug!("OCR handler check after");
-            debug!("Attempting image conversion: {}x{} filters={:?}", 
+            println!("ocr_handler after");
+            println!("🖼️  ATTEMPTING IMAGE CONVERSION: {}x{} filters={:?}", 
                      pdf_image.width, pdf_image.height, pdf_image.filters);
-            // Pass the current transform to properly orient the image
-            let det = current_transform.m11 * current_transform.m22 - current_transform.m12 * current_transform.m21;
-            debug!("Image transform CTM: [{:.3} {:.3} {:.3} {:.3} {:.1} {:.1}] det={:.3}", 
-                   current_transform.m11, current_transform.m12, 
-                   current_transform.m21, current_transform.m22,
-                   current_transform.m31, current_transform.m32, det);
-            match pdf_image.to_rgb_image(Some(current_transform)) {
-                Ok(img) => {
-                    debug!("Successful image conversion {}x{}", img.dimensions().0, img.dimensions().1);
-                    if let Ok(ocr_text) = handler.process_image(&img) {
+            // Extract image without any transformation - let it come out as stored in PDF
+            println!("🔍 IMAGE DEBUG: Extracting image without transformation");
+            if let Some(img) = pdf_image.to_rgb_image(None) {
+                println!("img: SUCCESSFUL CONVERSION {}x{}", img.dimensions().0, img.dimensions().1);
+                if let Ok(ocr_text) = handler.process_image(&img) {
                     if !ocr_text.is_empty() {
-                        info!("OCR extracted text (Page {}, Position {:.1},{:.1}): '{}'", 
+                        println!("🔍 OCR EXTRACTED TEXT (Page {}, Position {:.1},{:.1}): '{}'", 
                                 page_num, position.0, position.1, ocr_text);
                         let ocr_text_len = ocr_text.chars().count();
                         let word_count = unicode_count_words(&ocr_text);
@@ -1895,11 +2099,11 @@ fn process_xobject(
                 } else {
                     match handler.process_image(&img) {
                         Ok(text) if text.is_empty() => {
-                            debug!("OCR: No text detected in image at page {} position ({:.1},{:.1})", 
+                            println!("⚪ OCR: No text detected in image at page {} position ({:.1},{:.1})", 
                                     page_num, position.0, position.1);
                         }
                         Err(e) => {
-                            error!("OCR error at page {} position ({:.1},{:.1}): {}", 
+                            println!("❌ OCR ERROR at page {} position ({:.1},{:.1}): {}", 
                                     page_num, position.0, position.1, e);
                         }
                         _ => {
@@ -1907,11 +2111,9 @@ fn process_xobject(
                         }
                     }
                 }
-                }
-                Err(e) => {
-                    error!("Image conversion failed: {}x{} filters={:?}, error: {}", 
-                         pdf_image.width, pdf_image.height, pdf_image.filters, e);
-                }
+            } else {
+                println!("❌ IMAGE CONVERSION FAILED: {}x{} filters={:?}", 
+                         pdf_image.width, pdf_image.height, pdf_image.filters);
             }
         }
     }
@@ -2425,15 +2627,6 @@ impl<'a> Processor<'a> {
         
         // Store page rotation for image processing (images don't need Y-flip)
         let page_rotation_only = build_image_ctm(page_rotate);
-        
-        // Debug: Log both CTMs to understand the issue
-        let det_initial = initial_ctm.m11 * initial_ctm.m22 - initial_ctm.m12 * initial_ctm.m21;
-        let det_image = page_rotation_only.m11 * page_rotation_only.m22 - page_rotation_only.m12 * page_rotation_only.m21;
-        debug!("Initial CTM (with Y-flip): det={:.3}, CTM=[{:.3} {:.3} {:.3} {:.3} {:.1} {:.1}]", 
-               det_initial, initial_ctm.m11, initial_ctm.m12, initial_ctm.m21, initial_ctm.m22, initial_ctm.m31, initial_ctm.m32);
-        debug!("Image CTM (no Y-flip): det={:.3}, CTM=[{:.3} {:.3} {:.3} {:.3} {:.1} {:.1}]", 
-               det_image, page_rotation_only.m11, page_rotation_only.m12, page_rotation_only.m21, page_rotation_only.m22, 
-               page_rotation_only.m31, page_rotation_only.m32);
         
         let mut gs: GraphicsState = GraphicsState {
             ts: TextState {
@@ -3103,15 +3296,6 @@ impl<'a> Processor<'a> {
                             (100.0, 100.0) // No subtype
                         };
 
-                        // Debug: Log the current CTM to understand what transformations are applied
-                        debug!("Current graphics state CTM: [{:.3} {:.3} {:.3} {:.3} {:.1} {:.1}]",
-                               gs.ctm.m11, gs.ctm.m12, gs.ctm.m21, gs.ctm.m22, gs.ctm.m31, gs.ctm.m32);
-                        
-                        // The PDF coordinate system and image coordinate system may differ
-                        // We need to detect the correct orientation based on the CTM
-                        // For now, pass the current CTM to let the image processor figure it out
-                        let image_transform = gs.ctm.clone();
-                        
                         if let Err(e) = process_xobject(
                             &doc,
                             resources,
@@ -3123,7 +3307,7 @@ impl<'a> Processor<'a> {
                             current_font_size,
                             current_transformed_font_size,
                             &mut page_char_counter,
-                            &image_transform,  // Use CTM without Y-flip for images
+                            &page_rotation_only,  // Fixed: Use page rotation without Y-flip for images
                         ) {
                             // Log error but continue processing
                             eprintln!("Failed to process image in PDF: {}", e);
