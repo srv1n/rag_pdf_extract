@@ -349,21 +349,50 @@ pub fn output_doc(
         }
     };
 
-    // Process pages in parallel
+    // Process pages in parallel with error handling
     // Change from flat_map to map to preserve page boundaries
     let page_results: Vec<(u32, Vec<TextSegment>)> = pages
         .par_iter()
-        .map(|dict| {
+        .filter_map(|dict| {
             let page_num = dict.0;
-            let page_dict = doc.get_object(*dict.1).unwrap().as_dict().unwrap();
+            
+            // Try to get page dictionary
+            let page_dict = match doc.get_object(*dict.1) {
+                Ok(obj) => match obj.as_dict() {
+                    Ok(dict) => dict,
+                    Err(e) => {
+                        error!("Failed to get page {} dictionary: {:?}", page_num, e);
+                        return Some((*page_num, Vec::new())); // Return empty segments for this page
+                    }
+                },
+                Err(e) => {
+                    error!("Failed to get page {} object: {:?}", page_num, e);
+                    return Some((*page_num, Vec::new())); // Return empty segments for this page
+                }
+            };
+            
             let resources = get_inherited(doc, page_dict, b"Resources").unwrap_or(empty_resources);
 
-            let media_box: Vec<f64> = get_inherited(doc, page_dict, b"MediaBox").expect("MediaBox");
-            let media_box = MediaBox {
-                llx: media_box[0],
-                lly: media_box[1],
-                urx: media_box[2],
-                ury: media_box[3],
+            // Try to get media box
+            let media_box = match get_inherited(doc, page_dict, b"MediaBox") {
+                Some(mb) => {
+                    let mb_vec: Vec<f64> = mb;
+                    MediaBox {
+                        llx: mb_vec[0],
+                        lly: mb_vec[1],
+                        urx: mb_vec[2],
+                        ury: mb_vec[3],
+                    }
+                }
+                None => {
+                    error!("Page {} missing MediaBox, using default", page_num);
+                    MediaBox {
+                        llx: 0.0,
+                        lly: 0.0,
+                        urx: 612.0,  // Default US Letter width
+                        ury: 792.0,  // Default US Letter height
+                    }
+                }
             };
             
             // Get page rotation (Layer 1)
@@ -373,19 +402,35 @@ pub fn output_doc(
             let mut p = Processor::new();
             let mut page_segments = Vec::new();
 
-            p.process_stream(
-                &doc,
-                ocr_handler,
-                doc.get_page_content(*dict.1).unwrap(),
-                resources,
-                &media_box,
-                *page_num,
-                &mut page_segments,
-                page_rotate,
-            )
-            .unwrap();
+            // Try to process page content
+            match doc.get_page_content(*dict.1) {
+                Ok(content) => {
+                    match p.process_stream(
+                        &doc,
+                        ocr_handler,
+                        content,
+                        resources,
+                        &media_box,
+                        *page_num,
+                        &mut page_segments,
+                        page_rotate,
+                    ) {
+                        Ok(_) => {
+                            debug!("Successfully processed page {} with {} segments", page_num, page_segments.len());
+                        }
+                        Err(e) => {
+                            error!("Error processing page {} content: {:?}. Returning partial results.", page_num, e);
+                            // page_segments may contain partial results
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("Failed to get content for page {}: {:?}", page_num, e);
+                    // Return empty segments for this page
+                }
+            }
 
-            (*dict.0, page_segments) // Return tuple of (page_num, segments)
+            Some((*dict.0, page_segments)) // Return tuple of (page_num, segments)
         })
         .collect();
 
