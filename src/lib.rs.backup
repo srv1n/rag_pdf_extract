@@ -1,10 +1,11 @@
 use adobe_cmap_parser::{ByteMapping, CIDRange, CodeRange};
 use encoding_rs::UTF_16BE;
 use euclid::*;
-use log::{debug, error, info, trace, warn};
+use image::RgbImage;
 use lopdf::content::Content;
 use lopdf::encryption::DecryptionError;
 use lopdf::*;
+use log::{debug, error, info, trace, warn};
 
 use std::fmt::{Debug, Formatter};
 
@@ -12,27 +13,27 @@ use euclid::vec2;
 use rayon::prelude::*;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::fmt;
 use std::fs::File;
 use std::marker::PhantomData;
 use std::rc::Rc;
 use std::result::Result;
 use std::slice::Iter;
 use std::str;
+use std::fmt;
 use unicode_normalization::UnicodeNormalization;
 
-mod core_fonts;
 mod encodings;
+mod core_fonts;
 
 mod chunk_accumulator;
 pub mod document;
 mod form;
 mod glyphnames;
 mod heading_hierarchy;
-mod ocrs;
-mod pdf_image;
 pub mod text_splitting;
 mod zapfglyphnames;
+mod ocrs;
+mod pdf_image;
 
 // Re-export OCR types
 pub use ocrs::{OcrConfig, OcrHandler};
@@ -41,13 +42,15 @@ use ocrs::apply_transform_to_image;
 
 // Re-export document processing types and functions
 pub use document::{
-    calculate_document_stats, calculate_heading_thresholds, calculate_mode, is_heading, output_doc,
-    output_doc_new_schema, parse_pdf, DocumentStats, FontStats, HeaderFooterDetector,
-    HeaderFooterPattern, HeaderFooterType, PageOccurrence, PageText, PostProcessor, TextLevel,
+    TextLevel, is_heading, HeaderFooterDetector, HeaderFooterPattern, HeaderFooterType, 
+    PageOccurrence, output_doc, output_doc_new_schema, parse_pdf, PostProcessor, PageText,
+    DocumentStats, FontStats, calculate_document_stats, calculate_mode, calculate_heading_thresholds
 };
 
 use crate::chunk_accumulator::count_words as unicode_count_words;
-use crate::text_splitting::{count_words, estimate_tokens_from_words};
+use crate::text_splitting::{
+    count_words, estimate_tokens_from_words,
+};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -95,7 +98,7 @@ pub struct PdfLocation {
 pub struct PageFragment {
     pub page: u32,
     pub char_range: CharRange,
-    pub bbox: BoundingBox, // Renamed from bbox_union for clarity
+    pub bbox: BoundingBox,  // Renamed from bbox_union for clarity
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -143,42 +146,6 @@ pub struct HtmlLocation {
     pub element_path: Vec<String>,
     pub element_id: Option<String>,
     pub char_range: CharRange,
-}
-
-/// Statistics for PDF extraction process
-#[derive(Debug, Clone, Default)]
-pub struct ExtractionStats {
-    pub total_pages: usize,
-    pub successful_pages: usize,
-    pub partial_pages: usize,
-    pub failed_pages: usize,
-    pub total_chunks: usize,
-    pub ocr_pages: usize,
-    pub total_segments: usize,
-    pub errors: Vec<String>,
-    pub warnings: Vec<String>,
-}
-
-impl ExtractionStats {
-    pub fn new() -> Self {
-        Self::default()
-    }
-    
-    pub fn add_error(&mut self, page: u32, error: String) {
-        self.errors.push(format!("Page {}: {}", page, error));
-    }
-    
-    pub fn add_warning(&mut self, page: u32, warning: String) {
-        self.warnings.push(format!("Page {}: {}", page, warning));
-    }
-    
-    pub fn success_rate(&self) -> f64 {
-        if self.total_pages == 0 {
-            0.0
-        } else {
-            (self.successful_pages as f64) / (self.total_pages as f64)
-        }
-    }
 }
 
 lazy_static! {
@@ -231,6 +198,7 @@ fn is_new_line(current_x: f64, last_end: f64, current_y: f64, last_y: f64, font_
     // New line if we've moved down/up significantly and moved back to the left
     y_diff > font_size * SAME_LINE_THRESHOLD && current_x < last_end
 }
+
 
 #[derive(Debug)]
 pub enum OutputError {
@@ -772,7 +740,7 @@ impl<'a> PdfSimpleFont<'a> {
                                             }
                                         }
                                         _ => {
-                                            warn!(
+                                            println!(
                                                 "unknown glyph name '{}' for font {}",
                                                 name, base_name
                                             );
@@ -1075,6 +1043,7 @@ trait PdfFont: Debug {
     fn get_width(&self, id: CharCode) -> f64;
     fn next_char(&self, iter: &mut Iter<u8>) -> Option<(CharCode, u8)>;
     fn decode_char(&self, char: CharCode) -> String;
+
 }
 
 impl<'a> dyn PdfFont + 'a {
@@ -1133,7 +1102,7 @@ impl<'a> PdfFont for PdfSimpleFont<'a> {
                         .map(|x| &x[..])
                         .expect("missing unicode map and encoding");
                     let s = to_utf8(encoding, &slice);
-                    trace!("falling back to encoding {} -> {:?}", char, s);
+                    println!("falling back to encoding {} -> {:?}", char, s);
                     s
                 }
                 Some(s) => s.clone(),
@@ -1581,8 +1550,8 @@ struct PdfImage<'a> {
     pub bits_per_component: Option<i64>,
     pub content: &'a [u8],
     pub origin_dict: &'a Dictionary,
-    pub components: Option<usize>, // 1 for gray, 3 for RGB, 4 for CMYK
-    pub decode_predictor: Option<i32>, // From /DecodeParms /Predictor
+    pub components: Option<usize>,      // 1 for gray, 3 for RGB, 4 for CMYK
+    pub decode_predictor: Option<i32>,  // From /DecodeParms /Predictor
 }
 
 /// Get the page rotation from the page dictionary (inheritable)
@@ -1596,44 +1565,45 @@ fn get_page_rotation(page_dict: &Dictionary, doc: &Document) -> i32 {
 /// Build the initial CTM with page rotation and viewer Y-flip
 fn build_initial_ctm(media_box: &[f64], page_rotate: i32) -> Transform {
     let h_pts = media_box[3]; // page height in PostScript points
-
+    
     let mut init = Transform::identity();
     // Layer 2: viewer Y-flip (PDF has bottom-left origin, viewers use top-left)
     // NOTE: This Y-flip is for coordinate system only, not for image content!
     init = init.pre_scale(1.0, -1.0).pre_translate(vec2(0.0, h_pts));
-
+    
     // Layer 1: page /Rotate
     init = match page_rotate {
-        90 => init.pre_rotate(euclid::Angle::radians(std::f64::consts::FRAC_PI_2)),
+        90  => init.pre_rotate(euclid::Angle::radians(std::f64::consts::FRAC_PI_2)),
         180 => init.pre_rotate(euclid::Angle::radians(std::f64::consts::PI)),
         270 => init.pre_rotate(euclid::Angle::radians(-std::f64::consts::FRAC_PI_2)),
-        _ => init,
+        _   => init,
     };
-
+    
     init
 }
 
 /// Build the initial CTM for images (only page rotation, no Y-flip)
 fn build_image_ctm(page_rotate: i32) -> Transform {
     let mut init = Transform::identity();
-
+    
     // Apply page rotation for images, NOT the viewer Y-flip
     init = match page_rotate {
-        90 => init.pre_rotate(euclid::Angle::radians(std::f64::consts::FRAC_PI_2)),
+        90  => init.pre_rotate(euclid::Angle::radians(std::f64::consts::FRAC_PI_2)),
         180 => init.pre_rotate(euclid::Angle::radians(std::f64::consts::PI)),
         270 => init.pre_rotate(euclid::Angle::radians(-std::f64::consts::FRAC_PI_2)),
-        _ => init,
+        _   => init,
     };
-
+    
     init
 }
 
 /// Decode PDF stream data, handling compression and PNG predictors
 fn decode_stream(img: &PdfImage) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     use miniz_oxide::inflate::decompress_to_vec_zlib;
-
+    use std::io::Read;
+    
     let mut data = img.content.to_vec();
-
+    
     // 1. Handle compression filters
     if let Some(filters) = &img.filters {
         for filter in filters {
@@ -1659,28 +1629,27 @@ fn decode_stream(img: &PdfImage) -> Result<Vec<u8>, Box<dyn std::error::Error>> 
             }
         }
     }
-
+    
     // 2. Handle PNG predictor
     if let Some(predictor) = img.decode_predictor {
         debug!("Applying PNG predictor: {}", predictor);
-
-        if predictor >= 10 && predictor <= 15 {
-            // PNG predictors
+        
+        if predictor >= 10 && predictor <= 15 {  // PNG predictors
             let components = img.components.unwrap_or(3);
             let bits_per_component = img.bits_per_component.unwrap_or(8) as usize;
             let bytes_per_pixel = (bits_per_component * components + 7) / 8;
             let row_bytes = img.width as usize * bytes_per_pixel;
             let mut output = Vec::with_capacity(row_bytes * img.height as usize);
-
+            
             // Each row has a predictor byte prefix
             for (row_idx, chunk) in data.chunks(row_bytes + 1).enumerate() {
                 if chunk.len() < 2 {
                     warn!("Incomplete row at index {}", row_idx);
                     continue;
                 }
-
+                
                 let (predictor_byte, row_data) = chunk.split_first().unwrap();
-
+                
                 match predictor_byte {
                     0 => {
                         // None predictor
@@ -1744,13 +1713,13 @@ fn decode_stream(img: &PdfImage) -> Result<Vec<u8>, Box<dyn std::error::Error>> 
                             } else {
                                 0
                             };
-
+                            
                             // Paeth predictor algorithm
                             let p = a + b - c;
                             let pa = (p - a).abs();
                             let pb = (p - b).abs();
                             let pc = (p - c).abs();
-
+                            
                             let prediction = if pa <= pb && pa <= pc {
                                 a as u8
                             } else if pb <= pc {
@@ -1758,7 +1727,7 @@ fn decode_stream(img: &PdfImage) -> Result<Vec<u8>, Box<dyn std::error::Error>> 
                             } else {
                                 c as u8
                             };
-
+                            
                             output.push(byte.wrapping_add(prediction));
                         }
                     }
@@ -1768,153 +1737,14 @@ fn decode_stream(img: &PdfImage) -> Result<Vec<u8>, Box<dyn std::error::Error>> 
                     }
                 }
             }
-
+            
             data = output;
         }
     }
-
+    
     Ok(data)
 }
 
-/// Helper function to split OCR text into smaller segments respecting token limits
-fn split_ocr_text_to_segments(
-    text: &str,
-    max_tokens: usize,
-    page_num: u32,
-    position: (f64, f64),
-    size: (f64, f64),
-    char_start: usize,
-    current_font_size: f64,
-    current_transformed_font_size: f64,
-) -> Vec<TextSegment> {
-    let mut segments = Vec::new();
-    let mut current_pos = 0;
-    
-    // Split text into chunks that respect token limits
-    // Using a simple approach: split by paragraphs first, then by sentences if needed
-    let paragraphs: Vec<&str> = text.split("\n\n").collect();
-    
-    for paragraph in paragraphs {
-        if paragraph.trim().is_empty() {
-            continue;
-        }
-        
-        // Estimate tokens more conservatively for OCR text
-        // OCR text often has more tokens per character due to formatting issues
-        // Using 1 token per 2.75 chars for safety
-        let estimated_tokens = (paragraph.chars().count() as f64 / 2.75).ceil() as usize;
-        
-        if estimated_tokens <= max_tokens {
-            // Paragraph fits within token limit
-            let chunk_len = paragraph.chars().count();
-            segments.push(TextSegment {
-                content: paragraph.to_string(),
-                font_size: current_font_size,
-                transformed_font_size: current_transformed_font_size,
-                x: position.0,
-                y: position.1,
-                is_bold: false,
-                font_name: "OCR".to_string(),
-                font_weight: FontWeight::Regular,
-                is_italic: false,
-                page_num,
-                cutat: "OCRParagraph".to_string(),
-                fill_color: None,
-                stroke_color: None,
-                char_start: char_start + current_pos,
-                char_end: char_start + current_pos + chunk_len,
-                width: size.0,
-                height: size.1,
-                word_count: unicode_count_words(paragraph),
-            });
-            current_pos += chunk_len;
-        } else {
-            // Split paragraph by sentences
-            let sentences = paragraph.split_terminator(|c| c == '.' || c == '!' || c == '?');
-            let mut sentence_buffer = String::new();
-            let mut buffer_start = current_pos;
-            
-            for sentence in sentences {
-                let sentence_with_punct = if paragraph[sentence.len()..].starts_with('.') ||
-                                             paragraph[sentence.len()..].starts_with('!') ||
-                                             paragraph[sentence.len()..].starts_with('?') {
-                    format!("{}{}", sentence, &paragraph[sentence.len()..sentence.len()+1])
-                } else {
-                    sentence.to_string()
-                };
-                
-                let sentence_tokens = (sentence_with_punct.chars().count() as f64 / 2.75).ceil() as usize;
-                
-                if !sentence_buffer.is_empty() && 
-                   ((sentence_buffer.chars().count() as f64 / 2.75).ceil() as usize + sentence_tokens > max_tokens) {
-                    // Push current buffer as segment
-                    let chunk_len = sentence_buffer.chars().count();
-                    let word_count = unicode_count_words(&sentence_buffer);
-                    segments.push(TextSegment {
-                        content: sentence_buffer.clone(),
-                        font_size: current_font_size,
-                        transformed_font_size: current_transformed_font_size,
-                        x: position.0,
-                        y: position.1,
-                        is_bold: false,
-                        font_name: "OCR".to_string(),
-                        font_weight: FontWeight::Regular,
-                        is_italic: false,
-                        page_num,
-                        cutat: "OCRSentence".to_string(),
-                        fill_color: None,
-                        stroke_color: None,
-                        char_start: char_start + buffer_start,
-                        char_end: char_start + buffer_start + chunk_len,
-                        width: size.0,
-                        height: size.1,
-                        word_count,
-                    });
-                    buffer_start += chunk_len;
-                    sentence_buffer.clear();
-                }
-                
-                if !sentence_buffer.is_empty() {
-                    sentence_buffer.push(' ');
-                }
-                sentence_buffer.push_str(&sentence_with_punct);
-                current_pos += sentence_with_punct.chars().count();
-            }
-            
-            // Push any remaining buffer
-            if !sentence_buffer.is_empty() {
-                let chunk_len = sentence_buffer.chars().count();
-                let word_count = unicode_count_words(&sentence_buffer);
-                segments.push(TextSegment {
-                    content: sentence_buffer,
-                    font_size: current_font_size,
-                    transformed_font_size: current_transformed_font_size,
-                    x: position.0,
-                    y: position.1,
-                    is_bold: false,
-                    font_name: "OCR".to_string(),
-                    font_weight: FontWeight::Regular,
-                    is_italic: false,
-                    page_num,
-                    cutat: "OCRSentence".to_string(),
-                    fill_color: None,
-                    stroke_color: None,
-                    char_start: char_start + buffer_start,
-                    char_end: char_start + buffer_start + chunk_len,
-                    width: size.0,
-                    height: size.1,
-                    word_count,
-                });
-            }
-        }
-    }
-    
-    segments
-}
-
-// In your content processing function:
-fn process_xobject(
-    doc: &Document,
     resources: &Dictionary,
     ocr_handler: Option<&OcrHandler>,
     text_segments: &mut Vec<TextSegment>,
@@ -1926,9 +1756,7 @@ fn process_xobject(
     page_char_counter: &mut usize,
     current_transform: &Transform,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    debug!("process_xobject called for page {}", page_num);
     let xobject = doc.get_dict_in_dict(resources, b"XObject")?;
-    debug!("Found XObject dictionary with {} entries", xobject.len());
 
     for (_, xvalue) in xobject.iter() {
         let id = xvalue.as_reference()?;
@@ -1937,23 +1765,13 @@ fn process_xobject(
         let dict = &xvalue.dict;
 
         // Only process images
-        let subtype = dict.get(b"Subtype")?.as_name()?;
-        debug!("XObject subtype: {:?}", String::from_utf8_lossy(subtype));
-        if subtype != b"Image" {
+        if dict.get(b"Subtype")?.as_name()? != b"Image" {
             continue;
         }
-        debug!("Found Image XObject!");
 
         // Extract image information
         let width = dict.get(b"Width")?.as_i64()?;
         let height = dict.get(b"Height")?.as_i64()?;
-        info!("Found image: {}x{} pixels", width, height);
-
-        // Skip extremely large images that might cause issues
-        if width > 10000 || height > 10000 {
-            warn!("Skipping extremely large image: {}x{}", width, height);
-            continue;
-        }
         let color_space = match dict.get(b"ColorSpace") {
             Ok(cs) => match cs {
                 Object::Array(array) => {
@@ -1998,8 +1816,7 @@ fn process_xobject(
         };
 
         // Parse decode parameters
-        let decode_predictor = dict
-            .get(b"DecodeParms")
+        let decode_predictor = dict.get(b"DecodeParms")
             .ok()
             .and_then(|obj| obj.as_dict().ok())
             .and_then(|dict| dict.get(b"Predictor").ok())
@@ -2019,101 +1836,64 @@ fn process_xobject(
             decode_predictor,
         };
 
-        debug!("OCR handler check before");
+        println!("ocr_handler before");
         // Only attempt OCR if we have a handler
         if let Some(handler) = ocr_handler {
-            debug!("OCR handler check after");
-            debug!(
-                "Attempting image conversion: {}x{} filters={:?}",
-                pdf_image.width, pdf_image.height, pdf_image.filters
-            );
-            // Pass the current transform to properly orient the image
-            let det = current_transform.m11 * current_transform.m22
-                - current_transform.m12 * current_transform.m21;
-            debug!(
-                "Image transform CTM: [{:.3} {:.3} {:.3} {:.3} {:.1} {:.1}] det={:.3}",
-                current_transform.m11,
-                current_transform.m12,
-                current_transform.m21,
-                current_transform.m22,
-                current_transform.m31,
-                current_transform.m32,
-                det
-            );
-            match pdf_image.to_rgb_image(Some(current_transform)) {
+            println!("ocr_handler after");
+            println!("🖼️  ATTEMPTING IMAGE CONVERSION: {}x{} filters={:?}", 
+                     pdf_image.width, pdf_image.height, pdf_image.filters);
+            // Extract image without any transformation - let it come out as stored in PDF
+            debug!("Extracting image without transformation");
+            match pdf_image.to_rgb_image(None) {
                 Ok(img) => {
-                    debug!(
-                        "Successful image conversion {}x{}",
-                        img.dimensions().0,
-                        img.dimensions().1
-                    );
+                    debug!("Successful image conversion {}x{}", img.dimensions().0, img.dimensions().1);
                     if let Ok(ocr_text) = handler.process_image(&img) {
-                        if !ocr_text.is_empty() {
-                            info!(
-                                "OCR extracted {} chars from image (Page {}, Position {:.1},{:.1})",
-                                ocr_text.chars().count(), page_num, position.0, position.1
-                            );
-                            
-                            // Split OCR text into smaller segments respecting token limits
-                            // Using conservative estimate: max 250 tokens per segment (leaving margin)
-                            // This accounts for OCR text that may have higher token density
-                            let max_ocr_tokens = 250;
-                            let ocr_segments = split_ocr_text_to_segments(
-                                &ocr_text,
-                                max_ocr_tokens,
-                                page_num,
-                                position,
-                                size,
-                                *page_char_counter,
-                                current_font_size,
-                                current_transformed_font_size,
-                            );
-                            
-                            info!("OCR text split into {} segments", ocr_segments.len());
-                            
-                            for segment in ocr_segments {
-                                let seg_len = segment.content.chars().count();
-                                text_segments.push(segment);
-                                *page_char_counter += seg_len;
-                            }
-                        }
-                    } else {
-                        match handler.process_image(&img) {
-                            Ok(text) if text.is_empty() => {
-                                debug!("OCR: No text detected in image at page {} position ({:.1},{:.1})", 
+                    if !ocr_text.is_empty() {
+                        println!("🔍 OCR EXTRACTED TEXT (Page {}, Position {:.1},{:.1}): '{}'", 
+                                page_num, position.0, position.1, ocr_text);
+                        let ocr_text_len = ocr_text.chars().count();
+                        let word_count = unicode_count_words(&ocr_text);
+                        text_segments.push(TextSegment {
+                            content: ocr_text,
+                            font_size: current_font_size,
+                            transformed_font_size: current_transformed_font_size,
+                            x: position.0,
+                            y: position.1,
+                            is_bold: false,
+                            font_name: "OCR".to_string(),
+                            font_weight: FontWeight::Regular,
+                            is_italic: false,
+                            page_num,
+                            cutat: "Image".to_string(),
+                            fill_color: None,
+                            stroke_color: None,
+                            char_start: *page_char_counter,
+                            char_end: *page_char_counter + ocr_text_len,
+                            width: size.0,
+                            height: size.1,
+                            word_count,
+                        });
+                        *page_char_counter += ocr_text_len;
+                    }
+                } else {
+                    match handler.process_image(&img) {
+                        Ok(text) if text.is_empty() => {
+                            println!("⚪ OCR: No text detected in image at page {} position ({:.1},{:.1})", 
                                     page_num, position.0, position.1);
-                            }
-                            Err(e) => {
-                                error!(
-                                    "OCR error at page {} position ({:.1},{:.1}): {}",
-                                    page_num, position.0, position.1, e
-                                );
-                            }
-                            _ => {
-                                // This shouldn't happen since we handled the Ok case above
-                            }
+                        }
+                        Err(e) => {
+                            println!("❌ OCR ERROR at page {} position ({:.1},{:.1}): {}", 
+                                    page_num, position.0, position.1, e);
+                        }
+                        _ => {
+                            // This shouldn't happen since we handled the Ok case above
                         }
                     }
                 }
+                }
                 Err(e) => {
-                    // Check if it's a CCITT format issue
-                    if pdf_image
-                        .filters
-                        .as_ref()
-                        .and_then(|f| f.first())
-                        .map(|s| s == "CCITTFaxDecode")
-                        .unwrap_or(false)
-                    {
-                        debug!(
-                            "Skipping CCITTFaxDecode image ({}x{}) - format not fully supported",
-                            pdf_image.width, pdf_image.height
-                        );
-                    } else {
-                        error!(
-                            "Image conversion failed: {}x{} filters={:?}, error: {}",
-                            pdf_image.width, pdf_image.height, pdf_image.filters, e
-                        );
-                    }
+                    error!("Image conversion failed: {}x{} filters={:?}, error: {}", 
+                         pdf_image.width, pdf_image.height, pdf_image.filters, e);
                 }
             }
         }
@@ -2481,10 +2261,10 @@ impl<'a> Processor<'a> {
     fn preserve_sentence_boundaries(content: &str) -> String {
         // Remove leading whitespace but preserve trailing punctuation and moderate trailing whitespace
         let content = content.trim_start();
-
+        
         // Only trim excessive trailing whitespace (more than 2 spaces) but preserve punctuation
         let mut result = content.to_string();
-
+        
         // If content ends with sentence-ending punctuation, preserve one space after it
         if content.ends_with('.') || content.ends_with('!') || content.ends_with('?') {
             // Keep punctuation and add one space if not already present
@@ -2498,7 +2278,7 @@ impl<'a> Processor<'a> {
                 result.push(' ');
             }
         }
-
+        
         result
     }
 
@@ -2620,50 +2400,15 @@ impl<'a> Processor<'a> {
         let mut page_char_counter = 0usize; // Track character position in page
         let mut current_segment_start = 0usize; // Start position of current segment
 
-        let content = match Content::decode(&content) {
-            Ok(content) => content,
-            Err(e) => {
-                warn!(
-                    "Skipping page {} due to invalid content stream: {:?}",
-                    page_num, e
-                );
-                // Return Ok(()) - empty result, segments list stays empty for this page
-                return Ok(());
-            }
-        };
-
+        let content = Content::decode(&content).unwrap();
+        
         // Build initial CTM with page rotation and viewer Y-flip
         let media_box_array = [media_box.llx, media_box.lly, media_box.urx, media_box.ury];
         let initial_ctm = build_initial_ctm(&media_box_array, page_rotate);
-
+        
         // Store page rotation for image processing (images don't need Y-flip)
         let page_rotation_only = build_image_ctm(page_rotate);
-
-        // Debug: Log both CTMs to understand the issue
-        let det_initial = initial_ctm.m11 * initial_ctm.m22 - initial_ctm.m12 * initial_ctm.m21;
-        let det_image = page_rotation_only.m11 * page_rotation_only.m22
-            - page_rotation_only.m12 * page_rotation_only.m21;
-        debug!(
-            "Initial CTM (with Y-flip): det={:.3}, CTM=[{:.3} {:.3} {:.3} {:.3} {:.1} {:.1}]",
-            det_initial,
-            initial_ctm.m11,
-            initial_ctm.m12,
-            initial_ctm.m21,
-            initial_ctm.m22,
-            initial_ctm.m31,
-            initial_ctm.m32
-        );
-        debug!(
-            "Image CTM (no Y-flip): det={:.3}, CTM=[{:.3} {:.3} {:.3} {:.3} {:.1} {:.1}]",
-            det_image,
-            page_rotation_only.m11,
-            page_rotation_only.m12,
-            page_rotation_only.m21,
-            page_rotation_only.m22,
-            page_rotation_only.m31,
-            page_rotation_only.m32
-        );
-
+        
         let mut gs: GraphicsState = GraphicsState {
             ts: TextState {
                 font: None,
@@ -2680,7 +2425,7 @@ impl<'a> Processor<'a> {
             stroke_color: Vec::new(),
             stroke_colorspace: ColorSpace::DeviceGray,
             line_width: 1.,
-            ctm: initial_ctm, // Use initial CTM instead of identity
+            ctm: initial_ctm,  // Use initial CTM instead of identity
             smask: None,
         };
 
@@ -2922,9 +2667,7 @@ impl<'a> Processor<'a> {
                                                     //     (255, 255, 255),
                                                     // ) {
                                                     let content_str =
-                                                        Self::preserve_sentence_boundaries(
-                                                            &current_line,
-                                                        );
+                                                        Self::preserve_sentence_boundaries(&current_line);
                                                     text_segments.push(Self::create_text_segment(
                                                         content_str,
                                                         current_font_size,
@@ -3085,8 +2828,7 @@ impl<'a> Processor<'a> {
                                         //     Some(processed_fill_color),
                                         //     (255, 255, 255),
                                         // ) {
-                                        let content_str =
-                                            Self::preserve_sentence_boundaries(&current_line);
+                                        let content_str = Self::preserve_sentence_boundaries(&current_line);
                                         text_segments.push(Self::create_text_segment(
                                             content_str,
                                             current_font_size,
@@ -3335,17 +3077,6 @@ impl<'a> Processor<'a> {
                             (100.0, 100.0) // No subtype
                         };
 
-                        // Debug: Log the current CTM to understand what transformations are applied
-                        debug!(
-                            "Current graphics state CTM: [{:.3} {:.3} {:.3} {:.3} {:.1} {:.1}]",
-                            gs.ctm.m11, gs.ctm.m12, gs.ctm.m21, gs.ctm.m22, gs.ctm.m31, gs.ctm.m32
-                        );
-
-                        // The PDF coordinate system and image coordinate system may differ
-                        // We need to detect the correct orientation based on the CTM
-                        // For now, pass the current CTM to let the image processor figure it out
-                        let image_transform = gs.ctm.clone();
-
                         if let Err(e) = process_xobject(
                             &doc,
                             resources,
@@ -3357,7 +3088,7 @@ impl<'a> Processor<'a> {
                             current_font_size,
                             current_transformed_font_size,
                             &mut page_char_counter,
-                            &image_transform, // Use CTM without Y-flip for images
+                            &page_rotation_only,  // Fixed: Use page rotation without Y-flip for images
                         ) {
                             // Log error but continue processing
                             eprintln!("Failed to process image in PDF: {}", e);
@@ -3390,11 +3121,11 @@ impl<'a> Processor<'a> {
                                 } else {
                                     Transform::identity()
                                 };
-
+                                
                                 // Push the combined CTM (current CTM × form matrix)
                                 let saved_ctm = gs.ctm;
                                 gs.ctm = gs.ctm.pre_transform(&form_matrix);
-
+                                
                                 // Process the Form's content stream
                                 let form_resources = maybe_get_obj(&doc, &xf.dict, b"Resources")
                                     .and_then(|n| n.as_dict().ok())
@@ -3408,9 +3139,9 @@ impl<'a> Processor<'a> {
                                     &media_box,
                                     page_num,
                                     text_segments,
-                                    0, // Form XObjects don't have their own rotation
+                                    0,  // Form XObjects don't have their own rotation
                                 )?;
-
+                                
                                 // Restore the CTM
                                 gs.ctm = saved_ctm;
                             }
@@ -3459,6 +3190,7 @@ impl<'a> Processor<'a> {
             // }
             current_line.clear();
         }
+
 
         Ok(())
     }
@@ -3917,9 +3649,8 @@ pub fn extract_text<P: std::convert::AsRef<std::path::Path>>(
 ) -> Result<String, OutputError> {
     let mut doc = Document::load(path)?;
     maybe_decrypt(&mut doc)?;
-    let content_outputs =
-        output_doc(&doc, ocr_handler, None).map_err(|e| OutputError::Other(e.to_string()))?;
-
+    let content_outputs = output_doc(&doc, ocr_handler, None).map_err(|e| OutputError::Other(e.to_string()))?;
+    
     // Concatenate all content from the ContentOutput structs
     let mut result = String::new();
     for output in content_outputs {
@@ -3930,7 +3661,7 @@ pub fn extract_text<P: std::convert::AsRef<std::path::Path>>(
         result.push_str(&output.paragraph);
         result.push_str("\n\n");
     }
-
+    
     Ok(result.trim().to_string())
 }
 
@@ -3969,9 +3700,8 @@ pub fn extract_text_from_mem(
 ) -> Result<String, OutputError> {
     let mut doc = Document::load_mem(buffer)?;
     maybe_decrypt(&mut doc)?;
-    let content_outputs =
-        output_doc(&doc, ocr_handler, None).map_err(|e| OutputError::Other(e.to_string()))?;
-
+    let content_outputs = output_doc(&doc, ocr_handler, None).map_err(|e| OutputError::Other(e.to_string()))?;
+    
     // Concatenate all content from the ContentOutput structs
     let mut result = String::new();
     for output in content_outputs {
@@ -3982,7 +3712,7 @@ pub fn extract_text_from_mem(
         result.push_str(&output.paragraph);
         result.push_str("\n\n");
     }
-
+    
     Ok(result.trim().to_string())
 }
 
@@ -4269,17 +3999,21 @@ pub fn create_pdf_location_from_positions(
     // Convert page positions to fragments
     let fragments: Vec<PageFragment> = page_positions
         .iter()
-        .map(|pos| PageFragment {
-            page: pos.page,
-            char_range: CharRange {
-                start: pos.char_start,
-                end: pos.char_end,
-            },
-            bbox: pos.bbox.clone(),
+        .map(|pos| {
+            PageFragment {
+                page: pos.page,
+                char_range: CharRange {
+                    start: pos.char_start,
+                    end: pos.char_end,
+                },
+                bbox: pos.bbox.clone(),
+            }
         })
         .collect();
-
-    FormatLocation::Pdf(PdfLocation { fragments })
+    
+    FormatLocation::Pdf(PdfLocation {
+        fragments,
+    })
 }
 
 /// Helper function to decompress and deserialize ContentExt data
