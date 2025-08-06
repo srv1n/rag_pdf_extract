@@ -4,10 +4,13 @@ use ocrs::{DecodeMethod, DimOrder, ImageSource, OcrEngine, OcrEngineParams};
 use rten::Model;
 use rten_tensor::prelude::*;
 use rten_tensor::NdTensor;
-use log::{debug, trace};
+use log::debug;
+use super::filter::OcrTextFilter;
 
 pub struct OcrProcessor {
     engine: OcrEngine,
+    filter: OcrTextFilter,
+    enable_filtering: bool,
 }
 
 impl OcrProcessor {
@@ -32,7 +35,11 @@ impl OcrProcessor {
             ..Default::default()
         })?;
 
-        Ok(Self { engine })
+        Ok(Self { 
+            engine,
+            filter: OcrTextFilter::default(),
+            enable_filtering: true,  // Enable by default
+        })
     }
 
     /// Extract text - EXACT CLI replica
@@ -41,9 +48,13 @@ impl OcrProcessor {
         let image = input_image;  // CLI does image.into_rgb8() but we already have RgbImage
         let (width, height) = image.dimensions();
         let in_chans = 3;
+        
+        // EXACTLY like OCRS CLI - use into_vec() directly
+        let packed = image.clone().into_vec();
+        
         let color_img: NdTensor<u8, 3> = NdTensor::from_data(
             [height as usize, width as usize, in_chans],
-            image.clone().into_vec(),
+            packed,
         );
 
         // EXACT COPY FROM CLI main.rs - Preprocess image for use with OCR engine
@@ -56,9 +67,36 @@ impl OcrProcessor {
         let line_texts = self.engine.recognize_text(&ocr_input, &line_rects)?;
 
         // Format using the output module format_text_output
-        let content = format_text_output(&line_texts);
+        let raw_content = format_text_output(&line_texts);
         
-        Ok(content)
+        // Apply intelligent filtering if enabled
+        let final_content = if self.enable_filtering {
+            let filtered = self.filter.filter(&raw_content);
+            
+            // Log filtering statistics
+            let raw_lines = raw_content.lines().count();
+            let filtered_lines = filtered.lines().count();
+            if raw_lines != filtered_lines {
+                debug!("OCR filtering: {} lines -> {} lines (removed {} noisy lines)", 
+                       raw_lines, filtered_lines, raw_lines - filtered_lines);
+            }
+            
+            filtered
+        } else {
+            raw_content
+        };
+        
+        Ok(final_content)
+    }
+    
+    /// Enable or disable OCR output filtering
+    pub fn set_filtering_enabled(&mut self, enabled: bool) {
+        self.enable_filtering = enabled;
+    }
+    
+    /// Check if filtering is enabled
+    pub fn is_filtering_enabled(&self) -> bool {
+        self.enable_filtering
     }
 }
 

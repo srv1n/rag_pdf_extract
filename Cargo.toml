@@ -30,7 +30,7 @@ rten-tensor = { version = ">= 0.14.0, < 0.21.0" }
 anyhow = "1.0.98"
 thiserror = "2.0.12"
 fastrand = "2.3.0"
-image = { version = "0.25.5", default-features = false, features = ["png", "jpeg", "webp"] }
+image = { version = "0.25.5", default-features = false, features = ["png", "jpeg", "webp", "tiff", "bmp"] }
 lexopt = "0.3.1"
 miniz_oxide = "0.8.0"
 regex = "1.11.1"

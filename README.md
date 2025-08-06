@@ -59,15 +59,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```rust
 use pdf_extract::*;
 
+// Configure OCR with model paths
+let ocr_config = OcrConfig {
+    detection_model: Some("models/text-detection.rten".to_string()),
+    recognition_model: Some("models/text-recognition.rten".to_string()),
+};
+
 let results = parse_pdf(
     "scanned_document.pdf",
     1,                    // source_id
     "file",              // source_type
-    Some(true),          // enable OCR
-    None,                // detection model (uses default)
-    None,                // recognition model (uses default)
+    Some(ocr_config),    // OCR configuration
+    None,                // OCR cache (optional)
+    None,                // resume from (optional)
     Some(1000)           // max tokens per chunk
 )?;
+```
+
+**Note:** OCR models must be downloaded separately:
+```bash
+# Download official OCRS models (2.5MB + 9.7MB)
+curl -L https://ocrs-models.s3-accelerate.amazonaws.com/text-detection.rten -o models/text-detection.rten
+curl -L https://ocrs-models.s3-accelerate.amazonaws.com/text-recognition.rten -o models/text-recognition.rten
 ```
 
 ## 📋 Schema Overview
@@ -233,17 +246,31 @@ let chunks: Vec<String> = results.iter()
 
 ### OCR Settings
 
+The OCR feature includes intelligent noise filtering to remove single characters and gibberish:
+
 ```rust
+// OCR with custom settings
+let ocr_config = OcrConfig {
+    detection_model: Some("models/text-detection.rten".to_string()),
+    recognition_model: Some("models/text-recognition.rten".to_string()),
+};
+
 let results = parse_pdf(
     "document.pdf",
     1,
     "file",
-    Some(true),                           // enable OCR
-    Some("path/to/detection.onnx".to_string()), // custom detection model
-    Some("path/to/recognition.onnx".to_string()), // custom recognition model
-    Some(500)
+    Some(ocr_config),    // OCR configuration
+    None,                // OCR cache
+    None,                // resume from
+    Some(500)            // chunk size
 )?;
 ```
+
+**OCR Features:**
+- Automatic noise filtering (removes gibberish and single characters)
+- Goldilocks sizing (optimal 240-1600px range)
+- Orientation correction for rotated/flipped images
+- Support for multiple image formats in PDFs
 
 ### Chunking Options
 

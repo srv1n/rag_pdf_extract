@@ -22,8 +22,8 @@ fn main() {
     println!();
 
     // Configure OCR with local model files
-    let detection_model_path = "models/text-detection-ssfbcj81.rten";
-    let recognition_model_path = "models/text-rec-checkpoint-s52qdbqt.rten";
+    let detection_model_path = "models/text-detection.rten";
+    let recognition_model_path = "models/text-recognition.rten";
 
     // Check if model files exist
     if !std::path::Path::new(detection_model_path).exists() {
@@ -31,8 +31,9 @@ fn main() {
             "Error: Detection model not found at {}",
             detection_model_path
         );
-        eprintln!("Please run: cargo run --example extract");
-        eprintln!("This will download the required models.");
+        eprintln!("Please download the models:");
+        eprintln!("  curl -L https://ocrs-models.s3-accelerate.amazonaws.com/text-detection.rten -o models/text-detection.rten");
+        eprintln!("  curl -L https://ocrs-models.s3-accelerate.amazonaws.com/text-recognition.rten -o models/text-recognition.rten");
         process::exit(1);
     }
 
@@ -41,8 +42,9 @@ fn main() {
             "Error: Recognition model not found at {}",
             recognition_model_path
         );
-        eprintln!("Please run: cargo run --example extract");
-        eprintln!("This will download the required models.");
+        eprintln!("Please download the models:");
+        eprintln!("  curl -L https://ocrs-models.s3-accelerate.amazonaws.com/text-detection.rten -o models/text-detection.rten");
+        eprintln!("  curl -L https://ocrs-models.s3-accelerate.amazonaws.com/text-recognition.rten -o models/text-recognition.rten");
         process::exit(1);
     }
 
@@ -150,7 +152,7 @@ fn main() {
     // Look for potential OCR content by searching for specific patterns
     let mut ocr_indicators = 0;
     let mut has_image_markers = false;
-    
+
     for result in &docs {
         let content = &result.content_core.content;
         // Look for signs this might contain OCR text
@@ -162,12 +164,15 @@ fn main() {
             ocr_indicators += 1;
         }
     }
-    
+
     if has_image_markers {
         println!("✓ Found potential image-related content markers");
     }
     if ocr_indicators > 0 {
-        println!("✓ Found {} short text segments (potential OCR fragments)", ocr_indicators);
+        println!(
+            "✓ Found {} short text segments (potential OCR fragments)",
+            ocr_indicators
+        );
     }
 
     println!("\n🎯 OCRS models successfully used for enhanced text recognition!");

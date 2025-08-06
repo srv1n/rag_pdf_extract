@@ -1,6 +1,7 @@
 use crate::{TextSegment, BoundingBox, PagePosition};
 use crate::document::processing::ContentOutput;
 use lazy_static::lazy_static;
+use log::error;
 use regex::Regex;
 use std::sync::Arc;
 use tiktoken_rs::CoreBPE;
@@ -218,7 +219,14 @@ impl ChunkAccumulator {
         
         // Tokenize the new segment
         let segment_tokens = self.tokenizer.encode_ordinary(&segment.content).len();
-        let total_tokens = self.token_count.unwrap() + segment_tokens;
+        
+        // Account for potential space token when joining
+        let space_token = if !self.text.is_empty() && 
+                           !self.text.ends_with(' ') && 
+                           !self.text.ends_with('\n') &&
+                           !segment.content.starts_with(' ') { 1 } else { 0 };
+        
+        let total_tokens = self.token_count.unwrap() + segment_tokens + space_token;
         
         total_tokens <= self.max_tokens
     }
@@ -228,6 +236,7 @@ impl ChunkAccumulator {
         self.word_count += segment.word_count;
         
         // Smart text joining
+        let mut space_added = false;
         if !self.text.is_empty() {
             // Check if we need a space
             let needs_space = !self.text.ends_with(' ') && 
@@ -235,6 +244,7 @@ impl ChunkAccumulator {
                              !segment.content.starts_with(' ');
             if needs_space {
                 self.text.push(' ');
+                space_added = true;
             }
         }
         self.text.push_str(&segment.content);
@@ -242,7 +252,9 @@ impl ChunkAccumulator {
         // Update token count if we're tracking it
         if let Some(count) = self.token_count {
             let segment_tokens = self.tokenizer.encode_ordinary(&segment.content).len();
-            self.token_count = Some(count + segment_tokens);
+            // Account for the space token if one was added
+            let space_token = if space_added { 1 } else { 0 };
+            self.token_count = Some(count + segment_tokens + space_token);
         }
         
         self.segments.push(segment);
@@ -272,7 +284,12 @@ impl ChunkAccumulator {
     pub fn can_force_add_for_sentence(&self, segment: &TextSegment) -> bool {
         if let Some(current) = self.token_count {
             let segment_tokens = self.tokenizer.encode_ordinary(&segment.content).len();
-            current + segment_tokens <= self.max_overshoot
+            // Account for potential space token when joining
+            let space_token = if !self.text.is_empty() && 
+                               !self.text.ends_with(' ') && 
+                               !self.text.ends_with('\n') &&
+                               !segment.content.starts_with(' ') { 1 } else { 0 };
+            current + segment_tokens + space_token <= self.max_overshoot
         } else {
             // If we haven't started counting tokens, allow it
             true
@@ -296,6 +313,16 @@ impl ChunkAccumulator {
     
     /// Create output from current chunk
     pub fn create_output(&self) -> ContentOutput {
+        // Debug: Check final token count
+        let actual_tokens = self.tokenizer.encode_ordinary(&self.text).len();
+        if actual_tokens > self.max_tokens {
+            error!("WARNING: Creating output with {} actual tokens, exceeds max_tokens {}", 
+                   actual_tokens, self.max_tokens);
+            error!("Text preview: {}", &self.text[..100.min(self.text.len())]);
+            if let Some(tracked) = self.token_count {
+                error!("Tracked tokens: {}, Actual tokens: {}", tracked, actual_tokens);
+            }
+        }
         // Calculate page range
         let start_page = self.segments.first().map(|s| s.page_num).unwrap_or(0);
         let end_page = self.segments.last().map(|s| s.page_num).unwrap_or(0);

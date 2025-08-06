@@ -310,7 +310,12 @@ pub fn form_fields(
 ) -> Result<(), OutputError> {
     let form = Form::load_doc(doc.clone())?;
     debug!("Form length: {}", form.len());
+    
+    // Don't accumulate all form fields into one giant chunk
+    // Process each field separately or in small batches
     let mut text = String::new();
+    const MAX_FORM_CHUNK_SIZE: usize = 1000; // Conservative limit for form chunks
+    
     for i in 0..form.len() {
         // let page = form.doc.;
         let field_type = form.get_type(i);
@@ -379,21 +384,43 @@ pub fn form_fields(
             FieldState::Unknown => "Unknown".to_string(),
         };
 
-        text.push_str(&format!(
+        let field_text = format!(
             "{}: {} \n",
             field_name.unwrap_or("".to_string()),
             field_value
-        ));
+        );
+        
+        // Check if adding this field would make the chunk too large
+        if !text.is_empty() && text.len() + field_text.len() > MAX_FORM_CHUNK_SIZE {
+            // Push current chunk
+            document_structure.push(ContentOutput {
+                headings: vec!["Form Fields".to_string()],
+                paragraph: text.clone(),
+                page: 0,
+                end_page: None,
+                page_char_start: None,
+                page_char_end: None,
+                bbox: None,
+                page_positions: vec![],
+            });
+            text.clear();
+        }
+        
+        text.push_str(&field_text);
     }
-    document_structure.push(ContentOutput {
-        headings: vec![],
-        paragraph: text,
-        page: 0,
-        end_page: None,
-        page_char_start: None,
-        page_char_end: None,
-        bbox: None,
-        page_positions: vec![],
-    });
+    
+    // Push any remaining form fields
+    if !text.is_empty() {
+        document_structure.push(ContentOutput {
+            headings: vec!["Form Fields".to_string()],
+            paragraph: text,
+            page: 0,
+            end_page: None,
+            page_char_start: None,
+            page_char_end: None,
+            bbox: None,
+            page_positions: vec![],
+        });
+    }
     Ok(())
 }

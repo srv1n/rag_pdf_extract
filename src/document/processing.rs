@@ -508,14 +508,63 @@ pub fn output_doc(
                         document_structure.push(accumulator.create_output());
                         accumulator.reset();
                         accumulator.set_headings(header_hierarchy.get_headers());
-                        accumulator.add_segment(segment);
+                        
+                        // Check if the segment itself exceeds limits before adding
+                        let segment_tokens = tokenizer.encode_ordinary(&segment.content).len();
+                        if segment_tokens > max_tokens.unwrap_or(usize::MAX) {
+                            // Split the large segment
+                            let chunks = split_long_sentence(
+                                &segment.content, 
+                                max_tokens.unwrap_or(usize::MAX), 
+                                &tokenizer
+                            );
+                            
+                            for chunk_text in chunks.into_iter() {
+                                let mut partial_segment = segment.clone();
+                                partial_segment.content = chunk_text;
+                                partial_segment.word_count = unicode_count_words(&partial_segment.content);
+                                
+                                accumulator.add_segment(partial_segment);
+                                document_structure.push(accumulator.create_output());
+                                accumulator.reset();
+                                accumulator.set_headings(header_hierarchy.get_headers());
+                            }
+                        } else {
+                            accumulator.add_segment(segment);
+                        }
                     } else if contains_sentence_end(&segment.content) && 
                               accumulator.can_force_add_for_sentence(&segment) {
-                        // Segment completes a sentence - force add it
-                        accumulator.add_segment(segment);
-                        document_structure.push(accumulator.create_output());
-                        accumulator.reset();
-                        accumulator.set_headings(header_hierarchy.get_headers());
+                        // Segment completes a sentence - check if we can force add it
+                        let segment_tokens = tokenizer.encode_ordinary(&segment.content).len();
+                        if segment_tokens > max_tokens.unwrap_or(usize::MAX) {
+                            // Even though it completes a sentence, it's too large - must split
+                            document_structure.push(accumulator.create_output());
+                            accumulator.reset();
+                            accumulator.set_headings(header_hierarchy.get_headers());
+                            
+                            let chunks = split_long_sentence(
+                                &segment.content, 
+                                max_tokens.unwrap_or(usize::MAX), 
+                                &tokenizer
+                            );
+                            
+                            for chunk_text in chunks.into_iter() {
+                                let mut partial_segment = segment.clone();
+                                partial_segment.content = chunk_text;
+                                partial_segment.word_count = unicode_count_words(&partial_segment.content);
+                                
+                                accumulator.add_segment(partial_segment);
+                                document_structure.push(accumulator.create_output());
+                                accumulator.reset();
+                                accumulator.set_headings(header_hierarchy.get_headers());
+                            }
+                        } else {
+                            // Force add it since it completes a sentence and fits
+                            accumulator.add_segment(segment);
+                            document_structure.push(accumulator.create_output());
+                            accumulator.reset();
+                            accumulator.set_headings(header_hierarchy.get_headers());
+                        }
                     } else {
                         // Must flush even though not at sentence boundary
                         document_structure.push(accumulator.create_output_with_warning());
@@ -525,7 +574,9 @@ pub fn output_doc(
                         // Check if segment itself is too large
                         if segment.word_count > 0 {
                             let test_tokens = tokenizer.encode_ordinary(&segment.content).len();
+                            debug!("Segment has {} tokens (max: {:?})", test_tokens, max_tokens);
                             if test_tokens > max_tokens.unwrap_or(usize::MAX) {
+                                debug!("Splitting large segment with {} tokens", test_tokens);
                                 // Split the large segment
                                 let chunks = split_long_sentence(
                                     &segment.content, 

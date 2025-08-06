@@ -1,8 +1,34 @@
 use image::{ImageFormat, RgbImage};
 use log::{debug, error, warn};
 use std::error::Error;
+use lopdf::Object;
 
 use crate::{PdfImage, Transform, apply_transform_to_image, decode_stream};
+
+// PNG-Up predictor expansion function
+fn png_up_predictor(bytes: &[u8], row: usize) -> Vec<u8> {
+    let mut out = Vec::with_capacity(bytes.len());    // row + 1 per line
+    for chunk in bytes.chunks(row + 1) {
+        let (tag, line) = chunk.split_first().unwrap();
+        match tag {
+            0 => out.extend_from_slice(line),                 // None
+            2 | 1 => {                                        // Up  (=2) or Sub (=1)
+                let mut i = 0;
+                while i < line.len() {
+                    let prior = if *tag == 2 {
+                        out[out.len() - row + i]              // prior row, same col
+                    } else {
+                        if i < 3 { 0 } else { out[out.len() - 3] } // Sub predictor
+                    };
+                    out.push(line[i].wrapping_add(prior));
+                    i += 1;
+                }
+            }
+            _ => panic!("Predictor {} not supported", tag),
+        }
+    }
+    out
+}
 
 impl<'a> PdfImage<'a> {
     /// Convert PDF image to RGB using the image crate for robust format handling
@@ -11,8 +37,19 @@ impl<'a> PdfImage<'a> {
                self.width, self.height, self.color_space, self.filters);
         
         // 1. Get decoded bitmap bytes (handle predictors, filters, etc.)
-        let bytes = decode_stream(self)?;
+        let mut bytes = decode_stream(self)?;
         debug!("Decoded {} bytes from PDF stream", bytes.len());
+        
+        // Handle PNG predictor if present
+        if let Some(dp) = self.origin_dict.get(b"DecodeParms").ok().and_then(|o| o.as_dict().ok()) {
+            let predictor_val = dp.get(b"Predictor").ok().and_then(|o| o.as_i64().ok());
+            
+            if matches!(predictor_val, Some(12)) {
+                let row = (self.width as usize) * self.components.unwrap_or(3);   // 3 for RGB, 1 for Gray
+                debug!("Applying PNG-Up predictor (Predictor=12) with row size {}", row);
+                bytes = png_up_predictor(&bytes, row);
+            }
+        }
         
         
         // 2. Pick the container format for the image crate
@@ -23,7 +60,17 @@ impl<'a> PdfImage<'a> {
                 // Fall back to raw construction
                 return self.construct_raw_image(&bytes, transform);
             }
-            Some("CCITTFaxDecode") => ImageFormat::Tiff,
+            Some("CCITTFaxDecode") => {
+                // CCITTFaxDecode is not a TIFF container, it's raw CCITT-compressed data
+                // This is common in scanned documents but not directly supported
+                debug!("CCITTFaxDecode format detected - falling back to raw construction");
+                return self.construct_raw_image(&bytes, transform)
+                    .or_else(|_| {
+                        // If raw construction fails, create a placeholder image
+                        warn!("Could not decode CCITTFaxDecode image, creating placeholder");
+                        Ok(self.create_placeholder_image(transform))
+                    });
+            }
             _ => {
                 // For raw data, we'll need to construct the image manually
                 return self.construct_raw_image(&bytes, transform);
@@ -34,31 +81,20 @@ impl<'a> PdfImage<'a> {
         
         // 3. Let image crate handle ALL color space conversions
         let dyn_img = image::load_from_memory_with_format(&bytes, format)?;
-        let mut rgb_img = dyn_img.to_rgb8();
+        let mut rgb_img = dyn_img.to_rgb8();  // This guarantees sRGB as per architect's advice
         
         
-        // 4. Handle /Decode array flips
-        let decode_mirror = self.origin_dict
-            .get(b"Decode")
-            .ok()
-            .and_then(|o| o.as_array().ok())
-            .map(|a| {
-                if a.len() >= 2 {
-                    matches!(
-                        (a.get(0).and_then(|o| o.as_i64().ok()), 
-                         a.get(1).and_then(|o| o.as_i64().ok())),
-                        (Some(1), Some(0))
-                    )
-                } else {
-                    false
-                }
-            })
-            .unwrap_or(false);
+        // 4. Handle /Decode array flips - as per architect's specific fix
+        let needs_vflip = matches!(
+            self.origin_dict.get(b"Decode").ok(),
+            Some(Object::Array(arr)) if arr.len() >= 2 &&
+                matches!(arr.get(0).and_then(|o| o.as_i64().ok()), Some(1)) &&
+                matches!(arr.get(1).and_then(|o| o.as_i64().ok()), Some(0))
+        );
         
-        if decode_mirror {
-            debug!("/Decode [1 0] detected but NOT applying flip to avoid double-mirror");
-            // DISABLED: This was causing double-flip with CTM-based mirror detection
-            // rgb_img = image::imageops::flip_vertical(&rgb_img);
+        if needs_vflip {
+            debug!("/Decode [1 0] detected - applying vertical flip for OCR");
+            rgb_img = image::imageops::flip_vertical(&rgb_img);
         }
         
         // 5. Apply transformation if provided
@@ -153,5 +189,26 @@ impl<'a> PdfImage<'a> {
         
         
         Ok(img)
+    }
+    
+    /// Create a placeholder image for unsupported formats
+    fn create_placeholder_image(&self, transform: Option<&Transform>) -> RgbImage {
+        debug!("Creating placeholder image for unsupported format");
+        
+        // Create a simple gray placeholder image
+        let mut img = RgbImage::new(self.width as u32, self.height as u32);
+        
+        // Fill with light gray
+        for pixel in img.pixels_mut() {
+            *pixel = image::Rgb([200, 200, 200]);
+        }
+        
+        // Apply transformation if provided
+        if let Some(t) = transform {
+            debug!("Applying transformation to placeholder image");
+            return apply_transform_to_image(img, t);
+        }
+        
+        img
     }
 }

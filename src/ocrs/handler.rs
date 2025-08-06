@@ -37,33 +37,34 @@ impl OcrHandler {
         let (width, height) = img.dimensions();
         debug!("Processing image for OCR: {}x{}", width, height);
         
-        // Always save debug image before OCR processing
-        self.save_debug_image(img, "before_ocr")?;
         
-        // Process with OCR - NO PREPROCESSING, EXACTLY LIKE CLI
-        let text = self.processor.extract_text(img)?;
+        // Apply Goldilocks sizing as per architect's advice
+        let mut processed_img = img.clone();
+        let (mut w, mut h) = processed_img.dimensions();
+        let max_side = w.max(h);
+        
+        if max_side > 1600 {
+            let scale = 1600.0 / max_side as f32;
+            w = (w as f32 * scale) as u32;
+            h = (h as f32 * scale) as u32;
+            processed_img = image::imageops::resize(&processed_img, w, h, image::imageops::FilterType::Lanczos3);
+            debug!("Downscaled from {}x{} to {}x{}", width, height, w, h);
+        }
+        
+        if w < 240 || h < 240 {
+            // Up-scale tiny stamps
+            let scale = 240.0 / w.min(h) as f32;
+            w = (w as f32 * scale) as u32;
+            h = (h as f32 * scale) as u32;
+            processed_img = image::imageops::resize(&processed_img, w, h, image::imageops::FilterType::CatmullRom);
+            debug!("Upscaled image from {}x{} to {}x{}", width, height, w, h);
+        }
+        
+        
+        // Process with OCR
+        let text = self.processor.extract_text(&processed_img)?;
         debug!("OCR completed, extracted {} characters", text.len());
         
         Ok(text)
-    }
-    
-    /// Save debug image
-    fn save_debug_image(&self, img: &RgbImage, stage: &str) -> Result<(), Box<dyn Error>> {
-        use std::time::SystemTime;
-        
-        let debug_dir = "debug_images";
-        std::fs::create_dir_all(debug_dir)?;
-        
-        let timestamp = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)?
-            .as_millis();
-        
-        let filename = format!("{}/{}_{}x{}_{}.png", 
-                             debug_dir, stage, img.width(), img.height(), timestamp);
-        
-        img.save(&filename)?;
-        debug!("Saved OCR debug image: {}", filename);
-        
-        Ok(())
     }
 }
