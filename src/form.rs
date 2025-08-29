@@ -1,11 +1,11 @@
 use std::collections::VecDeque;
 
+use log::debug;
 use lopdf::{Document, Object, ObjectId};
 use std::str;
-use log::debug;
 
-use crate::{OutputError};
 use crate::document::processing::ContentOutput;
+use crate::OutputError;
 #[derive(Debug)]
 /// Errors that may occur while loading a PDF
 pub enum LoadError {
@@ -310,12 +310,12 @@ pub fn form_fields(
 ) -> Result<(), OutputError> {
     let form = Form::load_doc(doc.clone())?;
     debug!("Form length: {}", form.len());
-    
+
     // Don't accumulate all form fields into one giant chunk
     // Process each field separately or in small batches
     let mut text = String::new();
     const MAX_FORM_CHUNK_SIZE: usize = 1000; // Conservative limit for form chunks
-    
+
     for i in 0..form.len() {
         // let page = form.doc.;
         let field_type = form.get_type(i);
@@ -389,7 +389,7 @@ pub fn form_fields(
             field_name.unwrap_or("".to_string()),
             field_value
         );
-        
+
         // Check if adding this field would make the chunk too large
         if !text.is_empty() && text.len() + field_text.len() > MAX_FORM_CHUNK_SIZE {
             // Push current chunk
@@ -405,10 +405,10 @@ pub fn form_fields(
             });
             text.clear();
         }
-        
+
         text.push_str(&field_text);
     }
-    
+
     // Push any remaining form fields
     if !text.is_empty() {
         document_structure.push(ContentOutput {

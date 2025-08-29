@@ -77,7 +77,10 @@ impl ExpectedText<'_> {
                         file_path
                     }
                     Err(e) => {
-                        eprintln!("Warning: Failed to download {} from {}: {}", filename, url, e);
+                        eprintln!(
+                            "Warning: Failed to download {} from {}: {}",
+                            filename, url, e
+                        );
                         eprintln!("Skipping this test");
                         return;
                     }
@@ -89,25 +92,28 @@ impl ExpectedText<'_> {
         // Verify the file is actually a PDF before trying to extract
         let file_contents = std::fs::read(&file_path).unwrap();
         if file_contents.len() < 4 || &file_contents[0..4] != b"%PDF" {
-            eprintln!("Warning: {} is not a valid PDF file. It might be HTML or corrupted. Skipping.", filename);
+            eprintln!(
+                "Warning: {} is not a valid PDF file. It might be HTML or corrupted. Skipping.",
+                filename
+            );
             return;
         }
-        
+
         let out = extract_text(file_path, None)
             .unwrap_or_else(|e| panic!("Failed to extract text from {}, {}", filename, e));
-        
+
         // If no specific text is expected, just make sure extraction doesn't crash
         if text.is_empty() {
             println!("Extracted {} characters from {}", out.len(), filename);
             return;
         }
-        
+
         // For PDFs that might have extraction issues, be more lenient
         if out.is_empty() {
             eprintln!("Warning: No text extracted from {}. This might be a complex PDF that needs OCR or has unsupported features.", filename);
             return;
         }
-        
+
         println!("{}", out);
         assert!(
             out.contains(text),

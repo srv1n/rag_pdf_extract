@@ -36,7 +36,7 @@ impl HeaderHierarchy {
 
         // Find where this header should go in the hierarchy
         let mut pop_to_index = self.stack.len();
-        
+
         for (i, (existing_level, _)) in self.stack.iter().enumerate().rev() {
             match level_num.cmp(existing_level) {
                 std::cmp::Ordering::Less => {
@@ -59,7 +59,7 @@ impl HeaderHierarchy {
 
         // Pop headers as needed
         self.stack.truncate(pop_to_index);
-        
+
         // Add the new header
         self.stack.push((level_num, text));
     }
@@ -100,23 +100,26 @@ mod tests {
     #[test]
     fn test_header_hierarchy() {
         let mut hierarchy = HeaderHierarchy::new();
-        
+
         // Add H1
         hierarchy.push(TextLevel::H1, "Chapter 1".to_string());
         assert_eq!(hierarchy.get_headers(), vec!["Chapter 1"]);
-        
+
         // Add H2 (should append)
         hierarchy.push(TextLevel::H2, "Section 1.1".to_string());
         assert_eq!(hierarchy.get_headers(), vec!["Chapter 1", "Section 1.1"]);
-        
+
         // Add another H2 (should replace the last H2)
         hierarchy.push(TextLevel::H2, "Section 1.2".to_string());
         assert_eq!(hierarchy.get_headers(), vec!["Chapter 1", "Section 1.2"]);
-        
+
         // Add H3 (should append)
         hierarchy.push(TextLevel::H3, "Subsection 1.2.1".to_string());
-        assert_eq!(hierarchy.get_headers(), vec!["Chapter 1", "Section 1.2", "Subsection 1.2.1"]);
-        
+        assert_eq!(
+            hierarchy.get_headers(),
+            vec!["Chapter 1", "Section 1.2", "Subsection 1.2.1"]
+        );
+
         // Add H1 (should clear everything and start fresh)
         hierarchy.push(TextLevel::H1, "Chapter 2".to_string());
         assert_eq!(hierarchy.get_headers(), vec!["Chapter 2"]);

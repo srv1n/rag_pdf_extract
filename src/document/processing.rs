@@ -1,21 +1,22 @@
+use super::{
+    analysis::is_heading, stats::calculate_document_stats, HeaderFooterDetector, TextLevel,
+};
+use crate::chunk_accumulator::{
+    contains_sentence_end, count_words as unicode_count_words, split_long_sentence,
+    ChunkAccumulator,
+};
+use crate::form::form_fields;
+use crate::heading_hierarchy::HeaderHierarchy;
+use crate::{
+    create_content_core, create_content_ext, create_pdf_location_from_positions, get_inherited,
+    get_page_rotation, BoundingBox, ExtractionResult, MediaBox, OcrHandler, PagePosition,
+    Processor, TextSegment,
+};
+use log::{debug, error};
+use lopdf::{Dictionary, Document};
+use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-use rayon::prelude::*;
-use lopdf::{Document, Dictionary};
-use log::{debug, error};
-use crate::{
-    TextSegment, MediaBox, Processor, get_inherited, get_page_rotation, OcrHandler,
-    BoundingBox, PagePosition, ExtractionResult, 
-    create_content_core, create_content_ext, create_pdf_location_from_positions,
-};
-use crate::chunk_accumulator::{ChunkAccumulator, count_words as unicode_count_words, split_long_sentence, contains_sentence_end};
-use crate::heading_hierarchy::HeaderHierarchy;
-use crate::form::form_fields;
-use super::{
-    HeaderFooterDetector, TextLevel,
-    analysis::is_heading,
-    stats::calculate_document_stats
-};
 
 #[derive(Clone, Debug)]
 pub struct PageText {
@@ -472,34 +473,39 @@ pub fn output_doc(
     // let doc_stats = calculate_document_stats(text_segments.clone());
 
     let mut header_hierarchy = HeaderHierarchy::new();
-    
+
     // Initialize ChunkAccumulator
     let tokenizer = Arc::new(tiktoken_rs::get_bpe_from_model("gpt-4o").unwrap());
-    let mut accumulator = ChunkAccumulator::new(max_tokens.unwrap_or(usize::MAX), tokenizer.clone());
-    
+    let mut accumulator =
+        ChunkAccumulator::new(max_tokens.unwrap_or(usize::MAX), tokenizer.clone());
+
     let doc_stats = calculate_document_stats(&text_segments.clone());
 
     // Process segments with ChunkAccumulator
     for segment in text_segments {
         let level = is_heading(&segment, &doc_stats);
-        
+
         match level {
-            TextLevel::H1 | TextLevel::H2 | TextLevel::H3 | 
-            TextLevel::H4 | TextLevel::H5 | TextLevel::H6 => {
+            TextLevel::H1
+            | TextLevel::H2
+            | TextLevel::H3
+            | TextLevel::H4
+            | TextLevel::H5
+            | TextLevel::H6 => {
                 // Heading detected - flush current chunk if it has content
                 if !accumulator.is_empty() {
                     document_structure.push(accumulator.create_output());
                     accumulator.reset();
                 }
-                
+
                 // Update header hierarchy
                 header_hierarchy.push(level, segment.content.trim().to_string());
                 accumulator.set_headings(header_hierarchy.get_headers());
             }
-            
+
             TextLevel::Body | TextLevel::SubBody => {
                 // Don't flush just because of page boundaries - respect sentence boundaries instead
-                
+
                 // Check if we can add this segment
                 if !accumulator.can_add_segment(&segment) {
                     // Can't add - need to handle overflow
@@ -508,22 +514,23 @@ pub fn output_doc(
                         document_structure.push(accumulator.create_output());
                         accumulator.reset();
                         accumulator.set_headings(header_hierarchy.get_headers());
-                        
+
                         // Check if the segment itself exceeds limits before adding
                         let segment_tokens = tokenizer.encode_ordinary(&segment.content).len();
                         if segment_tokens > max_tokens.unwrap_or(usize::MAX) {
                             // Split the large segment
                             let chunks = split_long_sentence(
-                                &segment.content, 
-                                max_tokens.unwrap_or(usize::MAX), 
-                                &tokenizer
+                                &segment.content,
+                                max_tokens.unwrap_or(usize::MAX),
+                                &tokenizer,
                             );
-                            
+
                             for chunk_text in chunks.into_iter() {
                                 let mut partial_segment = segment.clone();
                                 partial_segment.content = chunk_text;
-                                partial_segment.word_count = unicode_count_words(&partial_segment.content);
-                                
+                                partial_segment.word_count =
+                                    unicode_count_words(&partial_segment.content);
+
                                 accumulator.add_segment(partial_segment);
                                 document_structure.push(accumulator.create_output());
                                 accumulator.reset();
@@ -532,8 +539,9 @@ pub fn output_doc(
                         } else {
                             accumulator.add_segment(segment);
                         }
-                    } else if contains_sentence_end(&segment.content) && 
-                              accumulator.can_force_add_for_sentence(&segment) {
+                    } else if contains_sentence_end(&segment.content)
+                        && accumulator.can_force_add_for_sentence(&segment)
+                    {
                         // Segment completes a sentence - check if we can force add it
                         let segment_tokens = tokenizer.encode_ordinary(&segment.content).len();
                         if segment_tokens > max_tokens.unwrap_or(usize::MAX) {
@@ -541,18 +549,19 @@ pub fn output_doc(
                             document_structure.push(accumulator.create_output());
                             accumulator.reset();
                             accumulator.set_headings(header_hierarchy.get_headers());
-                            
+
                             let chunks = split_long_sentence(
-                                &segment.content, 
-                                max_tokens.unwrap_or(usize::MAX), 
-                                &tokenizer
+                                &segment.content,
+                                max_tokens.unwrap_or(usize::MAX),
+                                &tokenizer,
                             );
-                            
+
                             for chunk_text in chunks.into_iter() {
                                 let mut partial_segment = segment.clone();
                                 partial_segment.content = chunk_text;
-                                partial_segment.word_count = unicode_count_words(&partial_segment.content);
-                                
+                                partial_segment.word_count =
+                                    unicode_count_words(&partial_segment.content);
+
                                 accumulator.add_segment(partial_segment);
                                 document_structure.push(accumulator.create_output());
                                 accumulator.reset();
@@ -570,7 +579,7 @@ pub fn output_doc(
                         document_structure.push(accumulator.create_output_with_warning());
                         accumulator.reset();
                         accumulator.set_headings(header_hierarchy.get_headers());
-                        
+
                         // Check if segment itself is too large
                         if segment.word_count > 0 {
                             let test_tokens = tokenizer.encode_ordinary(&segment.content).len();
@@ -579,16 +588,17 @@ pub fn output_doc(
                                 debug!("Splitting large segment with {} tokens", test_tokens);
                                 // Split the large segment
                                 let chunks = split_long_sentence(
-                                    &segment.content, 
-                                    max_tokens.unwrap_or(usize::MAX), 
-                                    &tokenizer
+                                    &segment.content,
+                                    max_tokens.unwrap_or(usize::MAX),
+                                    &tokenizer,
                                 );
-                                
+
                                 for (_idx, chunk_text) in chunks.into_iter().enumerate() {
                                     let mut partial_segment = segment.clone();
                                     partial_segment.content = chunk_text;
-                                    partial_segment.word_count = unicode_count_words(&partial_segment.content);
-                                    
+                                    partial_segment.word_count =
+                                        unicode_count_words(&partial_segment.content);
+
                                     accumulator.add_segment(partial_segment);
                                     document_structure.push(accumulator.create_output());
                                     accumulator.reset();
@@ -602,7 +612,7 @@ pub fn output_doc(
                 } else {
                     // Normal case - just add the segment
                     accumulator.add_segment(segment);
-                    
+
                     // Check if we should proactively flush
                     if accumulator.should_flush() {
                         document_structure.push(accumulator.create_output());
@@ -613,12 +623,12 @@ pub fn output_doc(
             }
         }
     }
-    
+
     // Flush any remaining content
     if !accumulator.is_empty() {
         document_structure.push(accumulator.create_output());
     }
-    
+
     // Return the document structure directly - no post-processing needed
     Ok(document_structure)
 }
@@ -678,13 +688,19 @@ pub fn parse_pdf(
     max_tokens: Option<usize>,
 ) -> Result<Vec<ExtractionResult>, Box<dyn std::error::Error>> {
     let doc = Document::load(file_path)?;
-    
+
     // Initialize OCR handler if config is provided
     let ocr_handler = if let Some(config) = ocr_config {
         Some(crate::OcrHandler::new(&config)?)
     } else {
         None
     };
-    
-    output_doc_new_schema(&doc, ocr_handler.as_ref(), max_tokens, source_id, source_type)
+
+    output_doc_new_schema(
+        &doc,
+        ocr_handler.as_ref(),
+        max_tokens,
+        source_id,
+        source_type,
+    )
 }

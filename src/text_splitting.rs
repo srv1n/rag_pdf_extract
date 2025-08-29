@@ -33,7 +33,7 @@ impl Default for SplitConfig {
 pub fn preprocess_text(text: &str) -> String {
     // First handle hyphenated words at line breaks
     let text = fix_hyphenated_words(text);
-    
+
     // Handle repeated characters without backreferences
     let mut cleaned_text = String::new();
     let mut chars = text.chars().peekable();
@@ -76,7 +76,7 @@ fn fix_hyphenated_words(text: &str) -> String {
         // Match word-hyphen at end of line followed by continuation on next line
         static ref HYPHEN_NEWLINE: Regex = Regex::new(r"(\w+)-\s*\n\s*(\w+)").unwrap();
     }
-    
+
     // Replace hyphen-newline-word patterns with just the combined word
     HYPHEN_NEWLINE.replace_all(text, "$1$2").to_string()
 }
@@ -145,7 +145,7 @@ pub struct TokenCounter {
 impl TokenCounter {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let bpe = get_bpe_from_model("gpt-4o")?; // Using gpt-4o tokenizer
-        Ok(TokenCounter { 
+        Ok(TokenCounter {
             bpe,
             cache: std::collections::HashMap::new(),
         })
@@ -155,29 +155,29 @@ impl TokenCounter {
         // Use a fast hash for caching
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         text.hash(&mut hasher);
         let hash = hasher.finish();
-        
+
         // Check cache first
         if let Some(&count) = self.cache.get(&hash) {
             return count;
         }
-        
+
         // Count tokens
         let allowed_special = HashSet::new();
         let (tokens, _) = self.bpe.encode(text, &allowed_special);
         let count = tokens.len();
-        
+
         // Cache the result (limit cache size to prevent memory issues)
         if self.cache.len() < 10000 {
             self.cache.insert(hash, count);
         }
-        
+
         count
     }
-    
+
     pub fn estimate_tokens(&self, text: &str) -> usize {
         // Fast estimation without actual tokenization
         let word_count = count_words(text);

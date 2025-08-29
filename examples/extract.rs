@@ -9,7 +9,10 @@ fn main() {
 
     // Handle help
     if args.len() > 1 && (args[1] == "--help" || args[1] == "-h") {
-        println!("Usage: {} [PDF_FILE] [MAX_TOKENS] [--ocr DETECTION_MODEL RECOGNITION_MODEL]", args[0]);
+        println!(
+            "Usage: {} [PDF_FILE] [MAX_TOKENS] [--ocr DETECTION_MODEL RECOGNITION_MODEL]",
+            args[0]
+        );
         println!("  PDF_FILE: Path to PDF file (default: 9.pdf)");
         println!("  MAX_TOKENS: Maximum tokens per chunk (default: 500)");
         println!("  --ocr: Enable OCR with detection and recognition models");
@@ -19,7 +22,8 @@ fn main() {
     // Default file and options
     let default_file = "9.pdf".to_string();
     let file = args.get(1).unwrap_or(&default_file);
-    let max_tokens = args.get(2)
+    let max_tokens = args
+        .get(2)
         .and_then(|s| s.parse::<usize>().ok())
         .or(Some(500));
 
@@ -78,8 +82,11 @@ fn main() {
         }
 
         // Show raw compressed metadata size
-        println!("💾 COMPRESSED METADATA SIZE: {} bytes", result.content_ext.ext_json.len());
-        
+        println!(
+            "💾 COMPRESSED METADATA SIZE: {} bytes",
+            result.content_ext.ext_json.len()
+        );
+
         // Show full decompressed metadata structure
         if let Ok(json_data) = decompress_content_ext(&result.content_ext) {
             println!("🔍 DECOMPRESSED METADATA STRUCTURE:");
@@ -87,19 +94,16 @@ fn main() {
             // Show first 500 chars of pretty JSON
             println!("{}", pretty_json);
         }
-        
+
         // Extract and display PDF location metadata
         if let Ok(pdf_location) = extract_pdf_location(&result.content_ext) {
             // Get page range from fragments
             let pages: Vec<u32> = pdf_location.fragments.iter().map(|f| f.page).collect();
             let min_page = pages.iter().min().unwrap_or(&1);
             let max_page = pages.iter().max().unwrap_or(&1);
-            
+
             if min_page != max_page {
-                println!(
-                    "📄 PAGES: {} to {} (multi-page chunk)",
-                    min_page, max_page
-                );
+                println!("📄 PAGES: {} to {} (multi-page chunk)", min_page, max_page);
             } else {
                 println!("📄 PAGE: {}", min_page);
             }
@@ -109,19 +113,13 @@ fn main() {
             for (frag_idx, fragment) in pdf_location.fragments.iter().enumerate() {
                 println!(
                     "   Fragment {}: page {}, chars {}-{}",
-                    frag_idx,
-                    fragment.page,
-                    fragment.char_range.start,
-                    fragment.char_range.end
+                    frag_idx, fragment.page, fragment.char_range.start, fragment.char_range.end
                 );
-                
+
                 // Show bounding box
                 println!(
                     "     Bbox: x={:.2}, y={:.2}, w={:.2}, h={:.2}",
-                    fragment.bbox.x,
-                    fragment.bbox.y,
-                    fragment.bbox.width,
-                    fragment.bbox.height
+                    fragment.bbox.x, fragment.bbox.y, fragment.bbox.width, fragment.bbox.height
                 );
             }
 
@@ -131,30 +129,37 @@ fn main() {
         // Also show how this would be converted to DocumentRange format (as used in rznapp)
         if let Ok(pdf_location) = extract_pdf_location(&result.content_ext) {
             println!("\n🔄 DOCUMENT RANGE CONVERSION (for rznapp):");
-            
+
             // Group fragments by page
-            let mut page_fragments: std::collections::HashMap<u32, Vec<_>> = std::collections::HashMap::new();
+            let mut page_fragments: std::collections::HashMap<u32, Vec<_>> =
+                std::collections::HashMap::new();
             for fragment in &pdf_location.fragments {
                 let page = fragment.page;
-                page_fragments.entry(page).or_insert_with(Vec::new).push(fragment);
+                page_fragments
+                    .entry(page)
+                    .or_insert_with(Vec::new)
+                    .push(fragment);
             }
-            
+
             println!("  {} pages with content", page_fragments.len());
             for (page, fragments) in page_fragments.iter() {
                 let mut min_char = usize::MAX;
                 let mut max_char = 0;
                 let mut bbox_count = 0;
-                
+
                 for fragment in fragments {
                     min_char = min_char.min(fragment.char_range.start);
                     max_char = max_char.max(fragment.char_range.end);
                     bbox_count += 1; // One bbox per fragment
                 }
-                
-                println!("  Page {}: chars {}-{}, {} bounding boxes", page, min_char, max_char, bbox_count);
+
+                println!(
+                    "  Page {}: chars {}-{}, {} bounding boxes",
+                    page, min_char, max_char, bbox_count
+                );
             }
         }
-        
+
         // Content preview and stats
         let allowed_special = HashSet::new();
         let (tokens, _) = bpe.encode(&content_core.content, &allowed_special);
@@ -248,7 +253,8 @@ fn main() {
         .filter(|result| {
             extract_pdf_location(&result.content_ext)
                 .map(|loc| {
-                    let pages: std::collections::HashSet<u32> = loc.fragments.iter().map(|f| f.page).collect();
+                    let pages: std::collections::HashSet<u32> =
+                        loc.fragments.iter().map(|f| f.page).collect();
                     pages.len() > 1
                 })
                 .unwrap_or(false)

@@ -1,5 +1,5 @@
-use crate::{TextSegment, NUMBERED_HEADING};
 use super::stats::DocumentStats;
+use crate::{TextSegment, NUMBERED_HEADING};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum TextLevel {

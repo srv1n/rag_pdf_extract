@@ -21,6 +21,11 @@ use std::slice::Iter;
 use std::str;
 use unicode_normalization::UnicodeNormalization;
 
+// Import text splitting utilities
+use crate::text_splitting::{
+    count_words as count_words_simple, estimate_tokens_from_words, get_text_splitter_shared,
+};
+
 mod core_fonts;
 mod encodings;
 
@@ -47,7 +52,7 @@ pub use document::{
 };
 
 use crate::chunk_accumulator::count_words as unicode_count_words;
-use crate::text_splitting::{count_words, estimate_tokens_from_words};
+use crate::text_splitting::count_words;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -163,15 +168,15 @@ impl ExtractionStats {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     pub fn add_error(&mut self, page: u32, error: String) {
         self.errors.push(format!("Page {}: {}", page, error));
     }
-    
+
     pub fn add_warning(&mut self, page: u32, warning: String) {
         self.warnings.push(format!("Page {}: {}", page, warning));
     }
-    
+
     pub fn success_rate(&self) -> f64 {
         if self.total_pages == 0 {
             0.0
@@ -1788,27 +1793,50 @@ fn split_ocr_text_to_segments(
     current_transformed_font_size: f64,
 ) -> Vec<TextSegment> {
     let mut segments = Vec::new();
-    let mut current_pos = 0;
-    
-    // Split text into chunks that respect token limits
-    // Using a simple approach: split by paragraphs first, then by sentences if needed
-    let paragraphs: Vec<&str> = text.split("\n\n").collect();
-    
-    for paragraph in paragraphs {
-        if paragraph.trim().is_empty() {
-            continue;
+
+    // Use text-splitter for proper tokenization
+    match get_text_splitter_shared(max_tokens) {
+        Ok(splitter) => {
+            let chunks = splitter.chunks(text);
+            let mut current_pos = char_start;
+
+            for (idx, chunk) in chunks.enumerate() {
+                let chunk_text = chunk.to_string();
+                let chunk_len = chunk_text.chars().count();
+                let word_count = unicode_count_words(&chunk_text);
+
+                segments.push(TextSegment {
+                    content: chunk_text,
+                    font_size: current_font_size,
+                    transformed_font_size: current_transformed_font_size,
+                    x: position.0,
+                    y: position.1 + (idx as f64 * current_font_size * 1.2), // Adjust Y for subsequent chunks
+                    is_bold: false,
+                    font_name: "OCR".to_string(),
+                    font_weight: FontWeight::Regular,
+                    is_italic: false,
+                    page_num,
+                    cutat: format!("OCR[{}]", idx),
+                    fill_color: None,
+                    stroke_color: None,
+                    char_start: current_pos,
+                    char_end: current_pos + chunk_len,
+                    width: size.0,
+                    height: size.1,
+                    word_count,
+                });
+                current_pos += chunk_len;
+            }
         }
-        
-        // Estimate tokens more conservatively for OCR text
-        // OCR text often has more tokens per character due to formatting issues
-        // Using 1 token per 2.75 chars for safety
-        let estimated_tokens = (paragraph.chars().count() as f64 / 2.75).ceil() as usize;
-        
-        if estimated_tokens <= max_tokens {
-            // Paragraph fits within token limit
-            let chunk_len = paragraph.chars().count();
+        Err(e) => {
+            // Fallback: if text-splitter fails, create a single segment with warning
+            warn!(
+                "OCR text splitter failed: {}. Using fallback single segment.",
+                e
+            );
+            let word_count = unicode_count_words(text);
             segments.push(TextSegment {
-                content: paragraph.to_string(),
+                content: text.to_string(),
                 font_size: current_font_size,
                 transformed_font_size: current_transformed_font_size,
                 x: position.0,
@@ -1818,97 +1846,18 @@ fn split_ocr_text_to_segments(
                 font_weight: FontWeight::Regular,
                 is_italic: false,
                 page_num,
-                cutat: "OCRParagraph".to_string(),
+                cutat: "OCRFallback".to_string(),
                 fill_color: None,
                 stroke_color: None,
-                char_start: char_start + current_pos,
-                char_end: char_start + current_pos + chunk_len,
+                char_start,
+                char_end: char_start + text.chars().count(),
                 width: size.0,
                 height: size.1,
-                word_count: unicode_count_words(paragraph),
+                word_count,
             });
-            current_pos += chunk_len;
-        } else {
-            // Split paragraph by sentences
-            let sentences = paragraph.split_terminator(|c| c == '.' || c == '!' || c == '?');
-            let mut sentence_buffer = String::new();
-            let mut buffer_start = current_pos;
-            
-            for sentence in sentences {
-                let sentence_with_punct = if paragraph[sentence.len()..].starts_with('.') ||
-                                             paragraph[sentence.len()..].starts_with('!') ||
-                                             paragraph[sentence.len()..].starts_with('?') {
-                    format!("{}{}", sentence, &paragraph[sentence.len()..sentence.len()+1])
-                } else {
-                    sentence.to_string()
-                };
-                
-                let sentence_tokens = (sentence_with_punct.chars().count() as f64 / 2.75).ceil() as usize;
-                
-                if !sentence_buffer.is_empty() && 
-                   ((sentence_buffer.chars().count() as f64 / 2.75).ceil() as usize + sentence_tokens > max_tokens) {
-                    // Push current buffer as segment
-                    let chunk_len = sentence_buffer.chars().count();
-                    let word_count = unicode_count_words(&sentence_buffer);
-                    segments.push(TextSegment {
-                        content: sentence_buffer.clone(),
-                        font_size: current_font_size,
-                        transformed_font_size: current_transformed_font_size,
-                        x: position.0,
-                        y: position.1,
-                        is_bold: false,
-                        font_name: "OCR".to_string(),
-                        font_weight: FontWeight::Regular,
-                        is_italic: false,
-                        page_num,
-                        cutat: "OCRSentence".to_string(),
-                        fill_color: None,
-                        stroke_color: None,
-                        char_start: char_start + buffer_start,
-                        char_end: char_start + buffer_start + chunk_len,
-                        width: size.0,
-                        height: size.1,
-                        word_count,
-                    });
-                    buffer_start += chunk_len;
-                    sentence_buffer.clear();
-                }
-                
-                if !sentence_buffer.is_empty() {
-                    sentence_buffer.push(' ');
-                }
-                sentence_buffer.push_str(&sentence_with_punct);
-                current_pos += sentence_with_punct.chars().count();
-            }
-            
-            // Push any remaining buffer
-            if !sentence_buffer.is_empty() {
-                let chunk_len = sentence_buffer.chars().count();
-                let word_count = unicode_count_words(&sentence_buffer);
-                segments.push(TextSegment {
-                    content: sentence_buffer,
-                    font_size: current_font_size,
-                    transformed_font_size: current_transformed_font_size,
-                    x: position.0,
-                    y: position.1,
-                    is_bold: false,
-                    font_name: "OCR".to_string(),
-                    font_weight: FontWeight::Regular,
-                    is_italic: false,
-                    page_num,
-                    cutat: "OCRSentence".to_string(),
-                    fill_color: None,
-                    stroke_color: None,
-                    char_start: char_start + buffer_start,
-                    char_end: char_start + buffer_start + chunk_len,
-                    width: size.0,
-                    height: size.1,
-                    word_count,
-                });
-            }
         }
     }
-    
+
     segments
 }
 
@@ -2051,13 +2000,16 @@ fn process_xobject(
                         if !ocr_text.is_empty() {
                             info!(
                                 "OCR extracted {} chars from image (Page {}, Position {:.1},{:.1})",
-                                ocr_text.chars().count(), page_num, position.0, position.1
+                                ocr_text.chars().count(),
+                                page_num,
+                                position.0,
+                                position.1
                             );
-                            
+
                             // Split OCR text into smaller segments respecting token limits
-                            // Using conservative estimate: max 250 tokens per segment (leaving margin)
-                            // This accounts for OCR text that may have higher token density
-                            let max_ocr_tokens = 250;
+                            // Using very conservative limit: max 200 tokens per segment
+                            // OCR text with unusual spacing can have high token density
+                            let max_ocr_tokens = 200;
                             let ocr_segments = split_ocr_text_to_segments(
                                 &ocr_text,
                                 max_ocr_tokens,
@@ -2068,9 +2020,9 @@ fn process_xobject(
                                 current_font_size,
                                 current_transformed_font_size,
                             );
-                            
+
                             info!("OCR text split into {} segments", ocr_segments.len());
-                            
+
                             for segment in ocr_segments {
                                 let seg_len = segment.content.chars().count();
                                 text_segments.push(segment);
@@ -2109,8 +2061,9 @@ fn process_xobject(
                             pdf_image.width, pdf_image.height
                         );
                     } else {
-                        error!(
-                            "Image conversion failed: {}x{} filters={:?}, error: {}",
+                        // Image conversion failed - this only affects OCR, not text extraction
+                        debug!(
+                            "Image conversion skipped (OCR unavailable for this image): {}x{} filters={:?}, reason: {}",
                             pdf_image.width, pdf_image.height, pdf_image.filters, e
                         );
                     }
@@ -2502,6 +2455,170 @@ impl<'a> Processor<'a> {
         result
     }
 
+    /// Create text segments that respect token limits
+    /// If the content is too large, it gets split into multiple segments
+    fn create_text_segments_with_limit(
+        content: String,
+        font_size: f64,
+        transformed_font_size: f64,
+        x: f64,
+        y: f64,
+        is_bold: bool,
+        font_name: String,
+        font_weight: FontWeight,
+        is_italic: bool,
+        page_num: u32,
+        cutat: String,
+        fill_color: Option<(f64, f64, f64)>,
+        stroke_color: Option<(f64, f64, f64)>,
+        char_start: usize,
+        char_end: usize,
+        max_segment_tokens: usize,
+    ) -> Vec<TextSegment> {
+        // Convert f64 colors to u8
+        let fill_color_u8 =
+            fill_color.map(|(r, g, b)| ((r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8));
+        let stroke_color_u8 =
+            stroke_color.map(|(r, g, b)| ((r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8));
+
+        // Quick estimation: if content is definitely small, don't bother splitting
+        let word_count = count_words_simple(&content);
+        let estimated_tokens = estimate_tokens_from_words(word_count, 1.3);
+
+        if estimated_tokens <= max_segment_tokens {
+            // Content is small enough, return single segment
+            return vec![Self::create_text_segment(
+                content,
+                font_size,
+                transformed_font_size,
+                x,
+                y,
+                is_bold,
+                font_name,
+                font_weight,
+                is_italic,
+                page_num,
+                cutat,
+                fill_color_u8,
+                stroke_color_u8,
+                char_start,
+                char_end,
+            )];
+        }
+
+        // Content is too large, need to split it
+        debug!(
+            "Splitting large text segment with {} estimated tokens (max: {})",
+            estimated_tokens, max_segment_tokens
+        );
+
+        // Use text-splitter for smart splitting
+        let mut segments = Vec::new();
+        match get_text_splitter_shared(max_segment_tokens) {
+            Ok(splitter) => {
+                let chunks = splitter.chunks(&content);
+                let mut current_char_pos = char_start;
+
+                for (idx, chunk) in chunks.enumerate() {
+                    let chunk_str = chunk.to_string();
+                    let chunk_len = chunk_str.chars().count();
+
+                    segments.push(Self::create_text_segment(
+                        chunk_str,
+                        font_size,
+                        transformed_font_size,
+                        x,
+                        y + (idx as f64 * font_size * 1.2), // Adjust Y for subsequent chunks
+                        is_bold,
+                        font_name.clone(),
+                        font_weight.clone(),
+                        is_italic,
+                        page_num,
+                        format!("{}[{}]", cutat, idx), // Indicate this was split
+                        fill_color_u8,
+                        stroke_color_u8,
+                        current_char_pos,
+                        current_char_pos + chunk_len,
+                    ));
+                    current_char_pos += chunk_len;
+                }
+
+                debug!("Split into {} segments", segments.len());
+            }
+            Err(e) => {
+                // Fallback: if text-splitter fails, use simple splitting
+                warn!("Text splitter failed: {}. Using fallback splitting.", e);
+
+                // Simple word-based splitting
+                let words: Vec<&str> = content.split_whitespace().collect();
+                let mut current_chunk = String::new();
+                let mut current_words = 0;
+                let mut current_char_pos = char_start;
+
+                for word in words {
+                    let new_words = current_words + 1;
+                    let new_estimated = estimate_tokens_from_words(new_words, 1.3);
+
+                    if new_estimated > max_segment_tokens && !current_chunk.is_empty() {
+                        // Push current chunk
+                        let chunk_len = current_chunk.chars().count();
+                        segments.push(Self::create_text_segment(
+                            current_chunk.clone(),
+                            font_size,
+                            transformed_font_size,
+                            x,
+                            y + (segments.len() as f64 * font_size * 1.2),
+                            is_bold,
+                            font_name.clone(),
+                            font_weight.clone(),
+                            is_italic,
+                            page_num,
+                            format!("{}[fallback{}]", cutat, segments.len()),
+                            fill_color_u8,
+                            stroke_color_u8,
+                            current_char_pos,
+                            current_char_pos + chunk_len,
+                        ));
+                        current_char_pos += chunk_len;
+                        current_chunk.clear();
+                        current_words = 0;
+                    }
+
+                    if !current_chunk.is_empty() {
+                        current_chunk.push(' ');
+                        current_char_pos += 1;
+                    }
+                    current_chunk.push_str(word);
+                    current_words += 1;
+                }
+
+                // Push remaining
+                if !current_chunk.is_empty() {
+                    let chunk_len = current_chunk.chars().count();
+                    segments.push(Self::create_text_segment(
+                        current_chunk,
+                        font_size,
+                        transformed_font_size,
+                        x,
+                        y + (segments.len() as f64 * font_size * 1.2),
+                        is_bold,
+                        font_name,
+                        font_weight,
+                        is_italic,
+                        page_num,
+                        format!("{}[fallback{}]", cutat, segments.len()),
+                        fill_color_u8,
+                        stroke_color_u8,
+                        current_char_pos,
+                        current_char_pos + chunk_len,
+                    ));
+                }
+            }
+        }
+
+        segments
+    }
+
     fn create_text_segment(
         content: String,
         font_size: f64,
@@ -2820,26 +2937,27 @@ impl<'a> Processor<'a> {
                                 char_count as f64 * current_font_size * 0.6
                             };
                             let word_count = unicode_count_words(&content_str);
-                            text_segments.push(TextSegment {
-                                content: content_str,
-                                font_size: current_font_size,
-                                transformed_font_size: current_transformed_font_size,
-                                x: current_x,
-                                y: current_y,
-                                is_bold: current_is_bold,
-                                font_name: current_font.clone(),
-                                font_weight: current_font_weight.clone(),
-                                is_italic: current_is_italic,
-                                page_num: page_num,
-                                cutat: "Tj".to_string(),
-                                fill_color: None,
-                                stroke_color: None,
-                                char_start: current_segment_start,
-                                char_end: page_char_counter,
-                                width: approx_width,
-                                height: current_font_size,
-                                word_count,
-                            });
+                            // Use the new function that respects token limits
+                            // Conservative limit: 300 tokens per segment
+                            let segments = Self::create_text_segments_with_limit(
+                                content_str,
+                                current_font_size,
+                                current_transformed_font_size,
+                                current_x,
+                                current_y,
+                                current_is_bold,
+                                current_font.clone(),
+                                current_font_weight.clone(),
+                                current_is_italic,
+                                page_num,
+                                "Tj".to_string(),
+                                None,
+                                None,
+                                current_segment_start,
+                                page_char_counter,
+                                300, // Conservative limit for individual segments
+                            );
+                            text_segments.extend(segments);
                             current_segment_start = page_char_counter;
                             current_line.clear();
                         }
@@ -2912,11 +3030,7 @@ impl<'a> Processor<'a> {
                                                 //  && is_add
                                                 //     && current_y < self.current_font_size
                                                 {
-                                                    let processed_fill_color = (
-                                                        (current_font_color.0 * 255.0) as u8,
-                                                        (current_font_color.1 * 255.0) as u8,
-                                                        (current_font_color.2 * 255.0) as u8,
-                                                    );
+                                                    let processed_fill_color = current_font_color;
                                                     // if is_visible_text(
                                                     //     Some(processed_fill_color),
                                                     //     (255, 255, 255),
@@ -2925,23 +3039,26 @@ impl<'a> Processor<'a> {
                                                         Self::preserve_sentence_boundaries(
                                                             &current_line,
                                                         );
-                                                    text_segments.push(Self::create_text_segment(
-                                                        content_str,
-                                                        current_font_size,
-                                                        current_transformed_font_size,
-                                                        current_x,
-                                                        current_y,
-                                                        current_is_bold,
-                                                        current_font.clone(),
-                                                        current_font_weight.clone(),
-                                                        current_is_italic,
-                                                        page_num,
-                                                        "Tj".to_string(),
-                                                        Some(processed_fill_color),
-                                                        None,
-                                                        current_segment_start,
-                                                        page_char_counter,
-                                                    ));
+                                                    let segments =
+                                                        Self::create_text_segments_with_limit(
+                                                            content_str,
+                                                            current_font_size,
+                                                            current_transformed_font_size,
+                                                            current_x,
+                                                            current_y,
+                                                            current_is_bold,
+                                                            current_font.clone(),
+                                                            current_font_weight.clone(),
+                                                            current_is_italic,
+                                                            page_num,
+                                                            "Tj".to_string(),
+                                                            Some(current_font_color),
+                                                            None,
+                                                            current_segment_start,
+                                                            page_char_counter,
+                                                            300, // Conservative limit
+                                                        );
+                                                    text_segments.extend(segments);
                                                     current_segment_start = page_char_counter;
                                                     // }
                                                 }
@@ -3076,18 +3193,14 @@ impl<'a> Processor<'a> {
                                     //     && current_y < self.current_font_size
                                     {
                                         // Convert gs.fill_color (Vec<f64>) to a (u8, u8, u8) tuple:
-                                        let processed_fill_color = (
-                                            (current_font_color.0 * 255.0) as u8,
-                                            (current_font_color.1 * 255.0) as u8,
-                                            (current_font_color.2 * 255.0) as u8,
-                                        );
+                                        let processed_fill_color = current_font_color;
                                         // if is_visible_text(
                                         //     Some(processed_fill_color),
                                         //     (255, 255, 255),
                                         // ) {
                                         let content_str =
                                             Self::preserve_sentence_boundaries(&current_line);
-                                        text_segments.push(Self::create_text_segment(
+                                        let segments = Self::create_text_segments_with_limit(
                                             content_str,
                                             current_font_size,
                                             current_transformed_font_size,
@@ -3099,11 +3212,13 @@ impl<'a> Processor<'a> {
                                             current_is_italic,
                                             page_num,
                                             "Tj".to_string(),
-                                            Some(processed_fill_color),
+                                            Some(current_font_color),
                                             None,
                                             current_segment_start,
                                             page_char_counter,
-                                        ));
+                                            300, // Conservative limit
+                                        );
+                                        text_segments.extend(segments);
                                         current_segment_start = page_char_counter;
                                         // }
                                     }
@@ -3439,7 +3554,8 @@ impl<'a> Processor<'a> {
 
             // if is_visible_text(Some(processed_fill_color), (255, 255, 255)) {
             let content_str = Self::preserve_sentence_boundaries(&current_line);
-            text_segments.push(Self::create_text_segment(
+            // Use the new function that respects token limits
+            let segments = Self::create_text_segments_with_limit(
                 content_str,
                 current_font_size,
                 current_transformed_font_size,
@@ -3455,7 +3571,9 @@ impl<'a> Processor<'a> {
                 None,
                 current_segment_start,
                 page_char_counter,
-            ));
+                300, // Conservative limit for individual segments
+            );
+            text_segments.extend(segments);
             // }
             current_line.clear();
         }

@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-use ordered_float::OrderedFloat;
 use crate::TextSegment;
 use log::debug;
+use ordered_float::OrderedFloat;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct FontStats {

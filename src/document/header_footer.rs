@@ -1,5 +1,5 @@
-use std::collections::{HashMap, HashSet};
 use regex::Regex;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone)]
 pub struct HeaderFooterPattern {
