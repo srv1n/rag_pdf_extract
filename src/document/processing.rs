@@ -2,8 +2,7 @@ use super::{
     analysis::is_heading, stats::calculate_document_stats, HeaderFooterDetector, TextLevel,
 };
 use crate::chunk_accumulator::{
-    contains_sentence_end, count_words as unicode_count_words, split_long_sentence,
-    ChunkAccumulator,
+    contains_sentence_end, count_words as unicode_count_words, split_long_sentence, ChunkAccumulator,
 };
 use crate::form::form_fields;
 use crate::heading_hierarchy::HeaderHierarchy;
@@ -17,6 +16,62 @@ use lopdf::{Dictionary, Document};
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use unicode_segmentation::UnicodeSegmentation;
+
+// Helper: ASCII whitespace detection
+fn is_ascii_ws(b: u8) -> bool {
+    matches!(b, b' ' | b'\t' | b'\n' | b'\r')
+}
+
+// Find earliest safe forward boundary with conservative guards
+fn find_forward_boundary(text: &str) -> Option<usize> {
+    if text.is_empty() { return None; }
+    if let Some(pos) = text.find("\n\n") { return Some(pos + 2); }
+
+    let bytes = text.as_bytes();
+    let n = bytes.len();
+    let mut best: Option<usize> = None;
+
+    let mut consider = |i: usize, mut j: usize| {
+        // Skip closing quotes/brackets
+        while j < n {
+            let c = bytes[j];
+            if c == b'\'' || c == b'\"' || c == b')' || c == b']' { j += 1; } else { break; }
+        }
+        if j < n && !is_ascii_ws(bytes[j]) { return; }
+        if best.is_none() || j < best.unwrap() { best = Some(j); }
+    };
+
+    let mut i = 0usize;
+    while i < n {
+        let b = bytes[i];
+        if b == b'.' || b == b'!' || b == b'?' {
+            consider(i, i + 1);
+            i += 1; continue;
+        }
+        if b == b';' {
+            consider(i, i + 1);
+            i += 1; continue;
+        }
+        if b == b':' {
+            let prev_digit = i > 0 && bytes[i - 1].is_ascii_digit();
+            let next_digit = i + 1 < n && bytes[i + 1].is_ascii_digit();
+            if !(prev_digit && next_digit) { consider(i, i + 1); }
+            i += 1; continue;
+        }
+        if b == 0xE2 && i + 2 < n {
+            let b1 = bytes[i + 1];
+            let b2 = bytes[i + 2];
+            if b1 == 0x80 && (b2 == 0x94 || b2 == 0x93) {
+                let j = i + 3;
+                if j >= n || is_ascii_ws(bytes[j]) { consider(i, j); }
+                i += 3; continue;
+            }
+        }
+        i += 1;
+    }
+    best
+}
 
 #[derive(Clone, Debug)]
 pub struct PageText {
@@ -316,10 +371,111 @@ pub struct ContentOutput {
     pub page_positions: Vec<PagePosition>,
 }
 
+// Split a text so that the head fits within the given token capacity.
+// Preference order: last sentence boundary within capacity, else last whitespace
+fn split_to_fit(
+    text: &str,
+    sep: &str,
+    capacity_tokens: usize,
+    tokenizer: &tiktoken_rs::CoreBPE,
+) -> (String, String) {
+    if capacity_tokens == 0 {
+        return (String::new(), text.to_string());
+    }
+    let total = tokenizer.encode_ordinary(text).len();
+    if total <= capacity_tokens {
+        return (text.to_string(), String::new());
+    }
+    // Prefer wide boundaries first: double newline, or sentence/clause punctuation with guards.
+    let mut candidates: Vec<usize> = Vec::new();
+    // Double newline candidates
+    let mut start = 0usize;
+    while let Some(pos) = text[start..].find("\n\n") {
+        let idx = start + pos + 2; // cut after the two newlines
+        candidates.push(idx);
+        start = start + pos + 2;
+    }
+    // Sentence punctuation and strong clause candidates with guards
+    let bytes = text.as_bytes();
+    let n = bytes.len();
+    for i in 0..n {
+        let b = bytes[i];
+        if b == b'.' || b == b'!' || b == b'?' {
+            let mut j = i + 1;
+            while j < n {
+                let c = bytes[j];
+                if c == b'\'' || c == b'\"' || c == b')' || c == b']' { j += 1; } else { break; }
+            }
+            if j == n || is_ascii_ws(bytes[j]) { candidates.push(j); }
+            continue;
+        }
+        if b == b';' {
+            let j = i + 1;
+            if j == n || is_ascii_ws(bytes[j]) { candidates.push(j); }
+            continue;
+        }
+        if b == b':' {
+            let prev_digit = i > 0 && bytes[i - 1].is_ascii_digit();
+            let next_digit = i + 1 < n && bytes[i + 1].is_ascii_digit();
+            let j = i + 1;
+            if (j == n || is_ascii_ws(bytes[j])) && !(prev_digit && next_digit) { candidates.push(j); }
+            continue;
+        }
+        if b == 0xE2 && i + 2 < n {
+            let b1 = bytes[i + 1];
+            let b2 = bytes[i + 2];
+            if b1 == 0x80 && (b2 == 0x94 || b2 == 0x93) {
+                let j = i + 3;
+                if j == n || is_ascii_ws(bytes[j]) { candidates.push(j); }
+            }
+            continue;
+        }
+    }
+    // Deduplicate and sort descending to try farthest boundary first
+    candidates.sort_unstable();
+    candidates.dedup();
+    candidates.reverse();
+
+    for idx in candidates.iter().cloned() {
+        if idx > text.len() { continue; }
+        let head = &text[..idx];
+        let prefix = if sep.is_empty() { head.to_string() } else { format!("{}{}", sep, head) };
+        let needed = tokenizer.encode_ordinary(&prefix).len();
+        if needed <= capacity_tokens {
+            let h = head.trim().to_string();
+            let t = text[idx..].trim_start().to_string();
+            return (h, t);
+        }
+    }
+
+    // Fallback: grow by words until we hit capacity
+    let mut used_tokens = 0usize;
+    let mut cut_idx_word: Option<usize> = None;
+    let mut cursor = 0usize;
+    for word in text.unicode_words() {
+        if let Some(rel) = text[cursor..].find(word) {
+            let start = cursor + rel;
+            let end = start + word.len();
+            let w_tokens = tokenizer.encode_ordinary(word).len();
+            let space_tokens = if used_tokens == 0 { 0 } else { 1 };
+            if used_tokens + space_tokens + w_tokens > capacity_tokens { break; }
+            used_tokens += space_tokens + w_tokens;
+            cursor = end;
+            cut_idx_word = Some(cursor);
+        } else { break; }
+    }
+    let cut_idx = cut_idx_word.unwrap_or(0);
+    if cut_idx == 0 { return (String::new(), text.to_string()); }
+    let head = text[..cut_idx].trim().to_string();
+    let tail = text[cut_idx..].trim_start().to_string();
+    (head, tail)
+}
+
 pub fn output_doc(
     doc: &Document,
     ocr_handler: Option<&OcrHandler>,
     max_tokens: Option<usize>,
+    laparams: Option<&crate::LAParams>,
 ) -> Result<Vec<ContentOutput>, Box<dyn std::error::Error>> {
     let mut document_structure: Vec<ContentOutput> = Vec::new();
 
@@ -415,9 +571,16 @@ pub fn output_doc(
                         *page_num,
                         &mut page_segments,
                         page_rotate,
+                        laparams,
                     ) {
                         Ok(_) => {
-                            debug!("Successfully processed page {} with {} segments", page_num, page_segments.len());
+                            let char_count: usize = page_segments.iter().map(|s| s.content.len()).sum();
+                            debug!(
+                                "Successfully processed page {} with {} segments ({} chars)",
+                                page_num,
+                                page_segments.len(),
+                                char_count
+                            );
                         }
                         Err(e) => {
                             error!("Error processing page {} content: {:?}. Returning partial results.", page_num, e);
@@ -448,8 +611,8 @@ pub fn output_doc(
 
     // Feed all text segments to the detector
     for segment in &text_segments {
-        // Get the page height from the media box (this is approximate)
-        let page_height = 800.0; // Default page height, could be extracted from media box
+        // Approximate page height if unknown; segments carry page_num, not media box
+        let page_height = 792.0; // US Letter default; detector primarily relies on normalization + repetition
         header_footer_detector.add_occurrence(
             &segment.content,
             segment.page_num,
@@ -462,11 +625,23 @@ pub fn output_doc(
     // Get the detected headers and footers
     let headers_footers = header_footer_detector.analyze();
 
-    // Filter out headers and footers from text segments
-    let text_segments: Vec<TextSegment> = text_segments
-        .into_iter()
-        .filter(|seg| !headers_footers.contains(&seg.content))
-        .collect();
+    // Optionally skip header/footer filtering for debugging
+    let skip_hf = std::env::var("PDF_EXTRACT_SKIP_HEADER_FOOTER").is_ok();
+
+    // Filter out headers and footers from text segments (unless skipped)
+    let text_segments: Vec<TextSegment> = if skip_hf {
+        text_segments
+    } else {
+        text_segments
+            .into_iter()
+            .filter(|seg| {
+                let norm = crate::document::header_footer::HeaderFooterDetector::normalize_text(
+                    &seg.content,
+                );
+                !headers_footers.contains(&norm)
+            })
+            .collect()
+    };
 
     // The rest of the function remains sequential to ensure that the document structure is created in the correct order
     // The rest of the function remains sequential to ensure that the document structure is created in the correct order
@@ -509,6 +684,16 @@ pub fn output_doc(
                 // Check if we can add this segment
                 if !accumulator.can_add_segment(&segment) {
                     // Can't add - need to handle overflow
+                    // First try backtracking to the last wide boundary under the cap
+                    if let Some(output) = accumulator.flush_at_last_boundary() {
+                        document_structure.push(output);
+                        accumulator.set_headings(header_hierarchy.get_headers());
+                        // After flushing at a clean boundary, try adding again
+                        if accumulator.can_add_segment(&segment) {
+                            accumulator.add_segment(segment);
+                            continue;
+                        }
+                    }
                     if accumulator.should_flush() {
                         // At sentence boundary - safe to flush
                         document_structure.push(accumulator.create_output());
@@ -530,6 +715,12 @@ pub fn output_doc(
                                 partial_segment.content = chunk_text;
                                 partial_segment.word_count =
                                     unicode_count_words(&partial_segment.content);
+                                // Adjust bbox approximately by proportion of chars
+                                let orig_chars = segment.content.chars().count().max(1);
+                                let part_chars = partial_segment.content.chars().count();
+                                let ratio = (part_chars as f64) / (orig_chars as f64);
+                                partial_segment.width = (segment.width * ratio).max(0.0);
+                                // Keep x for the first piece in this loop; subsequent pieces will be split by separate flushes
 
                                 accumulator.add_segment(partial_segment);
                                 document_structure.push(accumulator.create_output());
@@ -561,6 +752,10 @@ pub fn output_doc(
                                 partial_segment.content = chunk_text;
                                 partial_segment.word_count =
                                     unicode_count_words(&partial_segment.content);
+                                let orig_chars = segment.content.chars().count().max(1);
+                                let part_chars = partial_segment.content.chars().count();
+                                let ratio = (part_chars as f64) / (orig_chars as f64);
+                                partial_segment.width = (segment.width * ratio).max(0.0);
 
                                 accumulator.add_segment(partial_segment);
                                 document_structure.push(accumulator.create_output());
@@ -575,49 +770,192 @@ pub fn output_doc(
                             accumulator.set_headings(header_hierarchy.get_headers());
                         }
                     } else {
-                        // Must flush even though not at sentence boundary
-                        document_structure.push(accumulator.create_output_with_warning());
-                        accumulator.reset();
-                        accumulator.set_headings(header_hierarchy.get_headers());
+                        // Try to carve a clean prefix to fit current chunk before hard flush
+                        let remaining = max_tokens
+                            .unwrap_or(usize::MAX)
+                            .saturating_sub(accumulator.get_token_count().unwrap_or(0));
+                        let (prefix, rest) = split_to_fit(&segment.content, " ", remaining, &tokenizer);
+                        if !prefix.is_empty() {
+                            let mut seg1 = segment.clone();
+                            seg1.content = prefix;
+                            seg1.word_count = unicode_count_words(&seg1.content);
+                            // Adjust char ranges to reflect the prefix length on this page
+                            let prefix_chars = seg1.content.chars().count();
+                            let original_start = seg1.char_start;
+                            seg1.char_end = original_start + prefix_chars;
+                            // Approximate bbox split left-to-right
+                            let total_chars = segment.content.chars().count().max(1);
+                            let ratio = (prefix_chars as f64) / (total_chars as f64);
+                            let w1 = (segment.width * ratio).max(0.0);
+                            seg1.width = w1;
+                            accumulator.add_segment(seg1);
+                            document_structure.push(accumulator.create_output());
+                            accumulator.reset();
+                            accumulator.set_headings(header_hierarchy.get_headers());
 
-                        // Check if segment itself is too large
-                        if segment.word_count > 0 {
-                            let test_tokens = tokenizer.encode_ordinary(&segment.content).len();
-                            debug!("Segment has {} tokens (max: {:?})", test_tokens, max_tokens);
-                            if test_tokens > max_tokens.unwrap_or(usize::MAX) {
-                                debug!("Splitting large segment with {} tokens", test_tokens);
-                                // Split the large segment
+                            if !rest.is_empty() {
+                                // Handle remainder like a normal segment
+                                let mut seg2 = segment.clone();
+                                seg2.content = rest;
+                                seg2.word_count = unicode_count_words(&seg2.content);
+                                // Remainder starts where prefix ended; end at original end
+                                let rest_chars = seg2.content.chars().count();
+                                seg2.char_start = original_start + prefix_chars;
+                                seg2.char_end = seg2.char_start + rest_chars;
+                                // Adjust bbox for remainder
+                                let w2 = (segment.width - ratio * segment.width).max(0.0);
+                                seg2.x = segment.x + (segment.width - w2);
+                                seg2.width = w2;
+                                let test_tokens = tokenizer.encode_ordinary(&seg2.content).len();
+                                if test_tokens > max_tokens.unwrap_or(usize::MAX) {
                                 let chunks = split_long_sentence(
-                                    &segment.content,
-                                    max_tokens.unwrap_or(usize::MAX),
-                                    &tokenizer,
-                                );
-
-                                for (_idx, chunk_text) in chunks.into_iter().enumerate() {
-                                    let mut partial_segment = segment.clone();
-                                    partial_segment.content = chunk_text;
-                                    partial_segment.word_count =
-                                        unicode_count_words(&partial_segment.content);
-
-                                    accumulator.add_segment(partial_segment);
-                                    document_structure.push(accumulator.create_output());
-                                    accumulator.reset();
-                                    accumulator.set_headings(header_hierarchy.get_headers());
+                                        &seg2.content,
+                                        max_tokens.unwrap_or(usize::MAX),
+                                        &tokenizer,
+                                    );
+                                    for chunk_text in chunks.into_iter() {
+                                        let mut partial = seg2.clone();
+                                        partial.content = chunk_text;
+                                        partial.word_count =
+                                            unicode_count_words(&partial.content);
+                                        let c = partial.content.chars().count();
+                                        partial.char_end = partial.char_start + c;
+                                        // Proportionally adjust width within the remainder
+                                        let rem_total = seg2.content.chars().count().max(1);
+                                        let part_ratio = (c as f64) / (rem_total as f64);
+                                        partial.width = (seg2.width * part_ratio).max(0.0);
+                                        // Keep x for first piece inside remainder; subsequent pieces are emitted across separate flushes
+                                        accumulator.add_segment(partial);
+                                        document_structure.push(accumulator.create_output());
+                                        accumulator.reset();
+                                        accumulator.set_headings(
+                                            header_hierarchy.get_headers(),
+                                        );
+                                    }
+                                } else {
+                                    accumulator.add_segment(seg2);
                                 }
-                            } else {
-                                accumulator.add_segment(segment);
+                            }
+                        } else {
+                            // Hard flush, then handle the segment as usual
+                            document_structure.push(accumulator.create_output_with_warning());
+                            accumulator.reset();
+                            accumulator.set_headings(header_hierarchy.get_headers());
+
+                            // Check if segment itself is too large
+                            if segment.word_count > 0 {
+                                let test_tokens = tokenizer.encode_ordinary(&segment.content).len();
+                                debug!("Segment has {} tokens (max: {:?})", test_tokens, max_tokens);
+                                if test_tokens > max_tokens.unwrap_or(usize::MAX) {
+                                    debug!("Splitting large segment with {} tokens", test_tokens);
+                                    // Split the large segment
+                                    let chunks = split_long_sentence(
+                                        &segment.content,
+                                        max_tokens.unwrap_or(usize::MAX),
+                                        &tokenizer,
+                                    );
+
+                                    for (_idx, chunk_text) in chunks.into_iter().enumerate() {
+                                        let mut partial_segment = segment.clone();
+                                        partial_segment.content = chunk_text;
+                                        partial_segment.word_count =
+                                            unicode_count_words(&partial_segment.content);
+
+                                        accumulator.add_segment(partial_segment);
+                                        document_structure.push(accumulator.create_output());
+                                        accumulator.reset();
+                                        accumulator.set_headings(
+                                            header_hierarchy.get_headers(),
+                                        );
+                                    }
+                                } else {
+                                    accumulator.add_segment(segment);
+                                }
                             }
                         }
                     }
                 } else {
-                    // Normal case - just add the segment
-                    accumulator.add_segment(segment);
+                    // Normal case - consider look-ahead ending before adding full segment
+                    let mut handled = false;
+                    if let (Some(max_toks), Some(current_tokens)) = (max_tokens, accumulator.get_token_count()) {
+                        // Trigger window when we're near capacity
+                        if current_tokens > (max_toks * 85 / 100) {
+                            // Configurable small token window
+                            let lookahead_n: usize = std::env::var("PDF_EXTRACT_LOOKAHEAD_TOKENS")
+                                .ok()
+                                .and_then(|v| v.parse().ok())
+                                .unwrap_or(12);
+                            if let Some(k) = find_forward_boundary(&segment.content) {
+                                if k > 0 {
+                                    let prefix = &segment.content[..k];
+                                    // Conservative space token: assume a join space if accumulator non-empty
+                                    let sep_tokens = if accumulator.is_empty() { 0 } else { 1 };
+                                    let needed = sep_tokens + tokenizer.encode_ordinary(prefix).len();
+                                    if needed <= lookahead_n && current_tokens + needed <= max_toks {
+                                        // Split incoming segment into prefix + remainder
+                                        let mut seg1 = segment.clone();
+                                        seg1.content = prefix.to_string();
+                                        seg1.word_count = unicode_count_words(&seg1.content);
+                                        let prefix_chars = seg1.content.chars().count();
+                                        let original_start = seg1.char_start;
+                                        seg1.char_end = original_start + prefix_chars;
+                                        // Proportional bbox split
+                                        let total_chars = segment.content.chars().count().max(1);
+                                        let ratio = (prefix_chars as f64) / (total_chars as f64);
+                                        let w1 = (segment.width * ratio).max(0.0);
+                                        seg1.width = w1;
 
-                    // Check if we should proactively flush
-                    if accumulator.should_flush() {
-                        document_structure.push(accumulator.create_output());
-                        accumulator.reset();
-                        accumulator.set_headings(header_hierarchy.get_headers());
+                                        // Add small prefix, then flush
+                                        accumulator.add_segment(seg1);
+                                        document_structure.push(accumulator.create_output());
+                                        accumulator.reset();
+                                        accumulator.set_headings(header_hierarchy.get_headers());
+
+                                        // Handle remainder in the fresh chunk
+                                        let rest = &segment.content[k..];
+                                        if !rest.is_empty() {
+                                            let mut seg2 = segment.clone();
+                                            seg2.content = rest.to_string();
+                                            seg2.word_count = unicode_count_words(&seg2.content);
+                                            let rest_chars = seg2.content.chars().count();
+                                            seg2.char_start = original_start + prefix_chars;
+                                            seg2.char_end = seg2.char_start + rest_chars;
+                                            // Adjust bbox for remainder
+                                            seg2.x = segment.x + w1;
+                                            seg2.width = (segment.width - w1).max(0.0);
+                                            accumulator.add_segment(seg2);
+                                        }
+                                        handled = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if !handled {
+                        // Just add the segment (allow multi-page chunks)
+                        accumulator.add_segment(segment);
+                    }
+
+                    // Proactive flush logic: enforce strict cap, then boundary-based flush
+                    if let Some(tokens) = accumulator.get_token_count() {
+                        if let Some(max_toks) = max_tokens {
+                            if tokens >= max_toks {
+                                // Strict cap: flush immediately
+                                document_structure.push(accumulator.create_output());
+                                accumulator.reset();
+                                accumulator.set_headings(header_hierarchy.get_headers());
+                            } else if tokens > (max_toks * 9 / 10) && accumulator.should_flush() {
+                                document_structure.push(accumulator.create_output());
+                                accumulator.reset();
+                                accumulator.set_headings(header_hierarchy.get_headers());
+                            } else if tokens > (max_toks * 85 / 100) {
+                                // Prefer flushing at the last wide boundary to avoid mid-sentence near cap
+                                if let Some(output) = accumulator.flush_at_last_boundary() {
+                                    document_structure.push(output);
+                                    accumulator.set_headings(header_hierarchy.get_headers());
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -630,6 +968,8 @@ pub fn output_doc(
     }
 
     // Return the document structure directly - no post-processing needed
+    // Dump font decode summary if enabled
+    crate::dump_font_decode_summary();
     Ok(document_structure)
 }
 
@@ -640,9 +980,10 @@ pub fn output_doc_new_schema(
     max_tokens: Option<usize>,
     source_id: i64,
     source_type: &str,
+    laparams: Option<&crate::LAParams>,
 ) -> Result<Vec<ExtractionResult>, Box<dyn std::error::Error>> {
     // Reuse most of the existing output_doc logic but modify the return format
-    let content_outputs = output_doc(doc, ocr_handler, max_tokens)?;
+    let content_outputs = output_doc(doc, ocr_handler, max_tokens, laparams)?;
 
     let mut results = Vec::new();
 
@@ -686,6 +1027,7 @@ pub fn parse_pdf(
     ocr_cache: Option<&str>,
     _resume: Option<bool>, // Kept for compatibility
     max_tokens: Option<usize>,
+    laparams: Option<crate::LAParams>,
 ) -> Result<Vec<ExtractionResult>, Box<dyn std::error::Error>> {
     let doc = Document::load(file_path)?;
 
@@ -702,5 +1044,6 @@ pub fn parse_pdf(
         max_tokens,
         source_id,
         source_type,
+        laparams.as_ref(),
     )
 }

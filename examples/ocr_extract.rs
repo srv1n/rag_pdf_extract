@@ -67,6 +67,7 @@ fn main() {
         None,      // ocr_cache
         None,      // resume
         Some(500), // Max tokens per chunk
+        None,      // LAParams
     ) {
         Ok(docs) => docs,
         Err(e) => {

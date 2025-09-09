@@ -5,3 +5,6 @@ tests/docs_cache
 /*.pdf
 /*.txt
 *.html
+/pdfminer
+pdfminer
+pdfminer/*

@@ -37,7 +37,7 @@ use pdf_extract::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Extract content from PDF file
-    let results = parse_pdf("document.pdf", 1, "file", None, None, None, Some(500))?;
+    let results = parse_pdf("document.pdf", 1, "file", None, None, None, Some(500), None)?;
     
     for result in results {
         println!("Content: {}", result.content_core.content);
@@ -72,7 +72,8 @@ let results = parse_pdf(
     Some(ocr_config),    // OCR configuration
     None,                // OCR cache (optional)
     None,                // resume from (optional)
-    Some(1000)           // max tokens per chunk
+    Some(1000),          // max tokens per chunk
+    None                 // LAParams (layout analysis params)
 )?;
 ```
 
@@ -148,7 +149,7 @@ Intelligent splitting respects token limits:
 
 ```rust
 // Chunks will be optimally split to stay under 500 tokens
-let results = parse_pdf("large_document.pdf", 1, "file", None, None, None, Some(500))?;
+let results = parse_pdf("large_document.pdf", 1, "file", None, None, None, Some(500), None)?;
 
 for result in results {
     assert!(result.content_core.token_count <= 500);

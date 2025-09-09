@@ -20,6 +20,9 @@ use std::result::Result;
 use std::slice::Iter;
 use std::str;
 use unicode_normalization::UnicodeNormalization;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Mutex;
+use lazy_static::lazy_static;
 
 // Import text splitting utilities
 use crate::text_splitting::{
@@ -34,6 +37,7 @@ pub mod document;
 mod form;
 mod glyphnames;
 mod heading_hierarchy;
+mod layout_params;
 mod ocrs;
 mod pdf_image;
 pub mod text_splitting;
@@ -51,9 +55,11 @@ pub use document::{
     HeaderFooterPattern, HeaderFooterType, PageOccurrence, PageText, PostProcessor, TextLevel,
 };
 
+// Re-export LAParams configuration
+pub use layout_params::LAParams;
+
 use crate::chunk_accumulator::count_words as unicode_count_words;
 use crate::text_splitting::count_words;
-use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
@@ -281,6 +287,60 @@ impl From<lopdf::Error> for OutputError {
 macro_rules! dlog {
     ($($e:expr),*) => { {$(let _ = $e;)*} }
     //($($t:tt)*) => { println!($($t)*) }
+}
+
+// Instrumentation: per-font decode stats (enabled when PDF_EXTRACT_LOG_FONTS is set)
+lazy_static! {
+    static ref FONT_DECODE_COUNTS: Mutex<std::collections::HashMap<String, (u64, u64)>> =
+        Mutex::new(std::collections::HashMap::new()); // font_key -> (total, empty)
+    static ref FONT_SEEN: Mutex<std::collections::HashSet<String>> =
+        Mutex::new(std::collections::HashSet::new());
+    static ref FONT_APPEND_COUNTS: Mutex<std::collections::HashMap<String, u64>> =
+        Mutex::new(std::collections::HashMap::new()); // font_id -> appended chars
+}
+static FONT_LOG_SAMPLES: AtomicUsize = AtomicUsize::new(0);
+
+fn record_font_decode(font_key: &str, decoded_nonempty: bool) {
+    if std::env::var("PDF_EXTRACT_LOG_FONTS").is_err() { return; }
+    if let Ok(mut map) = FONT_DECODE_COUNTS.lock() {
+        let entry = map.entry(font_key.to_string()).or_insert((0, 0));
+        entry.0 += 1;
+        if !decoded_nonempty { entry.1 += 1; }
+    }
+}
+
+fn log_font_once(prefix: &str, font_key: &str, details: &str) {
+    if std::env::var("PDF_EXTRACT_LOG_FONTS").is_err() { return; }
+    if let Ok(mut seen) = FONT_SEEN.lock() {
+        if !seen.contains(font_key) {
+            seen.insert(font_key.to_string());
+            // Cap logs to avoid spam
+            if FONT_LOG_SAMPLES.fetch_add(1, Ordering::Relaxed) < 50 {
+                log::debug!("{} {} {}", prefix, font_key, details);
+            }
+        }
+    }
+}
+
+pub fn dump_font_decode_summary() {
+    if std::env::var("PDF_EXTRACT_LOG_FONTS").is_err() { return; }
+    if let Ok(map) = FONT_DECODE_COUNTS.lock() {
+        for (k, (total, empty)) in map.iter() {
+            log::debug!("fontstats: {} total={} empty={} empty_ratio={:.2}", k, total, empty, (*empty as f64)/(*total as f64 + 1e-9));
+        }
+    }
+    if let Ok(map) = FONT_APPEND_COUNTS.lock() {
+        for (k, appended) in map.iter() {
+            log::debug!("fontstats: append {} appended={}", k, appended);
+        }
+    }
+}
+
+fn record_font_append(font_id: &str) {
+    if std::env::var("PDF_EXTRACT_LOG_FONTS").is_err() { return; }
+    if let Ok(mut map) = FONT_APPEND_COUNTS.lock() {
+        *map.entry(font_id.to_string()).or_insert(0) += 1;
+    }
 }
 
 fn get_info(doc: &Document) -> Option<&Dictionary> {
@@ -971,6 +1031,7 @@ impl<'a> PdfSimpleFont<'a> {
 }
 impl<'a> PdfType3Font<'a> {
     fn new(doc: &'a Document, font: &'a Dictionary) -> PdfType3Font<'a> {
+        // Attempt to read ToUnicode map if present
         let unicode_map = get_unicode_map(doc, font);
         let encoding: Option<&Object> = get(doc, font, b"Encoding");
 
@@ -1057,7 +1118,7 @@ impl<'a> PdfType3Font<'a> {
             font,
             widths: width_map,
             encoding: encoding_table,
-            unicode_map,
+                unicode_map,
         }
     }
 }
@@ -1121,6 +1182,18 @@ impl<'a> PdfFont for PdfSimpleFont<'a> {
         iter.next().map(|x| (*x as CharCode, 1))
     }
     fn decode_char(&self, char: CharCode) -> String {
+        let base_name = get_name_string(self.doc, self.font, b"BaseFont");
+        let subtype = get_name_string(self.doc, self.font, b"Subtype");
+        let font_key = format!("{}:{}:Simple", base_name, subtype);
+        log_font_once(
+            "font-init:",
+            &font_key,
+            &format!(
+                "to_unicode={} encoding_table={}",
+                self.unicode_map.as_ref().map(|m| m.len()).unwrap_or(0),
+                self.encoding.as_ref().map(|v| v.len()).unwrap_or(0)
+            ),
+        );
         let slice = [char as u8];
         if let Some(ref unicode_map) = self.unicode_map {
             let s = unicode_map.get(&char);
@@ -1143,6 +1216,7 @@ impl<'a> PdfFont for PdfSimpleFont<'a> {
                 }
                 Some(s) => s.clone(),
             };
+            record_font_decode(&font_key, !s.is_empty());
             return s;
         }
         let encoding = self
@@ -1152,6 +1226,7 @@ impl<'a> PdfFont for PdfSimpleFont<'a> {
             .unwrap_or(&PDFDocEncoding);
         //dlog!("char_code {:?} {:?}", char, self.encoding);
         let s = to_utf8(encoding, &slice);
+        record_font_decode(&font_key, !s.is_empty());
         s
     }
 }
@@ -1176,6 +1251,18 @@ impl<'a> PdfFont for PdfType3Font<'a> {
         iter.next().map(|x| (*x as CharCode, 1))
     }
     fn decode_char(&self, char: CharCode) -> String {
+        let base_name = get_name_string(self.doc, self.font, b"BaseFont");
+        let subtype = get_name_string(self.doc, self.font, b"Subtype");
+        let font_key = format!("{}:{}:Type3", base_name, subtype);
+        log_font_once(
+            "font-init:",
+            &font_key,
+            &format!(
+                "to_unicode={} encoding_table={}",
+                self.unicode_map.as_ref().map(|m| m.len()).unwrap_or(0),
+                self.encoding.as_ref().map(|v| v.len()).unwrap_or(0)
+            ),
+        );
         let slice = [char as u8];
         if let Some(ref unicode_map) = self.unicode_map {
             let s = unicode_map.get(&char);
@@ -1185,6 +1272,7 @@ impl<'a> PdfFont for PdfType3Font<'a> {
                 }
                 Some(s) => s.clone(),
             };
+            record_font_decode(&font_key, !s.is_empty());
             return s;
         }
         let encoding = self
@@ -1194,6 +1282,7 @@ impl<'a> PdfFont for PdfType3Font<'a> {
             .unwrap_or(&PDFDocEncoding);
         //dlog!("char_code {:?} {:?}", char, self.encoding);
         let s = to_utf8(encoding, &slice);
+        record_font_decode(&font_key, !s.is_empty());
         s
     }
 }
@@ -1308,11 +1397,13 @@ impl<'a> PdfCIDFont<'a> {
         };
 
         // Sometimes a Type0 font might refer to the same underlying data as regular font. In this case we may be able to extract some encoding
-        // data.
-        // We should also look inside the truetype data to see if there's a cmap table. It will help us convert as well.
-        // This won't work if the cmap has been subsetted. A better approach might be to hash glyph contents and use that against
-        // a global library of glyph hashes
-        let unicode_map = get_unicode_map(doc, font);
+        // data. We try ToUnicode on the Type0 font; if missing, also try on the descendant CID font.
+        let mut unicode_map = get_unicode_map(doc, font);
+        if unicode_map.is_none() {
+            unicode_map = get_unicode_map(doc, ciddict);
+        }
+        let map_len = unicode_map.as_ref().map(|m| m.len()).unwrap_or(0);
+        debug!("CID font {} ToUnicode entries: {}", base_name, map_len);
 
         dlog!("descendents {:?} {:?}", descendants, ciddict);
 
@@ -1359,13 +1450,26 @@ impl<'a> PdfCIDFont<'a> {
 
 impl<'a> PdfFont for PdfCIDFont<'a> {
     fn get_width(&self, id: CharCode) -> f64 {
-        let width = self.widths.get(&id);
-        if let Some(width) = width {
-            dlog!("GetWidth {} -> {}", id, *width);
-            return *width;
+        // For CID fonts, `id` should represent the original character code from the stream.
+        // Map char code -> CID using the encoding, then look up CID width in `self.widths`.
+        let mut cid: Option<CharCode> = None;
+        for range in &self.encoding.cid {
+            if id as u32 >= range.src_code_lo && id as u32 <= range.src_code_hi {
+                cid = Some(((id as u32 - range.src_code_lo) + range.dst_CID_lo) as CharCode);
+                break;
+            }
+        }
+
+        let key = cid.unwrap_or(id);
+        if let Some(width) = self.widths.get(&key) {
+            dlog!("GetWidth (char={}) CID={} -> {}", id, key, *width);
+            *width
         } else {
-            dlog!("missing width for {} falling back to default_width", id);
-            return self.default_width.unwrap();
+            dlog!(
+                "missing width for char={} (CID={}), falling back to default_width",
+                id, key
+            );
+            self.default_width.unwrap()
         }
     } /*
       fn decode(&self, chars: &[u8]) -> String {
@@ -1390,26 +1494,58 @@ impl<'a> PdfFont for PdfCIDFont<'a> {
             c = ((c as u32) << 8) | next as u32;
         }
         let code = code?;
-        for range in &self.encoding.cid {
-            if code.0 >= range.src_code_lo && code.0 <= range.src_code_hi {
-                return Some((code.0 + range.dst_CID_lo, code.1 as u8));
-            }
-        }
-        None
+        // Return the original character code and width (bytes consumed).
+        // Width lookup will map to CID internally in get_width().
+        Some((code.0 as CharCode, code.1 as u8))
     }
     fn decode_char(&self, char: CharCode) -> String {
-        let s = self.to_unicode.as_ref().and_then(|x| x.get(&char));
-        if let Some(s) = s {
-            s.clone()
-        } else {
-            dlog!(
-                "Unknown character {:?} in {:?} {:?}",
-                char,
-                self.font,
-                self.to_unicode
-            );
-            "".to_string()
+        // `char` is the original character code from the content stream.
+        // Prefer direct ToUnicode mapping using that code.
+        let base_name = get_name_string(self.doc, self.font, b"BaseFont");
+        let font_key = format!("{}:{}:CID", base_name, "Type0");
+        if let Some(map) = self.to_unicode.as_ref() {
+            if let Some(s) = map.get(&(char as u32)) {
+                record_font_decode(&font_key, !s.is_empty());
+                return s.clone();
+            }
+            // Fallback: some ToUnicode maps are keyed by CID; map char code -> CID and try again
+            for range in &self.encoding.cid {
+                if char as u32 >= range.src_code_lo && char as u32 <= range.src_code_hi {
+                    let cid = (char as u32 - range.src_code_lo) + range.dst_CID_lo;
+                    if let Some(s) = map.get(&cid) {
+                        record_font_decode(&font_key, !s.is_empty());
+                        return s.clone();
+                    }
+                    break;
+                }
+            }
         }
+        // Last-resort fallback:
+        // Some PDFs (Identity-H) effectively carry UTF-16BE values directly in char codes.
+        // Try interpreting the 2-byte code as UTF-16 before falling back to PDFDocEncoding per byte.
+        let mut out = String::new();
+        if char > 0xFF {
+            let u = char as u16;
+            if let Ok(s) = String::from_utf16(&[u]) {
+                if !s.is_empty() {
+                    out.push_str(&s);
+                }
+            }
+        }
+        if out.is_empty() {
+            let encoding = &PDFDocEncoding;
+            if char <= 0xFF {
+                let slice = [char as u8];
+                out.push_str(&to_utf8(encoding, &slice));
+            } else {
+                let hi = ((char >> 8) & 0xFF) as u8;
+                let lo = (char & 0xFF) as u8;
+                out.push_str(&to_utf8(encoding, &[hi]));
+                out.push_str(&to_utf8(encoding, &[lo]));
+            }
+        }
+        record_font_decode(&font_key, !out.is_empty());
+        out
     }
 }
 
@@ -1563,6 +1699,8 @@ struct TextState<'a> {
     leading: f64,
     rise: f64,
     tm: Transform,
+    // PDF text rendering mode (Tr): 0=fill,1=stroke,2=fill+stroke,3=invisible, etc.
+    rendering_mode: i32,
 }
 
 // XXX: We'd ideally implement this without having to copy the uncompressed data
@@ -2430,29 +2568,9 @@ impl<'a> Processor<'a> {
         Processor { _none: PhantomData }
     }
 
-    // Helper function to preserve sentence boundaries while cleaning content
+    // Helper: previously added a trailing space; now only trims to avoid double spaces
     fn preserve_sentence_boundaries(content: &str) -> String {
-        // Remove leading whitespace but preserve trailing punctuation and moderate trailing whitespace
-        let content = content.trim_start();
-
-        // Only trim excessive trailing whitespace (more than 2 spaces) but preserve punctuation
-        let mut result = content.to_string();
-
-        // If content ends with sentence-ending punctuation, preserve one space after it
-        if content.ends_with('.') || content.ends_with('!') || content.ends_with('?') {
-            // Keep punctuation and add one space if not already present
-            if !content.ends_with(' ') {
-                result.push(' ');
-            }
-        } else {
-            // For non-sentence-ending content, remove excessive trailing spaces but keep one
-            result = result.trim_end().to_string();
-            if !result.is_empty() && !result.ends_with(' ') {
-                result.push(' ');
-            }
-        }
-
-        result
+        content.trim().to_string()
     }
 
     /// Create text segments that respect token limits
@@ -2677,29 +2795,35 @@ impl<'a> Processor<'a> {
         font_size: f64,
         color: &(f64, f64, f64),
         media_box: &MediaBox,
+        rendering_mode: i32,
     ) -> bool {
-        const MIN_FONT_SIZE: f64 = 4.0;
-        const MIN_COLOR_DIFF: f64 = 0.1;
-
-        // if font_size < MIN_FONT_SIZE {
-        //     return false;
-        // }
-
-        let point = transform.transform_point(Point2D::new(0.0, 0.0));
-        if point.x < media_box.llx
-            || point.x > media_box.urx
-            || point.y < media_box.lly
-            || point.y > media_box.ury
-        {
+        // Default: allow text unless explicitly invisible (Tr=3).
+        // Many PDFs use transforms that make simple bounds checks unreliable.
+        if rendering_mode == 3 {
             return false;
         }
 
-        // Assuming white background, check if text color is too close to white
-        if color.0 > 1.0 - MIN_COLOR_DIFF
-            && color.1 > 1.0 - MIN_COLOR_DIFF
-            && color.2 > 1.0 - MIN_COLOR_DIFF
-        {
-            return false;
+        // Strict visibility checks are opt-in via PDF_EXTRACT_ENFORCE_VISIBILITY
+        if std::env::var("PDF_EXTRACT_ENFORCE_VISIBILITY").is_ok() {
+            const MIN_COLOR_DIFF: f64 = 0.1;
+            // Bounds check (using the provided transform origin)
+            let point = transform.transform_point(Point2D::new(0.0, 0.0));
+            if point.x < media_box.llx
+                || point.x > media_box.urx
+                || point.y < media_box.lly
+                || point.y > media_box.ury
+            {
+                return false;
+            }
+            // Optional: drop near-white text on assumed white background
+            if std::env::var("PDF_EXTRACT_DROP_NEAR_WHITE").is_ok() {
+                if color.0 > 1.0 - MIN_COLOR_DIFF
+                    && color.1 > 1.0 - MIN_COLOR_DIFF
+                    && color.2 > 1.0 - MIN_COLOR_DIFF
+                {
+                    return false;
+                }
+            }
         }
 
         true
@@ -2715,7 +2839,19 @@ impl<'a> Processor<'a> {
         page_num: u32,
         text_segments: &mut Vec<TextSegment>,
         page_rotate: i32,
+        laparams: Option<&crate::LAParams>,
     ) -> Result<(), OutputError> {
+        let use_layout = laparams.is_some();
+        let params = laparams.cloned();
+        #[derive(Clone, Debug)]
+        struct Glyph {
+            ch: String,
+            x: f64,
+            y: f64,
+            width: f64,
+            height: f64,
+        }
+        let mut glyphs: Vec<Glyph> = Vec::new();
         let mut text = String::new();
         let mut current_line = String::new();
         let current_word = String::new();
@@ -2791,6 +2927,7 @@ impl<'a> Processor<'a> {
                 leading: 0.,
                 rise: 0.,
                 tm: Transform2D::identity(),
+                rendering_mode: 0,
             },
             fill_color: Vec::new(),
             fill_colorspace: ColorSpace::DeviceGray,
@@ -2955,7 +3092,7 @@ impl<'a> Processor<'a> {
                                 None,
                                 current_segment_start,
                                 page_char_counter,
-                                300, // Conservative limit for individual segments
+                                5000, // Avoid pre-splitting here; let the chunker split
                             );
                             text_segments.extend(segments);
                             current_segment_start = page_char_counter;
@@ -3013,55 +3150,51 @@ impl<'a> Processor<'a> {
                                             * 100.0)
                                             .round()
                                             / 100.0;
-                                        let is_add = self.is_visible_text(
-                                            &tlm,
-                                            current_font_size,
-                                            &current_color,
-                                            media_box,
-                                        );
+                                        // Use full device-space transform: CTM × Tm × viewer Y-flip
+                                        let trm_vis = gs
+                                            .ctm
+                                            .post_transform(&gs.ts.tm)
+                                            .post_transform(&flip_ctm);
+                                        let is_add = if use_layout {
+                                            true
+                                        } else {
+                                            self.is_visible_text(
+                                                &trm_vis,
+                                                transformed_font_size,
+                                                &current_color,
+                                                media_box,
+                                                gs.ts.rendering_mode,
+                                            )
+                                        };
 
                                         if transformed_font_size != current_transformed_font_size
                                             && !transformed_font_size.is_nan()
                                             && !current_transformed_font_size.is_nan()
                                         {
                                             if !current_line.trim().is_empty() {
-                                                // also check if current x and current y are positive and that y is greater than font size, sometimes text seems to be hidden in the pdf which we should avoid
-                                                if current_x > 0.0 && current_y > 0.0
-                                                //  && is_add
-                                                //     && current_y < self.current_font_size
-                                                {
-                                                    let processed_fill_color = current_font_color;
-                                                    // if is_visible_text(
-                                                    //     Some(processed_fill_color),
-                                                    //     (255, 255, 255),
-                                                    // ) {
-                                                    let content_str =
-                                                        Self::preserve_sentence_boundaries(
-                                                            &current_line,
-                                                        );
-                                                    let segments =
-                                                        Self::create_text_segments_with_limit(
-                                                            content_str,
-                                                            current_font_size,
-                                                            current_transformed_font_size,
-                                                            current_x,
-                                                            current_y,
-                                                            current_is_bold,
-                                                            current_font.clone(),
-                                                            current_font_weight.clone(),
-                                                            current_is_italic,
-                                                            page_num,
-                                                            "Tj".to_string(),
-                                                            Some(current_font_color),
-                                                            None,
-                                                            current_segment_start,
-                                                            page_char_counter,
-                                                            300, // Conservative limit
-                                                        );
-                                                    text_segments.extend(segments);
-                                                    current_segment_start = page_char_counter;
-                                                    // }
-                                                }
+                                                let content_str = Self::preserve_sentence_boundaries(
+                                                    &current_line,
+                                                );
+                                                let segments = Self::create_text_segments_with_limit(
+                                                    content_str,
+                                                    current_font_size,
+                                                    current_transformed_font_size,
+                                                    current_x,
+                                                    current_y,
+                                                    current_is_bold,
+                                                    current_font.clone(),
+                                                    current_font_weight.clone(),
+                                                    current_is_italic,
+                                                    page_num,
+                                                    "Tj".to_string(),
+                                                    Some(current_font_color),
+                                                    None,
+                                                    current_segment_start,
+                                                    page_char_counter,
+                                                    5000, // Avoid pre-splitting here; let the chunker split
+                                                );
+                                                text_segments.extend(segments);
+                                                current_segment_start = page_char_counter;
                                                 current_line.clear();
                                             }
 
@@ -3101,8 +3234,22 @@ impl<'a> Processor<'a> {
                                         }
 
                                         if is_add {
-                                            current_line.push_str(&char);
-                                            page_char_counter += char.chars().count();
+                                            if use_layout {
+                                                // Collect glyphs for layout grouping
+                                                let g_height = transformed_font_size.max(0.0);
+                                                let g_width = (w0 * transformed_font_size).max(0.0);
+                                                glyphs.push(Glyph {
+                                                    ch: char.clone(),
+                                                    x,
+                                                    y,
+                                                    width: g_width,
+                                                    height: g_height,
+                                                });
+                                            } else {
+                                                current_line.push_str(&char);
+                                                page_char_counter += char.chars().count();
+                                                record_font_append(&current_font);
+                                            }
                                         }
                                         first_char = false;
 
@@ -3177,51 +3324,50 @@ impl<'a> Processor<'a> {
                                 .round()
                                 / 100.0;
 
-                            let is_add = self.is_visible_text(
-                                &tlm,
-                                current_font_size,
-                                &current_color,
-                                media_box,
-                            );
+                            // Use full device-space transform: CTM × Tm × viewer Y-flip
+                            let trm_vis = gs
+                                .ctm
+                                .post_transform(&gs.ts.tm)
+                                .post_transform(&flip_ctm);
+                            let is_add = if use_layout {
+                                // In layout mode, still ignore invisible/clip-only text
+                                matches!(gs.ts.rendering_mode, 0 | 1 | 2)
+                            } else {
+                                self.is_visible_text(
+                                    &trm_vis,
+                                    transformed_font_size,
+                                    &current_color,
+                                    media_box,
+                                    gs.ts.rendering_mode,
+                                )
+                            };
                             if transformed_font_size != current_transformed_font_size
                                 && !transformed_font_size.is_nan()
                                 && !current_transformed_font_size.is_nan()
                             {
                                 if !current_line.trim().is_empty() {
-                                    // also check if current x and current y are positive and that y is greater than font size, sometimes text seems to be hidden in the pdf which we should avoid
-                                    if current_x > 0.0 && current_y > 0.0
-                                    //     && current_y < self.current_font_size
-                                    {
-                                        // Convert gs.fill_color (Vec<f64>) to a (u8, u8, u8) tuple:
-                                        let processed_fill_color = current_font_color;
-                                        // if is_visible_text(
-                                        //     Some(processed_fill_color),
-                                        //     (255, 255, 255),
-                                        // ) {
-                                        let content_str =
-                                            Self::preserve_sentence_boundaries(&current_line);
-                                        let segments = Self::create_text_segments_with_limit(
-                                            content_str,
-                                            current_font_size,
-                                            current_transformed_font_size,
-                                            current_x,
-                                            current_y,
-                                            current_is_bold,
-                                            current_font.clone(),
-                                            current_font_weight.clone(),
-                                            current_is_italic,
-                                            page_num,
-                                            "Tj".to_string(),
-                                            Some(current_font_color),
-                                            None,
-                                            current_segment_start,
-                                            page_char_counter,
-                                            300, // Conservative limit
-                                        );
-                                        text_segments.extend(segments);
-                                        current_segment_start = page_char_counter;
-                                        // }
-                                    }
+                                    let content_str =
+                                        Self::preserve_sentence_boundaries(&current_line);
+                                    let segments = Self::create_text_segments_with_limit(
+                                        content_str,
+                                        current_font_size,
+                                        current_transformed_font_size,
+                                        current_x,
+                                        current_y,
+                                        current_is_bold,
+                                        current_font.clone(),
+                                        current_font_weight.clone(),
+                                        current_is_italic,
+                                        page_num,
+                                        "Tj".to_string(),
+                                        Some(current_font_color),
+                                        None,
+                                        current_segment_start,
+                                        page_char_counter,
+                                        300, // Conservative limit
+                                    );
+                                    text_segments.extend(segments);
+                                    current_segment_start = page_char_counter;
                                     current_line.clear();
                                 }
 
@@ -3247,7 +3393,20 @@ impl<'a> Processor<'a> {
                                 current_y = y;
                             }
                             if is_add {
-                                current_line.push_str(&char);
+                                if use_layout {
+                                    let g_height = transformed_font_size.max(0.0);
+                                    let g_width = (w0 * transformed_font_size).max(0.0);
+                                    glyphs.push(Glyph {
+                                        ch: char.clone(),
+                                        x,
+                                        y,
+                                        width: g_width,
+                                        height: g_height,
+                                    });
+                                } else {
+                                    current_line.push_str(&char);
+                                    record_font_append(&current_font);
+                                }
                             }
                             first_char = false;
 
@@ -3282,6 +3441,12 @@ impl<'a> Processor<'a> {
                     gs.ts.rise = as_num(&operation.operands[0]);
                     text.push(' ');
                     current_line.push(' ');
+                }
+                "Tr" => {
+                    // Text rendering mode: 0=fill,1=stroke,2=fill+stroke,3=invisible, etc.
+                    if !operation.operands.is_empty() {
+                        gs.ts.rendering_mode = as_num(&operation.operands[0]) as i32;
+                    }
                 }
                 "Tm" => {
                     assert!(operation.operands.len() == 6);
@@ -3324,6 +3489,143 @@ impl<'a> Processor<'a> {
                     tlm = tlm.pre_transform(&Transform2D::create_translation(tx, ty));
                     gs.ts.tm = tlm;
                     dlog!("T* matrix {:?}", gs.ts.tm);
+                }
+                "'" => {
+                    // Equivalent to T* followed by Tj with the string operand
+                    let tx = 0.0;
+                    let ty = -gs.ts.leading;
+                    tlm = tlm.pre_transform(&Transform2D::create_translation(tx, ty));
+                    gs.ts.tm = tlm;
+                    dlog!("' => T* then Tj; matrix {:?}", gs.ts.tm);
+
+                    if let Some(Object::String(ref s, _)) = operation.operands.get(0) {
+                        let ts = &mut gs.ts;
+                        let font: &Rc<dyn PdfFont> = ts.font.as_ref().unwrap();
+                        first_char = true;
+
+                        for (c, length) in font.char_codes(s) {
+                            let w0 = font.get_width(c) / 1000.;
+                            let mut spacing = ts.character_spacing;
+                            let is_space = c == 32 && length == 1;
+                            if is_space { spacing += ts.word_spacing; }
+
+                            let ch = font.decode_char(c);
+
+                            let position = ts.tm.post_transform(&flip_ctm);
+                            let (x, y) = (position.m31, position.m32);
+                            let transformed_font_size_vec = ts.tm.transform_vector(vec2(ts.font_size, ts.font_size));
+                            let transformed_font_size = ((transformed_font_size_vec.x * transformed_font_size_vec.y).sqrt() * 100.0).round() / 100.0;
+
+                            let trm_vis = gs.ctm.post_transform(&ts.tm).post_transform(&flip_ctm);
+                            let is_add = if use_layout {
+                                // LA-path: be stricter when requested; also drop absurd scales
+                                let mut ok = matches!(ts.rendering_mode, 0 | 1 | 2);
+                                if ok && std::env::var("PDF_EXTRACT_ENFORCE_VISIBILITY").is_ok() {
+                                    ok = self.is_visible_text(&trm_vis, transformed_font_size, &current_color, media_box, ts.rendering_mode);
+                                }
+                                if ok {
+                                    let page_h = media_box.ury - media_box.lly;
+                                    let max_frac: f64 = std::env::var("PDF_EXTRACT_MAX_FONT_FRAC")
+                                        .ok()
+                                        .and_then(|v| v.parse().ok())
+                                        .unwrap_or(0.35);
+                                    if transformed_font_size > page_h * max_frac {
+                                        ok = false;
+                                    }
+                                }
+                                ok
+                            } else {
+                                self.is_visible_text(&trm_vis, transformed_font_size, &current_color, media_box, ts.rendering_mode)
+                            };
+                            if is_add {
+                                if use_layout {
+                                    let g_height = transformed_font_size.max(0.0);
+                                    let g_width = (w0 * transformed_font_size).max(0.0);
+                                    glyphs.push(Glyph { ch, x, y, width: g_width, height: g_height });
+                                } else {
+                                    current_line.push_str(&ch);
+                                    page_char_counter += ch.chars().count();
+                                    record_font_append(&current_font);
+                                }
+                            }
+                            first_char = false;
+                            last_end = x + w0 * transformed_font_size;
+                            last_y = y;
+                            let tx = ts.horizontal_scaling * ((w0 - 0. / 1000.) * ts.font_size + spacing);
+                            ts.tm = ts.tm.pre_transform(&Transform2D::create_translation(tx, 0.));
+                        }
+                    }
+                }
+                "\"" => {
+                    // Equivalent to setting Tw and Tc, then T*, then Tj
+                    if operation.operands.len() >= 3 {
+                        // Set word spacing and character spacing
+                        gs.ts.word_spacing = as_num(&operation.operands[0]);
+                        gs.ts.character_spacing = as_num(&operation.operands[1]);
+                        // Move to next line (T*)
+                        let tx = 0.0;
+                        let ty = -gs.ts.leading;
+                        tlm = tlm.pre_transform(&Transform2D::create_translation(tx, ty));
+                        gs.ts.tm = tlm;
+                        dlog!("\" => set Tw/Tc then T*; matrix {:?}", gs.ts.tm);
+
+                        if let Object::String(ref s, _) = operation.operands[2] {
+                            let ts = &mut gs.ts;
+                            let font: &Rc<dyn PdfFont> = ts.font.as_ref().unwrap();
+                            first_char = true;
+
+                            for (c, length) in font.char_codes(s) {
+                                let w0 = font.get_width(c) / 1000.;
+                                let mut spacing = ts.character_spacing;
+                                let is_space = c == 32 && length == 1;
+                                if is_space { spacing += ts.word_spacing; }
+
+                                let ch = font.decode_char(c);
+
+                                let position = ts.tm.post_transform(&flip_ctm);
+                                let (x, y) = (position.m31, position.m32);
+                                let transformed_font_size_vec = ts.tm.transform_vector(vec2(ts.font_size, ts.font_size));
+                                let transformed_font_size = ((transformed_font_size_vec.x * transformed_font_size_vec.y).sqrt() * 100.0).round() / 100.0;
+
+                                let trm_vis = gs.ctm.post_transform(&ts.tm).post_transform(&flip_ctm);
+                                let is_add = if use_layout {
+                                    let mut ok = matches!(ts.rendering_mode, 0 | 1 | 2);
+                                    if ok && std::env::var("PDF_EXTRACT_ENFORCE_VISIBILITY").is_ok() {
+                                        ok = self.is_visible_text(&trm_vis, transformed_font_size, &current_color, media_box, ts.rendering_mode);
+                                    }
+                                    if ok {
+                                        let page_h = media_box.ury - media_box.lly;
+                                        let max_frac: f64 = std::env::var("PDF_EXTRACT_MAX_FONT_FRAC")
+                                            .ok()
+                                            .and_then(|v| v.parse().ok())
+                                            .unwrap_or(0.35);
+                                        if transformed_font_size > page_h * max_frac {
+                                            ok = false;
+                                        }
+                                    }
+                                    ok
+                                } else {
+                                    self.is_visible_text(&trm_vis, transformed_font_size, &current_color, media_box, ts.rendering_mode)
+                                };
+                                if is_add {
+                                    if use_layout {
+                                        let g_height = transformed_font_size.max(0.0);
+                                        let g_width = (w0 * transformed_font_size).max(0.0);
+                                        glyphs.push(Glyph { ch, x, y, width: g_width, height: g_height });
+                                    } else {
+                                        current_line.push_str(&ch);
+                                        page_char_counter += ch.chars().count();
+                                        record_font_append(&current_font);
+                                    }
+                                }
+                                first_char = false;
+                                last_end = x + w0 * transformed_font_size;
+                                last_y = y;
+                                let tx = ts.horizontal_scaling * ((w0 - 0. / 1000.) * ts.font_size + spacing);
+                                ts.tm = ts.tm.pre_transform(&Transform2D::create_translation(tx, 0.));
+                            }
+                        }
+                    }
                 }
                 "q" => {
                     gs_stack.push(gs.clone());
@@ -3483,6 +3785,15 @@ impl<'a> Processor<'a> {
                     if let Ok(subtype) = xf.dict.get(b"Subtype") {
                         if let Ok(subtype_name) = subtype.as_name() {
                             if subtype_name == b"Form" {
+                                // In layout-analysis mode, respect LAParams.all_texts
+                                let allow_form_text = match laparams {
+                                    Some(lp) => lp.all_texts,
+                                    None => true,
+                                };
+                                if !allow_form_text {
+                                    // Skip analyzing text inside Form XObjects unless explicitly enabled
+                                    continue;
+                                }
                                 // Read the Form's /Matrix if present
                                 let form_matrix = if let Ok(matrix_obj) = xf.dict.get(b"Matrix") {
                                     if let Ok(matrix_array) = matrix_obj.as_array() {
@@ -3524,6 +3835,7 @@ impl<'a> Processor<'a> {
                                     page_num,
                                     text_segments,
                                     0, // Form XObjects don't have their own rotation
+                                    laparams,
                                 )?;
 
                                 // Restore the CTM
@@ -3541,7 +3853,7 @@ impl<'a> Processor<'a> {
         //     current_line.push_str(&current_word);
         //     current_word.clear();
         // }
-        if !current_line.is_empty() {
+        if !use_layout && !current_line.is_empty() {
             // let processed_fill_color = if gs.fill_color.len() >= 3 {
             //     (
             //         (gs.fill_color[0] * 255.0).round() as u8,
@@ -3576,6 +3888,431 @@ impl<'a> Processor<'a> {
             text_segments.extend(segments);
             // }
             current_line.clear();
+        }
+
+        // If using layout, group glyphs → lines and emit segments
+        if use_layout {
+            if let Some(lp) = params {
+                // sort glyphs top-to-bottom (y), then left-to-right (x)
+                glyphs.sort_by(|a, b| {
+                    let ycmp = a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal);
+                    if ycmp == std::cmp::Ordering::Equal {
+                        a.x.partial_cmp(&b.x).unwrap_or(std::cmp::Ordering::Equal)
+                    } else {
+                        ycmp
+                    }
+                });
+
+                // 1) Group glyphs into lines using vertical overlap
+                let glyphs_for_vertical = glyphs.clone();
+                let mut raw_lines: Vec<Vec<Glyph>> = Vec::new();
+                let mut current: Vec<Glyph> = Vec::new();
+                let mut line_top = 0.0;
+                let mut line_bottom = 0.0;
+
+                for g in glyphs.into_iter() {
+                    let g_top = g.y;
+                    let g_bottom = g.y + g.height;
+                    if current.is_empty() {
+                        line_top = g_top;
+                        line_bottom = g_bottom;
+                        current.push(g);
+                        continue;
+                    }
+                    let overlap = (line_bottom.min(g_bottom) - line_top.max(g_top)).max(0.0);
+                    let line_height = (line_bottom - line_top).max(1e-6);
+                    let g_h = g.height.max(1e-6);
+                    let overlap_ratio = overlap / line_height.min(g_h);
+                    if overlap_ratio >= lp.line_overlap as f64 {
+                        // same line
+                        line_top = line_top.min(g_top);
+                        line_bottom = line_bottom.max(g_bottom);
+                        current.push(g);
+                    } else {
+                        raw_lines.push(current);
+                        let mut new_line = Vec::new();
+                        line_top = g_top;
+                        line_bottom = g_bottom;
+                        new_line.push(g);
+                        current = new_line;
+                    }
+                }
+                if !current.is_empty() {
+                    raw_lines.push(current);
+                }
+
+                // 2) Build LineInfo with spacing via word_margin
+                let glyph_total: usize = raw_lines.iter().map(|v| v.len()).sum();
+                #[derive(Clone)]
+                struct LineInfo {
+                    text: String,
+                    min_x: f64,
+                    max_x: f64,
+                    min_y: f64,
+                    max_y: f64,
+                    height: f64,
+                }
+                let mut lines: Vec<LineInfo> = Vec::new();
+                for mut line in raw_lines.into_iter() {
+                    line.sort_by(|a, b| a.x.partial_cmp(&b.x).unwrap_or(std::cmp::Ordering::Equal));
+                    let mut s = String::new();
+                    let mut min_x = f64::INFINITY;
+                    let mut max_x = f64::NEG_INFINITY;
+                    let mut min_y = f64::INFINITY;
+                    let mut max_y = f64::NEG_INFINITY;
+                    let mut prev_right: Option<f64> = None;
+                    let mut prev_w: f64 = 0.0;
+                    let mut prev_h: f64 = 0.0;
+                    for g in line.iter() {
+                        min_x = min_x.min(g.x);
+                        max_x = max_x.max(g.x + g.width);
+                        min_y = min_y.min(g.y);
+                        max_y = max_y.max(g.y + g.height);
+                        if let Some(pr) = prev_right {
+                            let gap = g.x - pr;
+                            // P0: pdfminer parity — insert space if gap > word_margin * max(width, height)
+                            // Use the max of current and previous glyph dimensions for robustness.
+                            let dim_prev = prev_w.max(prev_h);
+                            let dim_curr = g.width.max(g.height);
+                            let width_ref = dim_prev.max(dim_curr).max(1e-6);
+                            if gap > (lp.word_margin as f64) * width_ref {
+                                s.push(' ');
+                            }
+                        }
+                        s.push_str(&g.ch);
+                        prev_right = Some(g.x + g.width);
+                        prev_w = g.width;
+                        prev_h = g.height;
+                    }
+                    let text = Self::preserve_sentence_boundaries(&s);
+                    let height = (max_y - min_y).max(0.0);
+                    lines.push(LineInfo { text, min_x, max_x, min_y, max_y, height });
+                }
+
+                // Optional: detect vertical text lines (minimal support)
+                if lp.detect_vertical {
+                    // Use only glyphs that look vertically oriented to reduce duplicates
+                    let mut vg: Vec<Glyph> = glyphs_for_vertical
+                        .into_iter()
+                        .filter(|g| g.height > 1.5 * g.width)
+                        .collect();
+                    // Group into vertical lines by horizontal overlap
+                    vg.sort_by(|a, b| {
+                        let xcmp = a.x.partial_cmp(&b.x).unwrap_or(std::cmp::Ordering::Equal);
+                        if xcmp == std::cmp::Ordering::Equal {
+                            a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal)
+                        } else {
+                            xcmp
+                        }
+                    });
+                    let mut v_lines: Vec<Vec<Glyph>> = Vec::new();
+                    let mut cur: Vec<Glyph> = Vec::new();
+                    let mut v_minx = 0.0;
+                    let mut v_maxx = 0.0;
+                    for g in vg.into_iter() {
+                        if cur.is_empty() {
+                            v_minx = g.x;
+                            v_maxx = g.x + g.width;
+                            cur.push(g);
+                            continue;
+                        }
+                        // Horizontal overlap ratio
+                        let left = v_minx.max(g.x);
+                        let right = v_maxx.min(g.x + g.width);
+                        let overlap = (right - left).max(0.0);
+                        let cur_w = (v_maxx - v_minx).max(1e-6);
+                        let g_w = g.width.max(1e-6);
+                        let overlap_ratio = overlap / cur_w.min(g_w);
+                        if overlap_ratio >= lp.line_overlap as f64 {
+                            // Same vertical line
+                            v_minx = v_minx.min(g.x);
+                            v_maxx = v_maxx.max(g.x + g.width);
+                            cur.push(g);
+                        } else {
+                            v_lines.push(cur);
+                            cur = vec![g];
+                            v_minx = cur[0].x;
+                            v_maxx = cur[0].x + cur[0].width;
+                        }
+                    }
+                    if !cur.is_empty() { v_lines.push(cur); }
+
+                    // Build LineInfo for vertical lines, inserting spaces on large vertical gaps
+                    for mut vline in v_lines.into_iter() {
+                        if vline.len() < 2 { continue; }
+                        vline.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal));
+                        let mut s = String::new();
+                        let mut min_x = f64::INFINITY;
+                        let mut max_x = f64::NEG_INFINITY;
+                        let mut min_y = f64::INFINITY;
+                        let mut max_y = f64::NEG_INFINITY;
+                        let mut prev_bottom: Option<f64> = None;
+                        let mut prev_w: f64 = 0.0;
+                        let mut prev_h: f64 = 0.0;
+                        for g in vline.iter() {
+                            min_x = min_x.min(g.x);
+                            max_x = max_x.max(g.x + g.width);
+                            min_y = min_y.min(g.y);
+                            max_y = max_y.max(g.y + g.height);
+                            if let Some(pb) = prev_bottom {
+                                let gap = g.y - pb;
+                                let dim_prev = prev_w.max(prev_h);
+                                let dim_curr = g.width.max(g.height);
+                                let width_ref = dim_prev.max(dim_curr).max(1e-6);
+                                if gap > (lp.word_margin as f64) * width_ref {
+                                    s.push(' ');
+                                }
+                            }
+                            s.push_str(&g.ch);
+                            prev_bottom = Some(g.y + g.height);
+                            prev_w = g.width;
+                            prev_h = g.height;
+                        }
+                    let text = Self::preserve_sentence_boundaries(&s);
+                        let height = (max_y - min_y).max(0.0);
+                        lines.push(LineInfo { text, min_x, max_x, min_y, max_y, height });
+                    }
+                }
+
+                // Default to line-by-line output in layout mode for cleaner, readable text.
+                // Set PDF_EXTRACT_LA_BOXES=1 to enable paragraph/box grouping.
+                let lines_only = std::env::var("PDF_EXTRACT_LA_BOXES").is_err()
+                    || std::env::var("PDF_EXTRACT_LA_LINES_ONLY").is_ok();
+                if lines_only {
+                    log::info!(
+                        "LA: page {} glyphs={} lines={}",
+                        page_num,
+                        glyph_total,
+                        lines.len()
+                    );
+                    let mut page_char_pos = 0usize;
+                    for ln in lines.into_iter() {
+                        let content_len = ln.text.chars().count();
+                        let mut segment = Self::create_text_segment(
+                            ln.text,
+                            ln.height,
+                            ln.height,
+                            ln.min_x,
+                            ln.min_y,
+                            false,
+                            String::new(),
+                            FontWeight::Regular,
+                            false,
+                            page_num,
+                            "LA-Line".to_string(),
+                            None,
+                            None,
+                            page_char_pos,
+                            page_char_pos + content_len,
+                        );
+                        segment.width = (ln.max_x - ln.min_x).max(0.0);
+                        segment.height = (ln.max_y - ln.min_y).max(0.0);
+                        page_char_pos += content_len;
+                        text_segments.push(segment);
+                    }
+                    return Ok(());
+                }
+
+                // 3) Group lines into text boxes using greedy merges with blocking (pdfminer-like)
+                #[derive(Clone)]
+                struct BoxInfo {
+                    lines: Vec<LineInfo>,
+                    min_x: f64,
+                    max_x: f64,
+                    min_y: f64,
+                    max_y: f64,
+                    avg_h: f64,
+                }
+
+                // helper closures
+                let mut make_box = |ln: LineInfo| -> BoxInfo {
+                    BoxInfo {
+                        min_x: ln.min_x,
+                        max_x: ln.max_x,
+                        min_y: ln.min_y,
+                        max_y: ln.max_y,
+                        avg_h: ln.height,
+                        lines: vec![ln],
+                    }
+                };
+
+                fn bbox_area(min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> f64 {
+                    (max_x - min_x).max(0.0) * (max_y - min_y).max(0.0)
+                }
+
+                fn bbox_union(a: (&BoxInfo, usize), b: (&BoxInfo, usize)) -> (f64, f64, f64, f64) {
+                    let (a, _) = a;
+                    let (b, _) = b;
+                    (
+                        a.min_x.min(b.min_x),
+                        a.min_y.min(b.min_y),
+                        a.max_x.max(b.max_x),
+                        a.max_y.max(b.max_y),
+                    )
+                }
+
+                // Alignment and overlap heuristics (from P1)
+                const ALIGN_TOL_FRAC: f64 = 0.25;
+                const HOVERLAP_MIN_FRAC: f64 = 0.2;
+                let mut boxes: Vec<Option<BoxInfo>> = {
+                    let mut v: Vec<Option<BoxInfo>> = Vec::with_capacity(lines.len());
+                    // Sort lines top-to-bottom, then left-to-right for stability
+                    let mut ls = lines;
+                    ls.sort_by(|a, b| {
+                        let ycmp = a.min_y.partial_cmp(&b.min_y).unwrap_or(std::cmp::Ordering::Equal);
+                        if ycmp == std::cmp::Ordering::Equal {
+                            a.min_x.partial_cmp(&b.min_x).unwrap_or(std::cmp::Ordering::Equal)
+                        } else {
+                            ycmp
+                        }
+                    });
+                    for ln in ls.into_iter() { v.push(Some(make_box(ln))); }
+                    v
+                };
+
+                let mut changed = true;
+                while changed {
+                    changed = false;
+                    let n = boxes.len();
+                    let mut best_i: usize = 0;
+                    let mut best_j: usize = 0;
+                    let mut best_dist = f64::INFINITY;
+
+                    for i in 0..n {
+                        if boxes[i].is_none() { continue; }
+                        let bi_ref = boxes[i].as_ref().unwrap();
+                        for j in (i + 1)..n {
+                            if boxes[j].is_none() { continue; }
+                            let bj_ref = boxes[j].as_ref().unwrap();
+
+                            // Compute vertical gap and horizontal overlap
+                            let vgap = bj_ref.min_y - bi_ref.max_y; // assumes bi above bj; allow negative
+                            let h_left = bi_ref.min_x.max(bj_ref.min_x);
+                            let h_right = bi_ref.max_x.min(bj_ref.max_x);
+                            let hoverlap = (h_right - h_left).max(0.0);
+                            let min_w = (bi_ref.max_x - bi_ref.min_x)
+                                .min(bj_ref.max_x - bj_ref.min_x)
+                                .max(1e-6);
+                            let h_frac = hoverlap / min_w;
+
+                            // Alignment checks
+                            let tol_h = ALIGN_TOL_FRAC * bi_ref.avg_h.min(bj_ref.avg_h).max(1e-6);
+                            let left_aligned = (bj_ref.min_x - bi_ref.min_x).abs() <= tol_h;
+                            let right_aligned = (bj_ref.max_x - bi_ref.max_x).abs() <= tol_h;
+                            let bi_cx = (bi_ref.min_x + bi_ref.max_x) * 0.5;
+                            let bj_cx = (bj_ref.min_x + bj_ref.max_x) * 0.5;
+                            let center_aligned = (bj_cx - bi_cx).abs() <= tol_h;
+                            let height_close = (bj_ref.avg_h - bi_ref.avg_h).abs() <= 0.2 * bi_ref.avg_h.max(1e-6);
+                            let aligned = height_close && (left_aligned || right_aligned || center_aligned);
+
+                            // Candidate merge must be vertically close and either horizontally overlapping or aligned
+                            let close_enough = vgap <= (lp.line_margin as f64) * bi_ref.avg_h && (h_frac >= HOVERLAP_MIN_FRAC || aligned);
+                            if !close_enough { continue; }
+
+                            // Blocking: is there any other box whose center lies in the union bbox but outside both A and B?
+                            let (ux0, uy0, ux1, uy1) = bbox_union((bi_ref, i), (bj_ref, j));
+                            let mut blocked = false;
+                            for k in 0..n {
+                                if k == i || k == j { continue; }
+                                if let Some(ref bk) = boxes[k] {
+                                    let kc_x = (bk.min_x + bk.max_x) * 0.5;
+                                    let kc_y = (bk.min_y + bk.max_y) * 0.5;
+                                    let in_union = kc_x >= ux0 && kc_x <= ux1 && kc_y >= uy0 && kc_y <= uy1;
+                                    let in_a = kc_x >= bi_ref.min_x && kc_x <= bi_ref.max_x && kc_y >= bi_ref.min_y && kc_y <= bi_ref.max_y;
+                                    let in_b = kc_x >= bj_ref.min_x && kc_x <= bj_ref.max_x && kc_y >= bj_ref.min_y && kc_y <= bj_ref.max_y;
+                                    if in_union && !(in_a || in_b) { blocked = true; break; }
+                                }
+                            }
+                            if blocked { continue; }
+
+                            // Distance metric: area gap between union and components
+                            let a_area = bbox_area(bi_ref.min_x, bi_ref.min_y, bi_ref.max_x, bi_ref.max_y);
+                            let b_area = bbox_area(bj_ref.min_x, bj_ref.min_y, bj_ref.max_x, bj_ref.max_y);
+                            let u_area = bbox_area(ux0, uy0, ux1, uy1);
+                            let dist = (u_area - a_area - b_area).max(0.0);
+                            if dist < best_dist {
+                                best_dist = dist;
+                                best_i = i;
+                                best_j = j;
+                            }
+                        }
+                    }
+
+                    if best_dist.is_finite() && best_dist < f64::INFINITY {
+                        // Merge best_i and best_j
+                        let mut a = boxes[best_i].take().unwrap();
+                        let b = boxes[best_j].take().unwrap();
+                        // Append lines and re-sort within box by reading order (top-to-bottom then left-to-right)
+                        a.lines.extend(b.lines.into_iter());
+                        a.lines.sort_by(|l1, l2| {
+                            let ycmp = l1.min_y.partial_cmp(&l2.min_y).unwrap_or(std::cmp::Ordering::Equal);
+                            if ycmp == std::cmp::Ordering::Equal {
+                                l1.min_x.partial_cmp(&l2.min_x).unwrap_or(std::cmp::Ordering::Equal)
+                            } else {
+                                ycmp
+                            }
+                        });
+                        a.min_x = a.min_x.min(b.min_x);
+                        a.max_x = a.max_x.max(b.max_x);
+                        a.min_y = a.min_y.min(b.min_y);
+                        a.max_y = a.max_y.max(b.max_y);
+                        // Update average height
+                        let mut sum_h = 0.0; let mut cnt = 0.0;
+                        for ln in a.lines.iter() { sum_h += ln.height; cnt += 1.0; }
+                        a.avg_h = if cnt > 0.0 { sum_h / cnt } else { a.avg_h };
+                        boxes[best_i] = Some(a);
+                        changed = true;
+                    }
+                }
+
+                // Collect alive boxes
+                let mut boxes: Vec<BoxInfo> = boxes.into_iter().filter_map(|b| b).collect();
+
+                // 4) Order boxes by boxes_flow (weighted top-to-bottom vs left-to-right), unless flow None requested
+                let flow_none = std::env::var("PDF_EXTRACT_LA_BOXES_FLOW_NONE").is_ok();
+                if !flow_none {
+                    let wf = lp.boxes_flow as f64;
+                    let wx = ((wf + 1.0) / 2.0).clamp(0.0, 1.0);
+                    let wy = 1.0 - wx;
+                    boxes.sort_by(|a, b| {
+                        let ka = (wy * a.min_y, wx * a.min_x);
+                        let kb = (wy * b.min_y, wx * b.min_x);
+                        ka.partial_cmp(&kb).unwrap_or(std::cmp::Ordering::Equal)
+                    });
+                }
+
+                // 5) Emit TextSegments per box
+                let mut page_char_pos = 0usize;
+                for bx in boxes.into_iter() {
+                    let mut content = String::new();
+                    for (i, ln) in bx.lines.iter().enumerate() {
+                        if i > 0 { content.push('\n'); }
+                        content.push_str(&ln.text);
+                    }
+                    let content_len = content.chars().count();
+                    let mut segment = Self::create_text_segment(
+                        content,
+                        bx.avg_h,
+                        bx.avg_h,
+                        bx.min_x,
+                        bx.min_y,
+                        false,
+                        String::new(),
+                        FontWeight::Regular,
+                        false,
+                        page_num,
+                        "LA-Box".to_string(),
+                        None,
+                        None,
+                        page_char_pos,
+                        page_char_pos + content_len,
+                    );
+                    segment.width = (bx.max_x - bx.min_x).max(0.0);
+                    segment.height = (bx.max_y - bx.min_y).max(0.0);
+                    page_char_pos += content_len;
+                    text_segments.push(segment);
+                }
+            }
         }
 
         Ok(())
@@ -4035,8 +4772,8 @@ pub fn extract_text<P: std::convert::AsRef<std::path::Path>>(
 ) -> Result<String, OutputError> {
     let mut doc = Document::load(path)?;
     maybe_decrypt(&mut doc)?;
-    let content_outputs =
-        output_doc(&doc, ocr_handler, None).map_err(|e| OutputError::Other(e.to_string()))?;
+    let content_outputs = output_doc(&doc, ocr_handler, None, None)
+        .map_err(|e| OutputError::Other(e.to_string()))?;
 
     // Concatenate all content from the ContentOutput structs
     let mut result = String::new();
@@ -4087,8 +4824,8 @@ pub fn extract_text_from_mem(
 ) -> Result<String, OutputError> {
     let mut doc = Document::load_mem(buffer)?;
     maybe_decrypt(&mut doc)?;
-    let content_outputs =
-        output_doc(&doc, ocr_handler, None).map_err(|e| OutputError::Other(e.to_string()))?;
+    let content_outputs = output_doc(&doc, ocr_handler, None, None)
+        .map_err(|e| OutputError::Other(e.to_string()))?;
 
     // Concatenate all content from the ContentOutput structs
     let mut result = String::new();

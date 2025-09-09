@@ -5,6 +5,8 @@ use std::process;
 use tiktoken_rs::get_bpe_from_model;
 
 fn main() {
+    // Enable logging from the library when RUST_LOG is set
+    let _ = env_logger::try_init();
     let args: Vec<String> = env::args().collect();
 
     // Handle help
@@ -20,7 +22,7 @@ fn main() {
     }
 
     // Default file and options
-    let default_file = "9.pdf".to_string();
+    let default_file = "1.pdf".to_string();
     let file = args.get(1).unwrap_or(&default_file);
     let max_tokens = args
         .get(2)
@@ -48,8 +50,44 @@ fn main() {
     }
     println!();
 
+    // Optional layout analysis via LAParams when --layout flag is present
+    let use_layout = args.iter().any(|a| a == "--layout");
+    let mut lp = if use_layout { Some(LAParams::default()) } else { None };
+    // LAParams tuning flags
+    let mut i = 1;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--la-all-texts" => {
+                if let Some(ref mut p) = lp { p.all_texts = true; }
+            }
+            "--la-detect-vertical" => {
+                if let Some(ref mut p) = lp { p.detect_vertical = true; }
+            }
+            "--la-boxes-flow" => {
+                if i + 1 < args.len() {
+                    if let Ok(v) = args[i+1].parse::<f32>() {
+                        if let Some(ref mut p) = lp { p.boxes_flow = v; }
+                    }
+                    i += 1;
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    let laparams = lp;
+
     // Parse the PDF
-    let docs = match parse_pdf(file, 1, "file", ocr_config, None, None, max_tokens) {
+    let docs = match parse_pdf(
+        file,
+        1,
+        "file",
+        ocr_config,
+        None,
+        None,
+        max_tokens,
+        laparams,
+    ) {
         Ok(docs) => docs,
         Err(e) => {
             eprintln!("Error parsing PDF: {}", e);
@@ -161,9 +199,8 @@ fn main() {
         }
 
         // Content preview and stats
-        let allowed_special = HashSet::new();
-        let (tokens, _) = bpe.encode(&content_core.content, &allowed_special);
-        let token_count = tokens.len();
+        // Match the library’s counting (encode_ordinary)
+        let token_count = bpe.encode_ordinary(&content_core.content).len();
 
         println!("📊 CORE DATA:");
         println!("  chunk_id: {}", &content_core.chunk_id[..12]);

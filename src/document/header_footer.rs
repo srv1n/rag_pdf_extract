@@ -20,6 +20,7 @@ pub enum HeaderFooterType {
 
 pub struct HeaderFooterDetector {
     patterns: Vec<HeaderFooterPattern>,
+    // Keyed by normalized text so variants like "Page 1 of 47" align across pages
     occurrence_map: HashMap<String, Vec<PageOccurrence>>,
     page_count: usize,
 }
@@ -74,6 +75,22 @@ impl HeaderFooterDetector {
         }
     }
 
+    /// Normalize header/footer-like strings to improve matching across pages.
+    /// - Lowercase
+    /// - Collapse whitespace
+    /// - Replace digit runs with '#'
+    /// - Normalize common patterns like "page N of M"
+    pub fn normalize_text(text: &str) -> String {
+        let lower = text.to_lowercase();
+        let ws = Regex::new(r"\s+").unwrap();
+        let digits = Regex::new(r"\d+").unwrap();
+        let page_pat = Regex::new(r"page\s+\d+\s+of\s+\d+").unwrap();
+        let mut out = page_pat.replace_all(&lower, "page # of #").to_string();
+        out = digits.replace_all(&out, "#").to_string();
+        out = ws.replace_all(&out, " ").trim().to_string();
+        out
+    }
+
     pub fn add_occurrence(
         &mut self,
         text: &str,
@@ -82,7 +99,8 @@ impl HeaderFooterDetector {
         font_size: f64,
         page_height: f64,
     ) {
-        let is_top = position > page_height * 0.85;
+        // Y=0 is top; consider top if y is within top 15% of page
+        let is_top = position < page_height * 0.15;
         let occurrence = PageOccurrence {
             page_num,
             position,
@@ -90,8 +108,9 @@ impl HeaderFooterDetector {
             is_top,
         };
 
+        let key = Self::normalize_text(text);
         self.occurrence_map
-            .entry(text.to_string())
+            .entry(key)
             .or_insert_with(Vec::new)
             .push(occurrence);
     }
@@ -100,7 +119,7 @@ impl HeaderFooterDetector {
         let mut headers_footers = HashSet::new();
         let min_occurrence_ratio = 0.5;
 
-        for (text, occurrences) in &self.occurrence_map {
+        for (norm_text, occurrences) in &self.occurrence_map {
             let occurrence_count = occurrences.len();
             let occurrence_ratio = occurrence_count as f64 / self.page_count as f64;
 
@@ -119,14 +138,14 @@ impl HeaderFooterDetector {
                     // Check against patterns for higher confidence
                     let mut pattern_matched = false;
                     for pattern in &self.patterns {
-                        if pattern.regex.is_match(text) {
+                        if pattern.regex.is_match(norm_text) {
                             pattern_matched = true;
                             break;
                         }
                     }
 
                     if pattern_matched || occurrence_ratio >= 0.8 {
-                        headers_footers.insert(text.clone());
+                        headers_footers.insert(norm_text.clone());
                     }
                 }
             }

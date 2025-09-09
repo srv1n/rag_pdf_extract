@@ -58,8 +58,39 @@ pub fn is_heading(segment: &TextSegment, doc_stats: &DocumentStats) -> TextLevel
 
     let is_numbered = NUMBERED_HEADING.is_match(&segment.content);
 
+    // Simple robustness guards to avoid garbage text being treated as headings
+    let trimmed = segment.content.trim();
+    let len_chars = trimmed.chars().count();
+    let whitespace_count = trimmed.chars().filter(|c| c.is_whitespace()).count();
+    let max_alpha_run = {
+        let mut max_run = 0usize;
+        let mut cur = 0usize;
+        for ch in trimmed.chars() {
+            if ch.is_alphabetic() { cur += 1; max_run = max_run.max(cur); } else { cur = 0; }
+        }
+        max_run
+    };
+    // Heuristic: very long strings with almost no spaces or huge uninterrupted alpha runs are unlikely to be human headings
+    if (len_chars > 40 && whitespace_count < 2) || max_alpha_run >= 30 {
+        return TextLevel::Body;
+    }
+
     let is_potential_heading = is_short
         && (starts_with_alphanum && is_valid_short_content(&segment.content) || is_numbered);
+
+    // Guard against extreme-size artifacts: very large font but overly long text often comes from non-visible layers.
+    // Drop heading classification when it's implausible for a heading.
+    let extreme_guard = {
+        let mult = std::env::var("PDF_EXTRACT_HEADING_SIZE_MULT")
+            .ok()
+            .and_then(|v| v.parse::<f64>().ok())
+            .unwrap_or(4.0);
+        segment.transformed_font_size >= doc_stats.body_transformed_size * mult
+            && segment.content.chars().count() > 80
+    };
+    if extreme_guard {
+        return TextLevel::Body;
+    }
 
     // Check if the segment matches the body font and size
     if segment.font_name == doc_stats.body_font
