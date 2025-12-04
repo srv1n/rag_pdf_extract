@@ -12,17 +12,19 @@ fn main() {
     // Handle help
     if args.len() > 1 && (args[1] == "--help" || args[1] == "-h") {
         println!(
-            "Usage: {} [PDF_FILE] [MAX_TOKENS] [--ocr DETECTION_MODEL RECOGNITION_MODEL]",
+            "Usage: {} [PDF_FILE] [MAX_TOKENS] [--ocr DETECTION_MODEL RECOGNITION_MODEL] [--no-layout] [--raw]",
             args[0]
         );
-        println!("  PDF_FILE: Path to PDF file (default: 9.pdf)");
+        println!("  PDF_FILE: Path to PDF file (default: 12. CCI v Kerala...)");
         println!("  MAX_TOKENS: Maximum tokens per chunk (default: 500)");
         println!("  --ocr: Enable OCR with detection and recognition models");
+        println!("  --no-layout: Disable layout analysis (enabled by default)");
+        println!("  --raw: Disable text cleaning (preserves exact extraction with all whitespace/special chars)");
         process::exit(0);
     }
 
     // Default file and options
-    let default_file = "10.pdf".to_string();
+    let default_file = "eval/corpus/legal/12. CCI v Kerala Film Exhibitors Federation & Ors.pdf".to_string();
     let file = args.get(1).unwrap_or(&default_file);
     let max_tokens = args
         .get(2)
@@ -50,9 +52,17 @@ fn main() {
     }
     println!();
 
-    // Optional layout analysis via LAParams when --layout flag is present
-    let use_layout = args.iter().any(|a| a == "--layout");
-    let mut lp = if use_layout { Some(LAParams::default()) } else { None };
+    // Use layout analysis by default (matches extract_markdown.rs behavior)
+    // Can be disabled with --no-layout flag
+    let disable_layout = args.iter().any(|a| a == "--no-layout");
+    let mut lp = if disable_layout { None } else { Some(LAParams::default()) };
+    // Enable all_texts to include text inside Form XObjects (matches extract_markdown.rs)
+    if let Some(ref mut p) = lp {
+        p.all_texts = true;
+    }
+
+    // Text cleaning for indexing (enabled by default, can be disabled with --raw)
+    let clean_text = !args.iter().any(|a| a == "--raw");
     // LAParams tuning flags
     let mut i = 1;
     while i < args.len() {
@@ -87,6 +97,7 @@ fn main() {
         None,
         max_tokens,
         laparams,
+        Some(clean_text),
     ) {
         Ok(docs) => docs,
         Err(e) => {
@@ -107,12 +118,18 @@ fn main() {
         println!("CHUNK #{}", idx);
         println!("{}", "=".repeat(80));
 
-        // Extract headings from JSON
-        let headings: Vec<String> = if let Some(headings_json) = &content_core.headings_json {
-            serde_json::from_str(headings_json).unwrap_or_default()
-        } else {
-            vec![]
-        };
+        // Extract actual headings from content (markdown format)
+        let mut headings = Vec::new();
+        for line in content_core.content.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("##") {
+                // Remove the ## prefix and trim
+                let heading_text = trimmed.trim_start_matches('#').trim();
+                if !heading_text.is_empty() {
+                    headings.push(heading_text.to_string());
+                }
+            }
+        }
 
         // Heading information
         if !headings.is_empty() {

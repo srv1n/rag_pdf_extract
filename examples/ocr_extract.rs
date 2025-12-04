@@ -68,6 +68,7 @@ fn main() {
         None,      // resume
         Some(500), // Max tokens per chunk
         None,      // LAParams
+        None,      // clean_text (default: true)
     ) {
         Ok(docs) => docs,
         Err(e) => {

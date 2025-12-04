@@ -2570,27 +2570,26 @@ fn make_colorspace<'a>(doc: &'a Document, name: &[u8], resources: &'a Dictionary
 }
 
 #[derive(Debug, Clone)]
-struct TextSegment {
-    content: String,
-    font_size: f64,
-    transformed_font_size: f64,
-    x: f64,
-    y: f64,
-    is_bold: bool,
-    font_name: String, // New field to store the font name
-    font_weight: FontWeight,
-    is_italic: bool,
-    page_num: u32,
-    cutat: String,
-    // font_color: (f64, f64, f64),
-    fill_color: Option<(u8, u8, u8)>,
-    stroke_color: Option<(u8, u8, u8)>,
+pub(crate) struct TextSegment {
+    pub content: String,
+    pub font_size: f64,
+    pub transformed_font_size: f64,
+    pub x: f64,
+    pub y: f64,
+    pub is_bold: bool,
+    pub font_name: String,
+    pub font_weight: FontWeight,
+    pub is_italic: bool,
+    pub page_num: u32,
+    pub cutat: String,
+    pub fill_color: Option<(u8, u8, u8)>,
+    pub stroke_color: Option<(u8, u8, u8)>,
     // Position tracking
-    char_start: usize, // Character position in page
-    char_end: usize,   // End character position in page
-    width: f64,        // Width of text segment
-    height: f64,       // Height of text segment
-    word_count: usize, // Cached word count
+    pub char_start: usize,
+    pub char_end: usize,
+    pub width: f64,
+    pub height: f64,
+    pub word_count: usize,
 }
 struct Processor<'a> {
     _none: PhantomData<&'a ()>,

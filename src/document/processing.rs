@@ -1,6 +1,9 @@
 use super::{
     analysis::{classify_line, is_heading},
+    columns::{detect_columns, reorder_by_columns},
+    hyphenation::recover_hyphenation,
     stats::{calculate_document_stats, group_into_visual_lines},
+    tables::{detect_tables, table_to_markdown},
     HeaderFooterDetector, TextLevel,
 };
 use crate::chunk_accumulator::{
@@ -23,6 +26,55 @@ use unicode_segmentation::UnicodeSegmentation;
 // Helper: ASCII whitespace detection
 fn is_ascii_ws(b: u8) -> bool {
     matches!(b, b' ' | b'\t' | b'\n' | b'\r')
+}
+
+/// Clean text for indexing by normalizing whitespace and special characters
+/// while preserving readability and paragraph structure.
+///
+/// - Multiple spaces → single space
+/// - Multiple newlines → single newline (preserve paragraph breaks)
+/// - Excessive dots/periods (4+) → ellipsis (...)
+/// - Remove other excessive repeated punctuation
+/// - Normalize unicode whitespace to ASCII
+/// - Recover soft hyphens (word continuations across lines)
+pub fn clean_text_for_indexing(text: &str) -> String {
+    use regex::Regex;
+    use super::hyphenation::clean_internal_hyphens;
+
+    // First, clean internal soft hyphens (word continuations across lines)
+    let text = clean_internal_hyphens(text);
+
+    // Replace unicode whitespace with ASCII equivalents
+    // \u{00A0} = non-breaking space, \u{2000}-\u{200B} = various spaces
+    let text = text.replace('\u{00A0}', " ") // non-breaking space
+                   .replace('\u{2009}', " ") // thin space
+                   .replace('\u{200A}', " ") // hair space
+                   .replace('\u{202F}', " ") // narrow no-break space
+                   .replace('\u{205F}', " "); // medium mathematical space
+
+    // Multiple newlines → single newline (preserve paragraph breaks)
+    let text = Regex::new(r"\n{2,}").unwrap().replace_all(&text, "\n").to_string();
+
+    // Multiple spaces → single space (but preserve newlines)
+    let text = Regex::new(r"[ \t]{2,}").unwrap().replace_all(&text, " ").to_string();
+
+    // Excessive dots (4 or more) → ellipsis
+    let text = Regex::new(r"\.{4,}").unwrap().replace_all(&text, "...").to_string();
+
+    // Excessive underscores (4 or more) → three underscores
+    let text = Regex::new(r"_{4,}").unwrap().replace_all(&text, "___").to_string();
+
+    // Excessive dashes (4 or more) → three dashes
+    let text = Regex::new(r"-{4,}").unwrap().replace_all(&text, "---").to_string();
+
+    // Excessive equals signs (4 or more) → three equals
+    let text = Regex::new(r"={4,}").unwrap().replace_all(&text, "===").to_string();
+
+    // Clean up spaces around newlines
+    let text = Regex::new(r" +\n").unwrap().replace_all(&text, "\n").to_string();
+    let text = Regex::new(r"\n +").unwrap().replace_all(&text, "\n").to_string();
+
+    text
 }
 
 // Find earliest safe forward boundary with conservative guards
@@ -744,6 +796,19 @@ pub fn output_doc(
                 }
             }
 
+            // Detect and handle columns for this page
+            let page_width = media_box.urx - media_box.llx;
+            let column_layout = detect_columns(&page_segments, page_width);
+
+            if column_layout.is_multi_column {
+                debug!(
+                    "Page {} has {} columns detected",
+                    page_num, column_layout.columns.len()
+                );
+                // Reorder segments to read column by column
+                reorder_by_columns(&mut page_segments, &column_layout);
+            }
+
             Some((*dict.0, page_segments)) // Return tuple of (page_num, segments)
         })
         .collect();
@@ -760,6 +825,9 @@ pub fn output_doc(
     // Merge continuation segments: if a segment ends with space (continuation marker)
     // and the next segment on the same page doesn't start a new paragraph, join them
     let text_segments = merge_continuation_segments(text_segments);
+
+    // Recover hyphenated words split across lines/segments
+    let text_segments = recover_hyphenation(text_segments);
 
     // Merge title block entities: consecutive short ALL CAPS lines (typical in legal docs)
     let text_segments = merge_title_block_entities(text_segments);
@@ -802,8 +870,80 @@ pub fn output_doc(
     };
 
     // The rest of the function remains sequential to ensure that the document structure is created in the correct order
-    // The rest of the function remains sequential to ensure that the document structure is created in the correct order
-    // let doc_stats = calculate_document_stats(text_segments.clone());
+
+    // Detect tables and format them as markdown
+    // Tables are detected per-page to avoid cross-page false positives
+    let text_segments = {
+        let mut all_segments: Vec<TextSegment> = Vec::new();
+
+        // Group segments by page
+        let mut page_groups: HashMap<u32, Vec<TextSegment>> = HashMap::new();
+        for seg in text_segments {
+            page_groups.entry(seg.page_num).or_default().push(seg);
+        }
+
+        // Process each page for tables
+        let mut page_nums: Vec<u32> = page_groups.keys().copied().collect();
+        page_nums.sort();
+
+        for page_num in page_nums {
+            let page_segments = page_groups.remove(&page_num).unwrap_or_default();
+
+            // Detect tables on this page
+            let table_result = detect_tables(&page_segments);
+
+            if !table_result.tables.is_empty() {
+                debug!(
+                    "Page {} has {} table(s) detected",
+                    page_num, table_result.tables.len()
+                );
+
+                // Add non-table segments
+                all_segments.extend(table_result.non_table_segments);
+
+                // For each detected table, create a markdown segment
+                for table in table_result.tables {
+                    let md = table_to_markdown(&table);
+                    if !md.is_empty() {
+                        // Create a synthetic segment for the table markdown
+                        all_segments.push(TextSegment {
+                            content: md,
+                            font_size: 12.0,
+                            transformed_font_size: 12.0,
+                            x: table.bbox.x,
+                            y: table.bbox.y,
+                            is_bold: false,
+                            font_name: "Table".to_string(),
+                            font_weight: crate::FontWeight::Regular,
+                            is_italic: false,
+                            page_num,
+                            cutat: String::new(),
+                            fill_color: None,
+                            stroke_color: None,
+                            char_start: 0,
+                            char_end: 0,
+                            width: table.bbox.width,
+                            height: table.bbox.height,
+                            word_count: 0,
+                        });
+                    }
+                }
+            } else {
+                // No tables, keep all segments
+                all_segments.extend(page_segments);
+            }
+        }
+
+        // Re-sort by page and y position to maintain reading order
+        all_segments.sort_by(|a, b| {
+            match a.page_num.cmp(&b.page_num) {
+                std::cmp::Ordering::Equal => a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal),
+                other => other,
+            }
+        });
+
+        all_segments
+    };
 
     let mut header_hierarchy = HeaderHierarchy::new();
 
@@ -1255,6 +1395,7 @@ pub fn output_doc_new_schema(
     source_id: i64,
     source_type: &str,
     laparams: Option<&crate::LAParams>,
+    clean_text: bool, // Whether to clean text for indexing
 ) -> Result<Vec<ExtractionResult>, Box<dyn std::error::Error>> {
     // Reuse most of the existing output_doc logic but modify the return format
     let content_outputs = output_doc(doc, ocr_handler, max_tokens, laparams)?;
@@ -1262,16 +1403,24 @@ pub fn output_doc_new_schema(
     let mut results = Vec::new();
 
     for output in content_outputs {
-        // Create ContentCore
+        // Clean text if requested (default behavior for better indexing)
+        let cleaned_paragraph = if clean_text {
+            clean_text_for_indexing(&output.paragraph)
+        } else {
+            output.paragraph.clone()
+        };
+
+        // Create ContentCore with cleaned text
         let content_core =
-            create_content_core(&output.paragraph, &output.headings, source_id, source_type);
+            create_content_core(&cleaned_paragraph, &output.headings, source_id, source_type);
 
         // Create PDF location metadata from page positions
+        // Note: positions are based on ORIGINAL text before cleaning
         let format_location = create_pdf_location_from_positions(
             output.page,
             output.end_page,
             &output.page_positions,
-            output.paragraph.len(),
+            output.paragraph.len(), // Use original length for position mapping
         );
 
         // Create ContentExt with compressed metadata
@@ -1302,6 +1451,7 @@ pub fn parse_pdf(
     _resume: Option<bool>, // Kept for compatibility
     max_tokens: Option<usize>,
     laparams: Option<crate::LAParams>,
+    clean_text: Option<bool>, // Clean text for indexing (default: true)
 ) -> Result<Vec<ExtractionResult>, Box<dyn std::error::Error>> {
     let doc = Document::load(file_path)?;
 
@@ -1319,5 +1469,6 @@ pub fn parse_pdf(
         source_id,
         source_type,
         laparams.as_ref(),
+        clean_text.unwrap_or(true), // Default to cleaning enabled
     )
 }

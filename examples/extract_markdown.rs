@@ -50,6 +50,7 @@ fn main() {
         None,        // password
         max_tokens,  // max_tokens
         Some(laparams), // Enable layout analysis
+        None,        // clean_text (default: true)
     ) {
         Ok(docs) => docs,
         Err(e) => {

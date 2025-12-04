@@ -25,6 +25,7 @@ fn layout_extracts_more_than_four_chunks_on_10_pdf() {
         None,     // no resume
         Some(500),
         Some(lp),
+        None,     // clean_text (default: true)
     )
     .expect("parse_pdf should succeed");
 
