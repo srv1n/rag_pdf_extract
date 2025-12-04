@@ -1,0 +1,3367 @@
+--> [baseline] benchmarks/pdfs/embeded-core-fonts.pdf
+=== Extracting PDF: benchmarks/pdfs/embeded-core-fonts.pdf ===
+Max tokens per chunk: 500
+
+Total chunks extracted: 67
+
+================================================================================
+CHUNK #0
+================================================================================
+📑 HEADING: lismus
+💾 COMPRESSED METADATA SIZE: 227 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 16.079999999999984,
+          "width": 290.4580786280777,
+          "x": 152.39999866485596,
+          "y": 419.5999984741211
+        },
+        "char_range": {
+          "end": 128,
+          "start": 91
+        },
+        "page": 1
+      },
+      {
+        "bbox": {
+          "height": 141.1184384250488,
+          "width": 256.3440448736572,
+          "x": 56.63999938964844,
+          "y": 386.9599914550781
+        },
+        "char_range": {
+          "end": 405,
+          "start": 1
+        },
+        "page": 2
+      }
+    ]
+  }
+}
+📄 PAGES: 1 to 2 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 1, chars 91-128
+     Bbox: x=152.40, y=419.60, w=290.46, h=16.08
+   Fragment 1: page 2, chars 1-405
+     Bbox: x=56.64, y=386.96, w=256.34, h=141.12
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 1: chars 91-128, 1 bounding boxes
+  Page 2: chars 1-405, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 72c42536cc2d
+  source_id: 1
+  estimated_tokens: 84
+  actual_tokens: 135
+
+📝 CONTENT (452 chars, 135 tokens):
+----------------------------------------
+- Arbeits- und Diskussionsgrundlage Sozialismusvorstellungen der DKP: Sozialismus - die historische Alternative zum Kapitalismus Beschlossen auf dem 14. Parteitag der DKP Hannover, 22. bis 24. Mai 1998 Herausgeber: Deutsche Kommunistische Partei - DKP - Parteivorstand Hoffnungstraße 18, 45127 Essen Telefon: 0211-225148/49, Fax: 0201-202467, eMail: dkp.pv@t-online.de Internet:  http://www.dkp.de 1. Auflage, Juli 1998 Druck: Eigendruck Preis: 3,- DM
+
+
+================================================================================
+CHUNK #1
+================================================================================
+📑 HEADING: lismus > Inhalt > Anträge 13
+💾 COMPRESSED METADATA SIZE: 174 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 194.88000686645503,
+          "width": 481.9167145677948,
+          "x": 56.639984130859375,
+          "y": 66.08001136779785
+        },
+        "char_range": {
+          "end": 1688,
+          "start": 1
+        },
+        "page": 5
+      }
+    ]
+  }
+}
+📄 PAGE: 5
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 5, chars 1-1688
+     Bbox: x=56.64, y=66.08, w=481.92, h=194.88
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 5: chars 1-1688, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: e468c5ad9ded
+  source_id: 1
+  estimated_tokens: 306
+  actual_tokens: 427
+
+📝 CONTENT (1725 chars, 427 tokens):
+----------------------------------------
+Die  wissenschaftlich-technische  Revolution  hat  in  unserem  Jahrhundert  fast  unermeßliche  Möglichkeiten geschaffen, um menschliches Leben zu verbessern. Noch nie hatten die Menschen so viele Chancen, ihre Produktivität und Kreativität zu entfalten und zugleich physische Belastungen zu verringern. Es wäre heute möglich, Hunger und Elend weltweit zu überwinden, den Menschen ein würdiges Leben ohne Armut zu ermöglichen und gleichzeitig die Erde künftigen Generationen als lebensfähiges Ökosystem zu übergeben. Doch  die  Wirklichkeit  sieht  anders  aus.  Das  gewaltige  Wachstum  der  Produktivkräfte  und  die  Zunahme gesellschaftlichen Reichtums geschah unter der Vorherrschaft kapitalistischer Produktionsverhältnisse. Diese förderten zunächst den wissenschaftlich-technischen und – in den Industrieländern – als Folge des organisierten  Kampfes  der  Arbeiterklasse  auch  den  sozialen  Fortschritt.  Doch  die  Entwicklung  der  Produktivkräfte  dient  dem  Kapitalismus  allein  als  Mittel  der  Kapitalverwertung.  So  wird  sie  zur  Gefahr  für  die  Existenzgrundlage  menschlichen  Lebens  überhaupt.  Der  Kampf  der  imperialistischen  Zentren  um  die  Aufteilung  von  Rohstoffquellen,  Absatzmärkten  und  Einflußzonen  fördert  militärische  Konflikte  überall  auf  der Welt und birgt die Gefahr eines großen Krieges in sich. Möglich  ist  heute  die  Vernichtung  der  Menschheit  sowie  der  höher  entwickelten  Natur  durch  einen  nuklearen, chemischen oder biologischen Krieg und die Manipulation der menschlichen Gene. Die Zerstörung der lebenden  Umwelt  schreitet  voran  und  wird  unwiderruflich.  Unter  den  Zwängen  der  Kapitalakkumulation  –
+
+
+================================================================================
+CHUNK #2
+================================================================================
+📑 HEADING: lismus > Inhalt > Anträge 13
+💾 COMPRESSED METADATA SIZE: 173 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 252.9600086975098,
+          "width": 481.9166752287292,
+          "x": 56.640061140060425,
+          "y": 262.4000186920166
+        },
+        "char_range": {
+          "end": 3614,
+          "start": 1688
+        },
+        "page": 5
+      }
+    ]
+  }
+}
+📄 PAGE: 5
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 5, chars 1688-3614
+     Bbox: x=56.64, y=262.40, w=481.92, h=252.96
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 5: chars 1688-3614, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: d7c7ed4d7c80
+  source_id: 1
+  estimated_tokens: 357
+  actual_tokens: 417
+
+📝 CONTENT (1952 chars, 417 tokens):
+----------------------------------------
+dem Prinzip dieser Gesellschaftsformation – gibt es kein Mittel, diese Gefahren wirksam zu bannen. Jeder wissenschaftlich-technische Fortschritt ist unter kapitalistischen Bedingungen von Degeneration und Zerstörung begleitet. Die barbarische Wirklichkeit des Kapitalismus ist in den programmatischen Thesen der DKP, die die Grundlage des Aktionsprogramms und der Sozialismusvorstellungen bilden, genauer charakterisiert worden. Grundlage der heutigen Gesellschaft ist die arbeitsteilige Warenproduktion. Praktisch alles wird nicht mehr für  den  unmittelbaren  Verbrauch  des  jeweiligen  Produzenten  sondern  in  der  Gesellschaft  für  den  gesellschaftlichen  Austausch  produziert.  Aber  der  Grundwiderspruch  der  kapitalistischen  Produktionsweise  liegt im  Widerspruch  zwischen  dem  gesellschaftlichen  Charakter  der  Produktion  und  der  privatkapitalistischen Aneignung der Ergebnisse der Produktion. Produktionsmittel,  Rohstoffe  und  Arbeitskraft  müssen  sich  erst  in  Waren  und  dann  in  Kapital  verwandeln, bevor die Produktion beginnen kann; und die Produktion hat für den Kapitalbesitzer das einzige Ziel, Kapital zu  verwerten,  aus  der  Arbeit  Mehrwert  herauszupressen  und  diesen  durch  den  Verkauf  der  hergestellten Waren zu realisieren, um den ganzen Prozeß auf neuer Stufe in erweitertem Umfang von vorn zu beginnen. Auf  diese  Weise  hat  der  Kapitalismus  die  Produktivität  ungeheuer  erhöht.  Aber  jede  Rationalisierung  bedeutet hier nicht nur Produktion von mehr Produkten mit weniger Arbeit, sondern gleichzeitig auch Produktion von mehr Arbeitslosigkeit auf der einen und stärkerer Ausbeutung auf der anderen Seite. Gleichzeitig werden die von einem Arbeiter in Gang gesetzten Produktionsmittel immer gigantischer, immer mehr des gesellschaftlichen Reichtums muß in den Händen weniger konzentriert werden, um im Prozeß der kapitalistischen Konkurrenz weltweit bestehen zu können.
+
+
+================================================================================
+CHUNK #3
+================================================================================
+📑 HEADING: lismus > Inhalt > Anträge 13
+💾 COMPRESSED METADATA SIZE: 173 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 102.24000366210942,
+          "width": 481.9166485258483,
+          "x": 56.64009404182434,
+          "y": 522.80002784729
+        },
+        "char_range": {
+          "end": 4519,
+          "start": 3614
+        },
+        "page": 5
+      }
+    ]
+  }
+}
+📄 PAGE: 5
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 5, chars 3614-4519
+     Bbox: x=56.64, y=522.80, w=481.92, h=102.24
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 5: chars 3614-4519, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: df55aef2eeeb
+  source_id: 1
+  estimated_tokens: 162
+  actual_tokens: 230
+
+📝 CONTENT (917 chars, 230 tokens):
+----------------------------------------
+Der  Kapitalismus  ist  demnach  Produktion  nicht  um  des  Menschen  willen,  sondern  um  des  Profits  willen. Nicht der Mensch beherrscht seine Produktion, sondern diese beherrscht die Gesellschaft und stellt sich in Form  von  Sachzwängen  dar,  Sachzwängen  des  Kapitalismus,  der  kapitalistischen  Konkurrenz,  der  Profitmaximierung.  Deshalb  werden  Millionen  von  Arbeitsplätzen  vernichtet,  und  die  Menschen  somit  (oftmals) um  ihre  Existenz  gebracht.  Durch  die  Entfremdung  der  Menschen  vom  Produktionsprozeß  und  von  den Produktionsbedingungen  sind  sie  auch  nicht  in  der  Lage,  ihre  Lebensverhältnisse  zu  bestimmen,  sondern sind ihnen ohnmächtig ausgeliefert. Unter kapitalistischen Bedingungen wird der Mensch vom Subjekt zum Objekt der Geschichte; und die Produktionsverhältnisse werden vom Objekt menschlicher Gestaltungsmöglichkeiten zum Subjekt der Geschichte.
+
+
+================================================================================
+CHUNK #4
+================================================================================
+📑 HEADING: lismus > Inhalt > Mit dem Kapitalismus brechen!
+💾 COMPRESSED METADATA SIZE: 227 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 120.24000366210942,
+          "width": 481.9166583010101,
+          "x": 56.64011597633362,
+          "y": 672.5600318908691
+        },
+        "char_range": {
+          "end": 5424,
+          "start": 4548
+        },
+        "page": 5
+      },
+      {
+        "bbox": {
+          "height": 96.72000320434572,
+          "width": 481.8367568969825,
+          "x": 56.639984130859375,
+          "y": 66.08001136779785
+        },
+        "char_range": {
+          "end": 693,
+          "start": 1
+        },
+        "page": 6
+      }
+    ]
+  }
+}
+📄 PAGES: 5 to 6 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 5, chars 4548-5424
+     Bbox: x=56.64, y=672.56, w=481.92, h=120.24
+   Fragment 1: page 6, chars 1-693
+     Bbox: x=56.64, y=66.08, w=481.84, h=96.72
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 5: chars 4548-5424, 1 bounding boxes
+  Page 6: chars 1-693, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 30c15ec04191
+  source_id: 1
+  estimated_tokens: 291
+  actual_tokens: 393
+
+📝 CONTENT (1602 chars, 393 tokens):
+----------------------------------------
+Ziel  der  Kommunistinnen  und  Kommunisten  ist  es,  diese  Ursache  von  Ausbeutung  und  Entfremdung,  von Krieg und Hunger, von Armut und Obdachlosigkeit, von Arbeitshetze und Arbeitslosigkeit, von Umweltzerstörung, Diskriminierung, Rassismus, Nationalismus und Unterdrückung zu beseitigen. Das ist nicht möglich, wenn man im Rahmen der Sachzwänge des Kapitals bleibt! Dazu  ist  der  revolutionäre  Bruch  mit  dem  Kapitalismus  notwendig,  die  Aufhebung  des  Privateigentums  an Produktionsmitteln, die von Ausbeutung freie gesellschaftliche Arbeit, die Vergesellschaftung der Produktionsmittel,  die  Produktion  für  die  Bedürfnisse  der  Menschen  nach  gemeinschaftlich  erarbeitetem  Plan  und die gesellschaftliche Aneignung des gesellschaftlichen Reichtums. Heute sind alle sachlichen Voraussetzungen gegeben, daß für alle Menschen Arbeitsplätze bereitstehen, ja sogar dafür, daß alle Menschen nur noch einen Bruchteil der Arbeit leisten müßten, um allen ein Leben in Würde zu garantieren. Dazu  aber  bedarf  es  einer  anderen  Gesellschaftsordnung.  Die  Perspektive  einer  solchen  Gesellschaft  ist kein  frommer  Wunsch.  Sie  erwächst  aus  den  Widersprüchen  der  heutigen  kapitalistischen  Gesellschaft selbst. Deren Entwicklungen sind es, die die Notwendigkeit und Möglichkeit des Sozialismus immer wieder neu hervorbringen. Die eigenen Widersprüche lassen den Kapitalismus an seine Grenzen stoßen, an denen er  Elemente  zur  Krisenbewältigung  in  Anspruch  nehmen  muß,  die  bereits  die  Perspektive  einer  anderen Gesellschaft  ahnen  lassen.
+
+
+================================================================================
+CHUNK #5
+================================================================================
+📑 HEADING: lismus > Inhalt > Mit dem Kapitalismus brechen!
+💾 COMPRESSED METADATA SIZE: 174 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 241.44000823974608,
+          "width": 481.9166740366363,
+          "x": 56.63999032974243,
+          "y": 152.72001457214355
+        },
+        "char_range": {
+          "end": 2435,
+          "start": 693
+        },
+        "page": 6
+      }
+    ]
+  }
+}
+📄 PAGE: 6
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 6, chars 693-2435
+     Bbox: x=56.64, y=152.72, w=481.92, h=241.44
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 6: chars 693-2435, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 32f7716c0495
+  source_id: 1
+  estimated_tokens: 330
+  actual_tokens: 410
+
+📝 CONTENT (1773 chars, 410 tokens):
+----------------------------------------
+Die  Verwirklichung  dieser  anderen  Gesellschaft  aber  erfordert  den  kämpferischen Einsatz der Menschen. Der Kapitalismus polarisiert die Gesellschaft in zwei große gegensätzliche Klassen: In diejenigen, die über die modernen Produktionsmittel und damit über den gesellschaftlichen Reichtum verfügen und diejenigen, die  von  dieser  Verfügung  ausgeschlossen  sind,  die  nichts  zu  verkaufen  haben  als  ihre  körperlichen  und geistigen  Fähigkeiten,  ihre  Arbeitskraft.  Aus  diesem  Grunde  nennen  wir  diese  zweite  Klasse  weiterhin  die Arbeiterklasse, wohl wissend, daß diese Klasse heute in sich vielfach strukturiert ist. Die  Arbeiterklasse  ist  die  wichtigste  Trägerin  der  Produktivkräfte.  Entsprechend  ihrer  praktischen  Rolle  in der  Produktion  der  gesellschaftlichen  Reichtümer  kann  nur  sie  die  entscheidende  Kraft  zur  Rettung  der menschlichen Zivilisation und zur Erkämpfung des Übergangs vom Kapitalismus zum Sozialismus sein. Um diese Aufgaben zu verwirklichen, wird sie das Bündnis mit allen Klassen und Schichten suchen, deren Interessen  oder  Teilinteressen  mit  denen  der  Arbeiterklasse  zusammenfallen.  Die  neue  Gesellschaft  wird  nur entstehen, wenn sie sich auf die Zustimmung einer großen Mehrheit stützen kann, die die Alternative zum Kapitalismus tatsächlich will und dafür eintritt. Doch diese neue Gesellschaft wird und muß anders aussehen als die ersten Versuche in diesem Jahrhundert.  Denn  die  historischen  Voraussetzungen  dieser  Gesellschaft  werden  andere  sein  und  wir  müssen  aus den  unübersehbaren  Fehlern  der  ersten  Versuche  lernen  und  Strukturen  schaffen,  die  die  erkannten  Fehlentwicklungen verhindern. Aber wir erfinden den Sozialismus nicht neu.
+
+
+================================================================================
+CHUNK #6
+================================================================================
+📑 HEADING: lismus > Inhalt > Mit dem Kapitalismus brechen!
+💾 COMPRESSED METADATA SIZE: 174 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 154.80000503540043,
+          "width": 481.9166485258483,
+          "x": 56.64002442359924,
+          "y": 384.0800228118897
+        },
+        "char_range": {
+          "end": 3361,
+          "start": 2435
+        },
+        "page": 6
+      }
+    ]
+  }
+}
+📄 PAGE: 6
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 6, chars 2435-3361
+     Bbox: x=56.64, y=384.08, w=481.92, h=154.80
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 6: chars 2435-3361, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 305b40ad7d36
+  source_id: 1
+  estimated_tokens: 197
+  actual_tokens: 236
+
+📝 CONTENT (948 chars, 236 tokens):
+----------------------------------------
+Dieser neue sozialistische Anlauf, den wir für notwendig halten, wird sich aus verschiedenen Quellen speisen: Er wächst aus der Erkenntnis, daß der Kapitalismus überwunden werden muß, aus den Hoffnungen, aus der Wut  und  aus  den  Sehnsüchten  der  überwiegenden  Mehrheit  der  Menschen.  Sie  wünschen  sich  ein  Leben ohne existentielle Sorgen, ohne Hunger und Not, ohne Ausbeutung und Krieg, vor allem ohne Sorge um das tägliche Brot. Er  gründet  sich  auf  die  Erkenntnis  der  gesellschaftlichen  und  historischen  Zusammenhänge,  für  die  Marx, Engels und Lenin das Fundament gelegt haben. Sie muß wieder erschlossen, von der Arbeiterklasse angeeignet und so für die Zukunft fruchtbar werden. Er  analysiert  die  Erfahrungen  des  Anlaufs  von  1917-89.  Sowohl  die  Gründe  der  Niederlage,  als  auch  die Gründe seines 70jährigen Bestehens in einer Welt von imperialistischen Feinden und Räubern sind wesentlich.
+
+
+================================================================================
+CHUNK #7
+================================================================================
+📑 HEADING: lismus > Inhalt > Leistungen und Fehlentwicklungen des realen Sozialismus
+💾 COMPRESSED METADATA SIZE: 239 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 200.88000686645512,
+          "width": 481.91668285812375,
+          "x": 56.640037059783936,
+          "y": 586.4000282287598
+        },
+        "char_range": {
+          "end": 4824,
+          "start": 3416
+        },
+        "page": 6
+      },
+      {
+        "bbox": {
+          "height": 33.12000091552734,
+          "width": 481.83555597652446,
+          "x": 56.639984130859375,
+          "y": 66.08001136779785
+        },
+        "char_range": {
+          "end": 307,
+          "start": 1
+        },
+        "page": 7
+      }
+    ]
+  }
+}
+📄 PAGES: 6 to 7 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 6, chars 3416-4824
+     Bbox: x=56.64, y=586.40, w=481.92, h=200.88
+   Fragment 1: page 7, chars 1-307
+     Bbox: x=56.64, y=66.08, w=481.84, h=33.12
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 6: chars 3416-4824, 1 bounding boxes
+  Page 7: chars 1-307, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: abef856cd49a
+  source_id: 1
+  estimated_tokens: 324
+  actual_tokens: 403
+
+📝 CONTENT (1749 chars, 403 tokens):
+----------------------------------------
+Nach dem kurzen Anlauf der Pariser Commune von 1871 wurde mit der Oktoberrevolution 1917 in Rußland zum  erstenmal  der  Aufbau  eines  sozialistischen  Gesellschaftssystems  begonnen.  Die  Oktoberrevolution gab der Menschheit das Signal zum Aufbruch in eine neue weltgeschichtliche Epoche. Unter ungünstigsten Ausgangsbedingungen wurden in der Sowjetunion und später in weiteren sozialistischen Staaten großartige Leistungen vollbracht. Die DKP als Partei hat sich mit den sozialistischen Staaten in Europa identifiziert. Deren regierende Parteien waren unsere engsten Verbündeten. Die Existenz der DDR hat eine nicht aufzuhebende historische Dimension:  als  sozialistische  Alternative  zum  Imperialismus  der  BRD.  Wir  verteidigen  die  Erfolge  beim  Aufbau und analysieren die Ursachen für die Zerschlagung und den Zusammenbruch des Sozialismus. «Die sozialistischen Gesellschaften haben über Jahrzehnte hinweg den Beweis erbracht, daß die Entwicklung der Produktivkräfte und eine Produktion jenseits des Profitprinzips nach einem gesellschaftlichen Plan möglich ist. «Sie  haben  der  Aggressivität  des  Imperialismus  Fesseln  angelegt.  Vom  ersten  Dekret  der  Sowjetmacht 1917, durch welches für Rußland der erste Weltkrieg beendet wurde, vom Sieg über den Hitlerfaschismus bis zu den Abrüstungsinitiativen der Warschauer Vertrags-Staaten reicht die lange Kette der Friedenspolitik des Sozialismus. «Der Sozialismus hat sich ökonomisch entwickelt, ohne an der Ausbeutung der Entwicklungsländer beteiligt zu  sein.  Zu  seinen  historischen  Leistungen  gehört  die  solidarische  Unterstützung  der  Völker  dieser  Länder im Kampf um ihre nationale Unabhängigkeit, gegen Kolonialismus und Neokolonialismus.
+
+
+================================================================================
+CHUNK #8
+================================================================================
+📑 HEADING: lismus > Inhalt > Leistungen und Fehlentwicklungen des realen Sozialismus
+💾 COMPRESSED METADATA SIZE: 174 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 223.9200077819824,
+          "width": 481.916695732727,
+          "x": 56.639984130859375,
+          "y": 106.64001274108888
+        },
+        "char_range": {
+          "end": 1983,
+          "start": 307
+        },
+        "page": 7
+      }
+    ]
+  }
+}
+📄 PAGE: 7
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 7, chars 307-1983
+     Bbox: x=56.64, y=106.64, w=481.92, h=223.92
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 7: chars 307-1983, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 2cde4c7c1c2d
+  source_id: 1
+  estimated_tokens: 293
+  actual_tokens: 395
+
+📝 CONTENT (1717 chars, 395 tokens):
+----------------------------------------
+«Der Sozialismus hat soziale Errungenschaften durchgesetzt, die in den reichen imperialistischen Zentren nicht  erreicht  wurden:  Obdach-  und  Arbeitslosigkeit  wurden  überwunden,  es  gab  gleiche  Bildungsmöglichkeiten  für  alle,  eine  entwickelte  Erwerbstätigkeit  der  Frauen,  kostenlose  Gesundheitsversorgung  und  eine hoch entwickelte Massenkultur. «Die  Existenz  des  Sozialismus  und  seine  Errungenschaften  haben  die  Bedingungen  für  den  Kampf  um soziale  und  demokratische  Reformen  in  den  entwickelten  kapitalistischen  Ländern  wesentlich  verbessert. Die Bourgeoisie und ihre Regierungen waren zu bedeutenden Zugeständnissen gezwungen. Trotz  dieser  Leistungen  hat  der  Sozialismus  in  der  UdSSR  und  den  sozialistischen  Staaten  Europas  eine Niederlage erlitten. Es gibt innere und äußere, ökonomische und politische, objektive und subjektive Ursachen. Dazu gehören: «Die sozialistischen Staaten hatten mit äußerst schwierigen Ausgangsbedingungen zu ringen. Die Revolution  siegte  zunächst  in  Rußland,  einem  wirtschaftlich  schwach  entwickelten  Land  ohne  bürgerlichdemokratische  Traditionen  mit  einer  überwiegend  bäuerlichen,  in  ihrer  großen  Mehrheit  aus  Analphabeten bestehenden Bevölkerung. Diese Rückständigkeit sowie die äußere Bedrohung durch die imperialistischen Mächte machten es unerläßlich, in kürzester Frist durch die Zentralisierung aller Kräfte eine moderne Industrie aus dem Boden zu stampfen und eine kulturelle Revolution in Angriff zu nehmen. Die führende Rolle der Arbeiterklasse mußte unter diesen Bedingungen zunächst weitgehend stellvertretend durch die kommunistische Partei übernommen werden.
+
+
+================================================================================
+CHUNK #9
+================================================================================
+📑 HEADING: lismus > Inhalt > Leistungen und Fehlentwicklungen des realen Sozialismus
+💾 COMPRESSED METADATA SIZE: 175 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 212.4000073242188,
+          "width": 481.9166900106811,
+          "x": 56.64004230499267,
+          "y": 338.00002098083496
+        },
+        "char_range": {
+          "end": 3615,
+          "start": 1983
+        },
+        "page": 7
+      }
+    ]
+  }
+}
+📄 PAGE: 7
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 7, chars 1983-3615
+     Bbox: x=56.64, y=338.00, w=481.92, h=212.40
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 7: chars 1983-3615, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: e60ff2d88cc9
+  source_id: 1
+  estimated_tokens: 281
+  actual_tokens: 394
+
+📝 CONTENT (1659 chars, 394 tokens):
+----------------------------------------
+Dies wurde allerdings auch dann noch beibehalten, als sich im Ergebnis der Industrialisierung und der Kulturrevolution  die  Bedingungen  geändert  hatten.  Partei  und  Staat  verschmolzen  mehr  und  mehr  zu  einem administrativ-bürokratischen Apparat. Die sozialistische Demokratie blieb nicht nur unterentwickelt, sie wurde  durch  die  Mißachtung  sozialistischer  Rechtsstaatlichkeit  massiv  verletzt.  Die  extreme  äußere  Bedrohungssituation  der  Sowjetunion  verstärkte  die  Tendenz  zu  Repression  und  Terror  nach  innen.  Bloße  Verstaatlichung trat an die Stelle wirklicher Vergesellschaftung. Die Folge war eine zunehmende Entfremdung vom sozialistischen Eigentum. «Dieses „Sozialismusmodell“ wurde nach dem zweiten Weltkrieg auf die Länder übertragen, die einen sozialistischen  Entwicklungsweg  beschritten,  darunter  auch  auf  entwickelte  Länder  wie  die  DDR  und  die CSSR.  Konnten  mit  dem  administrativ-zentralistischen  Typ  des  Sozialismus  zunächst  bedeutende  wirtschaftliche Erfolge erreicht werden, so erwies er sich später als zu wenig flexibel, um die Anforderungen der wissenschaftlich-technischen  Revolution  zu  meistern.  Die  Folge  war,  daß  die  sozialistischen  Länder  in  der Entwicklung  der  Arbeitsproduktivität  und  des  materiellen  Lebensstandards  immer  weiter  hinter  den  entwikkelten kapitalistischen Ländern zurückblieben. Das mußte destabilisieren. «In den sozialistischen Ländern wurde kein neuer, dem Sozialismus adäquater Typ der Produktivkraftentwicklung geschaffen. «Auf die Dauer konnten sich sozialistische Wertvorstellungen nicht umfassend durchsetzen.
+
+
+================================================================================
+CHUNK #10
+================================================================================
+📑 HEADING: lismus > Inhalt > Leistungen und Fehlentwicklungen des realen Sozialismus
+💾 COMPRESSED METADATA SIZE: 175 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 194.88000686645512,
+          "width": 481.916689533844,
+          "x": 56.64006757736206,
+          "y": 557.8400287628174
+        },
+        "char_range": {
+          "end": 5111,
+          "start": 3615
+        },
+        "page": 7
+      }
+    ]
+  }
+}
+📄 PAGE: 7
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 7, chars 3615-5111
+     Bbox: x=56.64, y=557.84, w=481.92, h=194.88
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 7: chars 3615-5111, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 91c6990d620a
+  source_id: 1
+  estimated_tokens: 272
+  actual_tokens: 361
+
+📝 CONTENT (1520 chars, 361 tokens):
+----------------------------------------
+«Die  innere  Hauptursache  für  die  Niederlage  des  Sozialismus  sehen  wir  darin,  daß  die  gesellschaftlichen Verhältnisse mehr und mehr erstarrten und es nicht gelungen ist, die Aufgabe zu bewältigen, den Sozialismus auf seiner eigenen Grundlage, entsprechend dem erreichten Entwicklungsstand, immer neue revolutionäre Entwicklungsschübe zu geben. «Dazu  beigetragen  haben  auch  dogmatische  Erstarrungen  der  Gesellschaftstheorie,  die  damit  mehr  und mehr ihrer Kraft beraubt wurde, gestützt auf die reale Analyse der konkreten Situation und wissenschaftlich begründete  Prognosen  fundierte  Handlungsorientierungen  für  die  Entwicklung  der  sozialistischen  Gesellschaft zu erarbeiten. Hier liegt ein wesentlicher Grund für ökonomische und politische Fehlentscheidungen. Ebenso  dazu  beigetragen  hat  die  These  der  Unumkehrbarkeit  des  Sozialismus,  die  die  Arbeiterklasse  in Sicherheit gewiegt und dadurch entwaffnet hat. «Die Niederlage des Sozialismus ist zugleich das Ergebnis der äußeren und inneren Konterrevolution. Von der Intervention der 14 imperialistischen Staaten gegen die junge Sowjetmacht und die Wirtschaftsblockaden in den zwanziger Jahren über den Antikominternpakt zur Einkreisung der Sowjetunion und die Aggression  Hitler-Deutschlands  bis  zur  Embargopolitik  und  zum  kräftezehrenden  Wettrüsten  nach  dem  zweiten Weltkrieg haben die imperialistischen Mächte nichts unversucht gelassen, um den Sozialismus zu destabilisieren und zu zerstören.
+
+
+================================================================================
+CHUNK #11
+================================================================================
+📑 HEADING: lismus > Inhalt > Leistungen und Fehlentwicklungen des realen Sozialismus
+💾 COMPRESSED METADATA SIZE: 225 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 33.120000915527385,
+          "width": 481.91664733375546,
+          "x": 56.640119552612305,
+          "y": 760.1600360870361
+        },
+        "char_range": {
+          "end": 5430,
+          "start": 5111
+        },
+        "page": 7
+      },
+      {
+        "bbox": {
+          "height": 10.079999999999998,
+          "width": 440.73811099376366,
+          "x": 56.639984130859375,
+          "y": 66.08001136779785
+        },
+        "char_range": {
+          "end": 95,
+          "start": 1
+        },
+        "page": 8
+      }
+    ]
+  }
+}
+📄 PAGES: 7 to 8 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 7, chars 5111-5430
+     Bbox: x=56.64, y=760.16, w=481.92, h=33.12
+   Fragment 1: page 8, chars 1-95
+     Bbox: x=56.64, y=66.08, w=440.74, h=10.08
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 8: chars 1-95, 1 bounding boxes
+  Page 7: chars 5111-5430, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 304f631aa17a
+  source_id: 1
+  estimated_tokens: 71
+  actual_tokens: 91
+
+📝 CONTENT (424 chars, 91 tokens):
+----------------------------------------
+«Unter  inneren  und  äußeren  Einflüssen  gewannen  schließlich  opportunistische  Einstellungen  die  Oberhand, die mehr und mehr zum Zerfall des revolutionären Charakters der Sowjetgesellschaft und der Theorie des wissenschaftlichen Sozialismus führten, die das Eindringen der bürgerlichen Ideologie begünstigten und schließlich den Zusammenbruch des Sowjetsystems und anderer sozialistischer Staaten bewirkten.
+
+
+================================================================================
+CHUNK #12
+================================================================================
+📑 HEADING: lismus > Inhalt > Wesensmerkmale des künftigen Sozialismus
+💾 COMPRESSED METADATA SIZE: 174 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 206.40000732421873,
+          "width": 481.9166799971008,
+          "x": 56.63996458053589,
+          "y": 123.68001174926758
+        },
+        "char_range": {
+          "end": 1836,
+          "start": 135
+        },
+        "page": 8
+      }
+    ]
+  }
+}
+📄 PAGE: 8
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 8, chars 135-1836
+     Bbox: x=56.64, y=123.68, w=481.92, h=206.40
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 8: chars 135-1836, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: baa4c7e0cd19
+  source_id: 1
+  estimated_tokens: 306
+  actual_tokens: 421
+
+📝 CONTENT (1730 chars, 421 tokens):
+----------------------------------------
+Der  Sozialismus  ist  die  erste  Stufe  auf  dem  Weg  zum  Kommunismus,  der  klassenlosen  Gesellschaft.  Es werden also in dieser Zeit auch noch Klassen und Klassenkämpfe bestehen. Jede Vorstellung vom Sozialismus  wird  vorläufig  sein.  Denn  sie  basiert  auf  der  Erkenntnis  der  sich  im  geschichtlichen  Verlauf  ständig wandelnden  technischen,  ökonomischen,  politischen  und  kulturellen  Rahmenbedingungen.  Dennoch  kann gesagt  werden,  welches  die  notwendigen  Voraussetzungen  und  unverzichtbaren  Momente  einer  künftigen sozialistischen Gesellschaft sind. Zum Aufbau des Sozialismus werden Kräfte unterschiedlicher Herkunft – deren Auffassungen im einzelnen differieren  –  gemeinsam  beitragen  und  das  Ziel  einer  vom  Kapitalismus  befreiten  Gesellschaft  verfolgen. Unverzichtbare weltanschauliche Grundlage für uns Kommunisten ist der Marxismus, der wissenschaftliche Sozialismus,  das  heißt  die  Theorien  von  Marx,  Engels  und  Lenin,  die  wissenschaftliche  Analyse  und  die sich  daraus  ergebenden  Perspektiven.  Andere  Zugänge  können  aus  christlich  oder  allgemein  humanistischen,  aus  feministischen,  pazifistischen,  aus  antirassistischen  und  ökologischen  Überzeugungen  erwachsen.  Der  künftige  Sozialismus  wird  folglich  in  der  Zusammenarbeit  unterschiedlicher  gesellschaftlicher Kräfte geformt werden. Die Arbeiterklasse muß und wird dabei die entscheidende Kraft sein. Zu beachten ist auch, daß die Kommunistinnen und Kommunisten in dieser Welt und vor allem in Europa in nationalen Parteien organisiert sind. Der Boden unserer Wirkens, der uns vor allem prägt, ist die Bundesrepublik  Deutschland.  Dennoch  sind  wir  uns  sicher:
+
+
+================================================================================
+CHUNK #13
+================================================================================
+📑 HEADING: lismus > Inhalt > Wesensmerkmale des künftigen Sozialismus
+💾 COMPRESSED METADATA SIZE: 175 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 108.24000366210936,
+          "width": 481.91664518798825,
+          "x": 56.640021562576294,
+          "y": 320.0000190734863
+        },
+        "char_range": {
+          "end": 2629,
+          "start": 1836
+        },
+        "page": 8
+      }
+    ]
+  }
+}
+📄 PAGE: 8
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 8, chars 1836-2629
+     Bbox: x=56.64, y=320.00, w=481.92, h=108.24
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 8: chars 1836-2629, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 8fc598eb59d4
+  source_id: 1
+  estimated_tokens: 150
+  actual_tokens: 181
+
+📝 CONTENT (802 chars, 181 tokens):
+----------------------------------------
+Ein  neuerlicher  sozialistischer  Anlauf  in  Deutschland  erfolgt nicht isoliert, sondern wird von ähnlichen Bewegungen in den Nachbarländern und anderen Teilen der Welt begleitet sein. Deshalb wollen wir unsere Erfahrungen und Anstrengungen in eine verstärkte theoretische  und  praktische  Zusammenarbeit  der  Kommunistinnen  und  Kommunisten  einbringen,  die  die  Linke stärkt, und damit zugleich Anstöße für die Zusammenarbeit aller progressiven Kräfte in Europa und darüber hinaus in der ganzen Welt gibt. Letzten Endes wird der Sozialismus sich nur dann geschichtlich bewähren, wenn er zur Formation der Weltgesellschaft  wird,  einer  Weltgesellschaft,  die  durch  eine  Mannigfaltigkeit  der  Kulturen,  durch  ein  solidarisches und gleichberechtigtes Miteinander geprägt ist.
+
+
+================================================================================
+CHUNK #14
+================================================================================
+📑 HEADING: lismus > Inhalt > Was wird an die Stelle der jetzigen Gesellschaft treten?
+💾 COMPRESSED METADATA SIZE: 174 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 226.3200054931641,
+          "width": 481.916650433197,
+          "x": 56.64002323150635,
+          "y": 475.76002311706543
+        },
+        "char_range": {
+          "end": 4293,
+          "start": 2685
+        },
+        "page": 8
+      }
+    ]
+  }
+}
+📄 PAGE: 8
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 8, chars 2685-4293
+     Bbox: x=56.64, y=475.76, w=481.92, h=226.32
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 8: chars 2685-4293, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 3ff24c44ed13
+  source_id: 1
+  estimated_tokens: 300
+  actual_tokens: 431
+
+📝 CONTENT (1645 chars, 431 tokens):
+----------------------------------------
+Ziel  und  Maßstab  für  die  Entwicklung  des  Sozialismus  ist  der  sozialistische  Humanismus.  Es  geht  um  die Überwindung „aller Verhältnisse, in denen der Mensch ein erniedrigtes, ein geknechtetes, ein verlassenes, ein verächtliches Wesen ist“, um seine Befreiung von Ausbeutung und „die freie Entwicklung eines jeden als Bedingung  für  die  freie  Entwicklung  aller“,  um  ein  selbstbestimmtes  und  selbstgestaltetes  würdiges  Leben für alle Menschen. Ziel des Sozialismus ist die Emanzipation des Menschen, seine Befreiung aus allen Unterdrückungsverhältnissen.  Wachsende  Freiheit  jedes  Einzelnen  muß  sich  mit  steigender  Verantwortung  für  die  sozialistische Gemeinschaft verbinden. Das erfordert den Kampf um eine fortschreitende Entwicklung für: Frieden. Sozialismus wird die Voraussetzungen schaffen, damit die Menschheit künftig ihre Angelegenheiten  ohne  Krieg  regeln  kann.  Frieden  muß  das  erste  Gebot  der  neuen  Gesellschaft  sein.  Dazu  bedarf  es auch der Überwindung von Nationalismus, Rassismus und Antisemitismus. Soziale  Gerechtigkeit.    Ziel  des  Sozialismus  ist  die  Verwirklichung  der  sozialen  Menschenrechte,  des Rechtes auf Arbeit, auf soziale Sicherung, auf eine Wohnung. Chancengleichheit.    Ziel  des  Sozialismus  sind  gleiche  Bildungs-  und  Entwicklungschancen  und  gleicher Zugang zu den Gütern der Kultur für alle. Freiheit und Selbstbestimmung.   Ziel  des  Sozialismus  ist  es,  erstmals  in  der  Geschichte  die  Einheit  sozialer  und  politischer  Menschenrechte  als  wesentliche  Grundlage  für  das  freie,  selbstbestimmte,  d.  h.
+
+
+================================================================================
+CHUNK #15
+================================================================================
+📑 HEADING: lismus > Inhalt > Was wird an die Stelle der jetzigen Gesellschaft treten?
+💾 COMPRESSED METADATA SIZE: 226 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 91.92000205993656,
+          "width": 481.91665567840573,
+          "x": 56.640028953552246,
+          "y": 692.0000286102295
+        },
+        "char_range": {
+          "end": 4846,
+          "start": 4293
+        },
+        "page": 8
+      },
+      {
+        "bbox": {
+          "height": 138.2400036621094,
+          "width": 481.91666473831174,
+          "x": 56.639984130859375,
+          "y": 66.08001136779785
+        },
+        "char_range": {
+          "end": 1105,
+          "start": 1
+        },
+        "page": 9
+      }
+    ]
+  }
+}
+📄 PAGES: 8 to 9 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 8, chars 4293-4846
+     Bbox: x=56.64, y=692.00, w=481.92, h=91.92
+   Fragment 1: page 9, chars 1-1105
+     Bbox: x=56.64, y=66.08, w=481.92, h=138.24
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 8: chars 4293-4846, 1 bounding boxes
+  Page 9: chars 1-1105, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: ed94ac88cdee
+  source_id: 1
+  estimated_tokens: 299
+  actual_tokens: 413
+
+📝 CONTENT (1695 chars, 413 tokens):
+----------------------------------------
+zugleich  kompetente  und  verantwortungsbewußte  Wirken  des  Einzelnen  in  der  Gesellschaft  als  „Bedingung für die freie Entwicklung aller“ zu garantieren. Gleichberechtigung.  Im  Sozialismus  werden  die  Grundlagen  gelegt  für  die  wirkliche  Gleichberechtigung der  Geschlechter.  Der  Sozialismus  sichert  gleiche  Rechte  für  alle  Menschen  unabhängig  von  nationaler Zugehörigkeit, religiösen und weltanschaulichen Bekenntnissen. Solidarität.  Die  Beziehungen  zwischen  den  Menschen  werden  im  Sozialismus  von  Gemeinschaftsgeist, von gegenseitiger Hilfe und Unterstützung geprägt. Internationalismus. Die Welt wird immer mehr in Wirtschaft, Verkehr und Migrationsbewegungen zu einer Einheit  zusammenwachsen.  Die  Sozialisten  aller  Welt  arbeiten  zusammen  mit  dem  Ziel,  eine  Kampfgemeinschaft  gegen  den  Imperialismus  und  für  die  Bewahrung  des  Friedens  zu  bilden;  aktive  Solidarität  mit unterdrückten und ausgebeuteten Völkern zu üben und ihre Befreiung und Entwicklung zu unterstützen; das freundschaftliche Zusammenleben der Völker in gegenseitiger Achtung zu fördern; die notwendige Zusammenarbeit der Parteien und Staaten, die sich auf dem Wege zum Sozialismus befinden, herzustellen. Verantwortung  für  die  Zukunft.  Solidarität  und  Internationalismus  verlangen  den  verantwortungsvollen Umgang  mit  unserer  Umwelt  und  ihren  Ressourcen  im  Interesse  eines  menschenwürdigen  Lebens  für  alle Menschen  in  allen  Teilen  der  Erde  und  der  Zukunft  für  kommende  Generationen.  In  diesem  Sinne  ist  der Kampf für den Sozialismus Mittel für die Erhaltung der Natur als Grundlage unseres Lebens.
+
+
+================================================================================
+CHUNK #16
+================================================================================
+📑 HEADING: lismus > Inhalt > Was wird an die Stelle der jetzigen Gesellschaft treten?
+💾 COMPRESSED METADATA SIZE: 175 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 189.84000595092772,
+          "width": 481.9166630693817,
+          "x": 56.639991760253906,
+          "y": 211.7600154876709
+        },
+        "char_range": {
+          "end": 2294,
+          "start": 1105
+        },
+        "page": 9
+      }
+    ]
+  }
+}
+📄 PAGE: 9
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 9, chars 1105-2294
+     Bbox: x=56.64, y=211.76, w=481.92, h=189.84
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 9: chars 1105-2294, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 63a62415e11e
+  source_id: 1
+  estimated_tokens: 219
+  actual_tokens: 282
+
+📝 CONTENT (1216 chars, 282 tokens):
+----------------------------------------
+Der Sozialismus ist der aufregendste Gesellschaftsentwurf, den es für die Zukunft der Menschheit gibt. Er führt einen gewaltigen Schritt voran auf dem Weg zu „Freiheit, Gleichheit, Brüderlichkeit“, die die Bourgeoisie  einst  im  Kampf  gegen  den  Feudalismus  auf  ihre  Fahnen  geschrieben  hatte,  die  jedoch  am  kapitalistischen Profitsystem scheitern mußten. Die künftige Gesellschaft wird sich prinzipiell vom kapitalistischen System der Gegenwart unterscheiden: «durch  solidarische  und  gleichberechtigte  Beziehungen  zwischen  allen  Völkern  und  eine  strikte  Friedenspolitik; «durch eine nicht mehr am privaten Profit orientierte Ökonomie als Grundlage der Art und Weise, wie wir täglich unser Leben neu herstellen; «durch eine Demokratie, die erstmals in der Geschichte wirkliche Volksherrschaft ist. Die Dominanz des gesellschaftlichen Eigentums an den Produktionsmitteln und die darauf gegründete politische  Macht  der  Arbeiterklasse  im  Bündnis  mit  den  übrigen  Werktätigen  sind  unverzichtbare  notwendige Bedingungen  für  den  Aufbau  einer  sozialistischen  Gesellschaft.  Diese  bedarf  ebenso  einer  planmäßigen Gestaltung der gesellschaftlichen Entwicklung.
+
+
+================================================================================
+CHUNK #17
+================================================================================
+📑 HEADING: lismus > Inhalt > Ökonomie
+💾 COMPRESSED METADATA SIZE: 173 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 194.88000686645512,
+          "width": 481.9166718908691,
+          "x": 56.6400158405304,
+          "y": 466.64002418518066
+        },
+        "char_range": {
+          "end": 3891,
+          "start": 2302
+        },
+        "page": 9
+      }
+    ]
+  }
+}
+📄 PAGE: 9
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 9, chars 2302-3891
+     Bbox: x=56.64, y=466.64, w=481.92, h=194.88
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 9: chars 2302-3891, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 7ce47f8b36f2
+  source_id: 1
+  estimated_tokens: 272
+  actual_tokens: 379
+
+📝 CONTENT (1619 chars, 379 tokens):
+----------------------------------------
+Der Sozialismus führt einen grundlegenden Bruch mit der kapitalistischen Wirtschaftsweise herbei, die auf die Erzielung maximalen Profits durch die Ausbeutung der menschlichen Arbeitskraft und den verschwenderischen  Umgang  mit  den  Naturressourcen  gerichtet  ist.  Aufgabe  des  Sozialismus  ist  die  Befriedigung  der sich  ständig  weiterentwickelnden  materiellen  und  kulturellen  Bedürfnisse  der  Menschen  durch  eine  hohe Produktivität der gesellschaftlichen Arbeit und die Anwendung einer die natürlichen Reichtümer bewahrenden Wirtschaftsweise auf der Grundlage gesellschaftlicher Planung und Leitung. Grundlage  sozialistischer  Produktionsverhältnisse  ist  die  Vergesellschaftung  der  entscheidenden  Produktionsmittel. Dabei muß an die Stelle bloßer Verstaatlichung, in der schon Marx und Engels nur einen ersten Schritt  zur  Aneignung  der  Produktionsmittel  durch  die  Gesellschaft  sahen,  wirkliche  Vergesellschaftung treten.  Die  Produzenten  müssen  aus  formalen  zu  tatsächlichen  sozialistischen  Eigentümern  werden,  die Entfremdung von Eigentum an den Produktionsmitteln muß überwunden werden. Die Entfremdung der arbeitenden Menschen kann tendenziell aber nur dann überwunden werden, wenn sie aktiv  und  schöpferisch  am  Produktionsprozeß  und  an  der  Festlegung  wirtschaftlicher  und  sozialer  Ziele teilnehmen. Die Überwindung der Entfremdung und die Entwicklung sozialistischen Eigentümerbewußtseins hängt  eng  mit  der  Entwicklung  der  partizipativen  sozialistischen  Demokratie  und  dem  Bildungsniveau  der arbeitenden  Menschen  zusammen.
+
+
+================================================================================
+CHUNK #18
+================================================================================
+📑 HEADING: lismus > Inhalt > Ökonomie
+💾 COMPRESSED METADATA SIZE: 227 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 131.28000457763676,
+          "width": 481.9166547247314,
+          "x": 56.64005970954895,
+          "y": 651.4400310516357
+        },
+        "char_range": {
+          "end": 4923,
+          "start": 3891
+        },
+        "page": 9
+      },
+      {
+        "bbox": {
+          "height": 102.72000320434572,
+          "width": 481.9166566320801,
+          "x": 56.63999938964844,
+          "y": 66.08001136779785
+        },
+        "char_range": {
+          "end": 688,
+          "start": 2
+        },
+        "page": 10
+      }
+    ]
+  }
+}
+📄 PAGES: 9 to 10 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 9, chars 3891-4923
+     Bbox: x=56.64, y=651.44, w=481.92, h=131.28
+   Fragment 1: page 10, chars 2-688
+     Bbox: x=56.64, y=66.08, w=481.92, h=102.72
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 10: chars 2-688, 1 bounding boxes
+  Page 9: chars 3891-4923, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: b416e8b38890
+  source_id: 1
+  estimated_tokens: 300
+  actual_tokens: 423
+
+📝 CONTENT (1740 chars, 423 tokens):
+----------------------------------------
+Gesellschaftliches  Eigentum  und  die  gesamtgesellschaftliche  Planung sind  aber  andererseits  die  Voraussetzung  für  wirkliche  Demokratie,  indem  die  substantiellen  Fragen  in  die politische Entscheidungsfindung zurückgeholt werden. Der Hauptinhalt der ersten Schritte zum Sozialismus, den unsere Generationen gehen werden, besteht im Aufbau  einer  sozialistischen  Selbstverwaltung.  Was  heißt  das  konkret?  Die  alten  Eigentumstitel  einzelner Menschen  an  den  großen  Konzernen,  den  Banken  und  Versicherungen,  am  Grund  und  Boden,  auf  dem diese Betriebe wirken, werden gelöscht. Das Recht und die Pflicht, die Herstellung von Gütern und Dienstleistungen  zu  steuern,  wird  an  die  Produzenten  selbst  gegeben.  Dafür  ist  eine  zentrale,  demokratisch  bestimmte Planung und Steuerung unverzichtbar. Sie wird im wesentlichen über das gesamtgesellschaftliche Eigentum  an  den  Finanzinstituten  und  den  großen  Konzernen  (sowohl  Produktionsbetrieben  wie  Distributionsorganisationen) ausgeübt. Dabei  werden  im  Sozialismus  verschiedene  Eigentumsformen,  zum  Beispiel  staatliches,  kommunales,  genossenschaftliches und Privateigentum von Kleinproduzenten, bestehen. Die konkrete Gestaltung der Arbeits- und Produktionsprozesse selbst aber läuft nicht über die zentrale Planung.  Die  rasante  Entwicklung  der  Kommunikationstechnologie  und  ihre  täglich  dichter  werdende  Vernetzung  ermöglicht  dem  künftigen  Sozialismus  etwas,  was  dem  Anlauf  von  1917-89  noch  nicht  möglich  war: die direkte, vor der Produktion liegende Abstimmung über die notwendigen Arbeiten unter den daran beteiligten Produzenten und Konsumenten selbst. Nach  und  nach  können  so  –
+
+
+================================================================================
+CHUNK #19
+================================================================================
+📑 HEADING: lismus > Inhalt > Ökonomie
+💾 COMPRESSED METADATA SIZE: 176 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 276.24000938415526,
+          "width": 481.9166795202637,
+          "x": 56.640018463134766,
+          "y": 158.72001457214355
+        },
+        "char_range": {
+          "end": 2378,
+          "start": 688
+        },
+        "page": 10
+      }
+    ]
+  }
+}
+📄 PAGE: 10
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 10, chars 688-2378
+     Bbox: x=56.64, y=158.72, w=481.92, h=276.24
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 10: chars 688-2378, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: aa58b4e4207c
+  source_id: 1
+  estimated_tokens: 336
+  actual_tokens: 377
+
+📝 CONTENT (1740 chars, 377 tokens):
+----------------------------------------
+aber  erst  unter  der  Voraussetzung,  daß  mit  dem  privaten  Eigentum  an  den hauptsächlichen Produktionsmitteln gebrochen ist – immer mehr Bereiche der Totalität des Marktes entzogen werden. Immer mehr Güter und Dienstleistungen, die der Befriedigung der Bedürfnisse der Menschen dienen, werden aufhören, Waren zu sein. Die Arbeitskraft hört auf, eine Ware zu sein. Damit wird die Ausbeutung  des  Menschen  überwunden.  Weitere  wesentliche  Bereiche  verlieren  den  Charakter  von  Waren, werden aus dem Verwertungsprozeß herausgenommen und allen gleichermaßen zugänglich gemacht: «Bildung «Gesundheitswesen «Sport «Erholung «Schutz der Natur «Kultur Nach und nach werden immer weitere Bereiche durch gemeinschaftliche Tätigkeit statt durch die privatwirtschaftlichen Marktgesetze geprägt. Von Anfang an werden das Recht auf Arbeit, das Recht auf Wohnung, Nahrung und Kleidung garantiert sein. «Damit der Sozialismus sich zu einer Gesellschaftsformation entwickeln kann, in der die Menschen selbst in immer höherem Maße ihre Lebensbedingungen den eigenen Bedürfnissen gemäß bewußt gestalten und verändern können, ist es erforderlich, neben der Überwindung ökonomischer Ursachen der Ausbeutung des Menschen durch den Menschen auch die ökonomischen Ursachen der Verselbständigung der gesellschaftlichen  Verhältnisse  gegenüber  den  Menschen  zu  überwinden.  Der  Sozialismus  wird  daher  im  Laufe  seiner Entwicklung  einen  Weg  finden  müssen,  die  komplexe  arbeitsteilige  Produktion  und  den  Austausch  der mannigfaltigen Güter so zu organisieren, daß sich nicht mehr der Tauschwert an die Stelle des Gebrauchswertes setzen kann. Dieses Ziel ist von Anfang an im Auge zu behalten.
+
+
+================================================================================
+CHUNK #20
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie
+💾 COMPRESSED METADATA SIZE: 177 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 223.9200077819825,
+          "width": 481.916673082962,
+          "x": 56.640071392059326,
+          "y": 482.48002433776855
+        },
+        "char_range": {
+          "end": 3995,
+          "start": 2388
+        },
+        "page": 10
+      }
+    ]
+  }
+}
+📄 PAGE: 10
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 10, chars 2388-3995
+     Bbox: x=56.64, y=482.48, w=481.92, h=223.92
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 10: chars 2388-3995, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: ebce045acd08
+  source_id: 1
+  estimated_tokens: 300
+  actual_tokens: 395
+
+📝 CONTENT (1630 chars, 395 tokens):
+----------------------------------------
+Sozialismus bedeutet Herrschaft der Arbeiterklasse. Das kann schon wegen seiner grundlegenden Voraussetzung  nicht  anders  sein:  Um  gegen  die  geballte  Macht  des  Kapitals  einen  anderen  Entwicklungsweg durchzusetzen, bedarf es umfassender Massenkämpfe. Der Beginn des sozialistischen Weges ist nicht als Putsch denkbar, sondern nur als Ergebnis des Handelns von Millionen – also als Ausdruck tiefer Demokratie. Jede bürgerliche Demokratie – wie groß auch immer der formale Spielraum der politischen Freiheiten sein mag – beruht auf der ökonomischen Macht der Kapitalistenklasse. Sie ist in jedem Fall eine Form der politischen  Herrschaft  des  Kapitals,  der  Herrschaft  einer  kleinen  Minderheit  über  die  Mehrheit.  Und  selbst  die beschränkten  Rechte  und  Freiheiten  sind  im  Kapitalismus  stets  bedroht.  Erst  der  Sozialismus  gibt  mit  der politischen Macht des arbeitenden Volkes und dem gesellschaftlichen Eigentum an den wichtigsten Produktionsmitteln  den  demokratischen  Rechten  und  Freiheiten,  die  sich  die  Arbeiterklasse  im  Kapitalismus  erkämpft  hat,  eine  gesicherte  Grundlage.  Zugleich  schafft  die  Arbeiterklasse  im  Sozialismus  qualitativ  neue Freiheiten. Der  Sozialismus  garantiert  das  Recht  auf  Arbeit  und  die  Chancengleichheit  in  der  Bildung,  er  verwirklicht dauerhafte soziale Sicherheit. Er schafft die gesellschaftlichen Voraussetzungen für die Gleichberechtigung der Frau. Schon  in  der  Anfangsphase  müssen  Voraussetzungen  geschaffen  werden,  daß  sozialistische  Demokratie zur dauerhaften Grundlage der neuen Gesellschaft wird.
+
+
+================================================================================
+CHUNK #21
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie
+💾 COMPRESSED METADATA SIZE: 226 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 73.6800022888184,
+          "width": 481.916659493103,
+          "x": 56.64010214805603,
+          "y": 713.8400325775146
+        },
+        "char_range": {
+          "end": 4542,
+          "start": 3995
+        },
+        "page": 10
+      },
+      {
+        "bbox": {
+          "height": 160.32000549316408,
+          "width": 481.9166706987762,
+          "x": 56.63999938964844,
+          "y": 66.08001136779785
+        },
+        "char_range": {
+          "end": 1233,
+          "start": 2
+        },
+        "page": 11
+      }
+    ]
+  }
+}
+📄 PAGES: 10 to 11 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 10, chars 3995-4542
+     Bbox: x=56.64, y=713.84, w=481.92, h=73.68
+   Fragment 1: page 11, chars 2-1233
+     Bbox: x=56.64, y=66.08, w=481.92, h=160.32
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 11: chars 2-1233, 1 bounding boxes
+  Page 10: chars 3995-4542, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 8216ea43c385
+  source_id: 1
+  estimated_tokens: 309
+  actual_tokens: 434
+
+📝 CONTENT (1795 chars, 434 tokens):
+----------------------------------------
+Kernfragen  sind  dabei  die  Wählbarkeit,  die  Rechenschaftspflicht  und  jederzeitige  Abwählbarkeit  in  allen wichtigen politischen Funktionen, die Kontrolle der politischen Machtorgane durch das Volk, die Entwicklung von Formen demokratischer Entscheidungsfindung, die Erhöhung der Verantwortung, die Entfaltung unmittelbarer  Demokratie  durch  Volksabstimmungen  und  andere  direkte  Wirkungs-  und  Entscheidungsmöglichkeiten. Ein  bedeutender  Platz  in  der  sozialistischen  Demokratie  kommt  den  Gewerkschaften  als  den  umfassendsten  Klassenorganisationen  der  Arbeiter  und  Angestellten  sowie  den  betrieblichen  und  gewerkschaftlichen Vertretungsorganen der Arbeiterklasse zu. Sie werden nicht nur bei der Festlegung der Löhne und betrieblichen Sozialleistungen, bei der Gestaltung der unmittelbaren Arbeits- und Lebensbedingungen ein entscheidendes  Wort  sprechen,  sondern  direkt  an  der  Planung  und  Leitung  von  Wirtschaft  und  Gesellschaft  teilnehmen. Auf allen Ebenen werden sie unmittelbar und ständig die Interessen und den Einfluß der Arbeiterklasse zur Geltung bringen. Auch  die  Rolle  und  der  Einfluß  nichtstaatlicher  Organisationen  und  Bürgerinitiativen  werden  wachsen.  Es geht  darum,  nicht  erst  in  einer  fernen  kommunistischen  Zukunft,  sondern  schon  im  Sozialismus  damit  zu beginnen,  Staat  zugunsten  von  Selbstorganisation  und  -verwaltung  abzubauen.  Denn  der  Staat  wird  im Übergang zum Kommunismus absterben. An die Stelle der Herrschaft über Menschen wird die Verwaltung von Dingen und Produktionsabläufen treten. Die Geschichte des Kampfes um den Sozialismus hat unterschiedliche Formen sozialistischer Machtorgane hervorgebracht:  die  Kommune,  Sowjets  oder  Räte,  sozialistische  Parlamente.
+
+
+================================================================================
+CHUNK #22
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie
+💾 COMPRESSED METADATA SIZE: 176 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 235.44000823974608,
+          "width": 481.9167036005402,
+          "x": 56.64003491401672,
+          "y": 216.3200168609619
+        },
+        "char_range": {
+          "end": 2953,
+          "start": 1233
+        },
+        "page": 11
+      }
+    ]
+  }
+}
+📄 PAGE: 11
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 11, chars 1233-2953
+     Bbox: x=56.64, y=216.32, w=481.92, h=235.44
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 11: chars 1233-2953, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 1d6e405abefd
+  source_id: 1
+  estimated_tokens: 311
+  actual_tokens: 405
+
+📝 CONTENT (1744 chars, 405 tokens):
+----------------------------------------
+Die  handelnden  Menschen werden  unter  entsprechenden  historischen  Bedingungen  künftig  möglicherweise  neue  Formen  finden.  Sozialistische Organe müssen wirkliche Volkssouveränität und -vertretung sichern. Die DKP tritt auch für die Rechte einer auf dem Boden der sozialistischen Verfassung wirkenden Opposition ein. Die  Verfassung  und  die  darin  verankerten  demokratischen  Grundrechte,  die  individuellen  politischen  und sozialen Menschenrechte, die Freiheit der Kultur, des weltanschaulichen und religiösen Bekenntnisses, aber auch die Rechte und die Verantwortung der Medien sind strikt zu achten. Rechtsstaatlichkeit muß gesichert sein. Eine wirksame Trennung von Gesetzgebung, Regierung und Justiz ist unverzichtbar. Diese muß allerdings  durch  die  Kontrolle  des  Volkes  über  alle  Organe,  durch  Wahlen  und  jederzeitige  Abwahlmöglichkeit demokratisch legitimiert sein. Welchen  Platz  hat  eine  kommunistische  Partei  künftig  im  politischen  System  der  sozialistischen  Gesellschaft? Sie betrachtet es als ihre Aufgabe, im Wettstreit mit anderen politischen Kräften um die besten politischen Ideen und Initiativen immer wieder aufs Neue das Vertrauen des arbeitenden Volkes und maßgeblichen  Einfluß  zu  erringen.  Die  kommunistische  Partei  wird  im  Sozialismus  vor  allem  strategische  Orientierungen  für  die  weitere  Gestaltung  des  Sozialismus  erarbeiten  und  versuchen,  dafür  Mehrheiten  zu  gewinnen,  sozialistisches  Bewußtsein  in  den  Massen  zu  entwickeln  und  sie  für  das  selbständige,  initiativreiche Wirken für den Aufbau des Sozialismus und seine Verteidigung gegen alle Versuche zur Wiederherstellung kapitalistischer Verhältnisse zu mobilisieren.
+
+
+================================================================================
+CHUNK #23
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie
+💾 COMPRESSED METADATA SIZE: 174 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 79.20000274658207,
+          "width": 481.9166485258483,
+          "x": 56.640116691589355,
+          "y": 459.2000255584717
+        },
+        "char_range": {
+          "end": 3610,
+          "start": 2953
+        },
+        "page": 11
+      }
+    ]
+  }
+}
+📄 PAGE: 11
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 11, chars 2953-3610
+     Bbox: x=56.64, y=459.20, w=481.92, h=79.20
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 11: chars 2953-3610, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: d0c528625d3a
+  source_id: 1
+  estimated_tokens: 129
+  actual_tokens: 168
+
+📝 CONTENT (666 chars, 168 tokens):
+----------------------------------------
+Der  Sozialismus  kann  nur  das  Ergebnis  des  Wollens  und  Handelns  der  Arbeiterklasse,  der  Volksmassen sein.  Er  bedarf  der  Zustimmung  der  Mehrheit  des  Volkes.  Aber  er  läßt  sich  nur  im  harten  Klassenkampf gegen den erbitterten Widerstand des Kapitals durchsetzen. Auseinandersetzungen werden im Sozialismus andauern, es geht um die Durchsetzung sozialistischer Werte und Einstellungen. Die DKP will dazu beitragen, daß immer größere Teile des arbeitenden Volkes sowie der durch Arbeitslosigkeit Ausgegrenzten, der Lernenden und Studierenden zur Erkenntnis der Notwendigkeit des Sozialismus und des Kampfes um seine Durchsetzung gelangen.
+
+
+================================================================================
+CHUNK #24
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > Der Weg zum Sozialismus
+💾 COMPRESSED METADATA SIZE: 175 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 165.84000595092778,
+          "width": 481.9166628309631,
+          "x": 56.64012908935547,
+          "y": 585.9200286865234
+        },
+        "char_range": {
+          "end": 5008,
+          "start": 3633
+        },
+        "page": 11
+      }
+    ]
+  }
+}
+📄 PAGE: 11
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 11, chars 3633-5008
+     Bbox: x=56.64, y=585.92, w=481.92, h=165.84
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 11: chars 3633-5008, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: df54ce7ff27a
+  source_id: 1
+  estimated_tokens: 231
+  actual_tokens: 355
+
+📝 CONTENT (1409 chars, 355 tokens):
+----------------------------------------
+Heute geht es in der Bundesrepublik zunächst um die Verteidigung der von Kabinett und Kapital bedrohten sozialen  und  demokratischen  Errungenschaften  und  den  Widerstand  gegen  die  friedensgefährdende,  ausbeuterische und Völker unterdrückende Großmachtpolitik des deutschen Imperialismus. In diesen Kämpfen gegen die menschenfeindliche Ideologie und Gesellschaftskonzeption des Imperialismus müssen die Kräfte gesammelt  werden  für  die  Durchsetzung  fortschrittlicher  Reformen,  für  eine  Wende  vom  Abbau  sozialer und  demokratischer  Errungenschaften  zu  demokratischer,  sozialer  und  ökologisch  orientierter  Politik.  Entscheidende  Bedeutung  kommt  dabei  den  betrieblichen  und  gewerkschaftlichen  Kämpfen,  den  außerparlamentarischen Bewegungen zu. In ihrer Entfaltung sieht die DKP zugleich die wichtigste Voraussetzung für die  Veränderung  der  parlamentarischen  Kräfteverhältnisse.  Ihre  Vorstellungen  und  Vorschläge  für  diese Kampfetappe hat die DKP in ihrem Aktionsprogramm dargelegt. Das  hauptsächliche  Hindernis  für  den  gesellschaftlichen  Fortschritt  stellt  die  ökonomische  und  politische Macht der Monopolbourgeoisie dar. Die Zurückdrängung und schließliche Überwindung der Herrschaft dieses  mächtigsten  Teils  der  Bourgeoisie  ist  deshalb  die  entscheidende  Voraussetzung  für  die  Öffnung  des Weges zum Sozialismus.
+
+
+================================================================================
+CHUNK #25
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > Der Weg zum Sozialismus
+💾 COMPRESSED METADATA SIZE: 228 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 44.64000137329106,
+          "width": 481.91665210212705,
+          "x": 56.64014959335327,
+          "y": 741.6800346374512
+        },
+        "char_range": {
+          "end": 5421,
+          "start": 5008
+        },
+        "page": 11
+      },
+      {
+        "bbox": {
+          "height": 131.28000457763673,
+          "width": 481.9166630693817,
+          "x": 56.63999938964844,
+          "y": 66.08001136779785
+        },
+        "char_range": {
+          "end": 1052,
+          "start": 2
+        },
+        "page": 12
+      }
+    ]
+  }
+}
+📄 PAGES: 11 to 12 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 11, chars 5008-5421
+     Bbox: x=56.64, y=741.68, w=481.92, h=44.64
+   Fragment 1: page 12, chars 2-1052
+     Bbox: x=56.64, y=66.08, w=481.92, h=131.28
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 11: chars 5008-5421, 1 bounding boxes
+  Page 12: chars 2-1052, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 6451080d7f94
+  source_id: 1
+  estimated_tokens: 263
+  actual_tokens: 375
+
+📝 CONTENT (1493 chars, 375 tokens):
+----------------------------------------
+Die DKP ist deshalb bemüht, dazu beizutragen, daß möglichst breite gesellschaftliche  Kräfte,  deren  Interessen  im  Widerspruch  zur  Politik  der  herrschenden  Monopolbourgeoisie  und  ihrer politischen  Vertretungen  stehen,  in  Bündnissen  und  Bewegungen  für  die  Verteidigung  demokratischer  und sozialer Errungenschaften und die Veränderung des politischen Kräfteverhältnisses zugunsten der Arbeiterklasse zusammenwirken. Im gemeinsamen Handeln für punktuelle Ziele können sich die Kräfte für weitergehende  Bündnisse  formieren,  die  auf  grundlegende  gesellschaftliche  Veränderungen  gerichtet  sind.  Die DKP hält es für möglich und erstrebenswert, daß im Ergebnis des antimonopolistischen Kampfes grundlegende  antimonopolistisch-demokratische  Umgestaltungen  durchgesetzt  werden  können,  die  den  Weg  zum Sozialismus frei machen. Wie  sich  dieser  Weg  konkret  gestalten  wird,  ist  offen.  Das  hängt  ab  von  der  Kraft  der  Arbeiterklasse,  der Stabilität ihres Bündnisses mit anderen demokratischen Kräften, vom Einfluß der Kommunisten, aber auch von  den  Formen  des  Widerstandes  der  Reaktion.  Die  Erfahrungen  des  Klassenkampfes  lehren,  daß  die Monopolbourgeoisie, wenn sie ihre Macht und Privilegien bedroht sah, stets versucht hat, den gesellschaftlichen Fortschritt mit allen ihr zu Gebote stehenden Mitteln bis hin zur Errichtung faschistischer Diktaturen und  zur  Entfesselung  von  Bürgerkriegen  zu  verhindern.
+
+
+================================================================================
+CHUNK #26
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > Der Weg zum Sozialismus
+💾 COMPRESSED METADATA SIZE: 176 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 142.80000503540035,
+          "width": 481.9166938253784,
+          "x": 56.640031814575195,
+          "y": 187.28001594543457
+        },
+        "char_range": {
+          "end": 2198,
+          "start": 1052
+        },
+        "page": 12
+      }
+    ]
+  }
+}
+📄 PAGE: 12
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 12, chars 1052-2198
+     Bbox: x=56.64, y=187.28, w=481.92, h=142.80
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 12: chars 1052-2198, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 56de500c1993
+  source_id: 1
+  estimated_tokens: 215
+  actual_tokens: 278
+
+📝 CONTENT (1164 chars, 278 tokens):
+----------------------------------------
+Im  harten  Kampf  muß  ihr  unvermeidlicher  Widerstand  überwunden  und  ein  solches  Übergewicht  der  zum  Sozialismus  strebenden  Kräfte  erreicht  werden, das es ermöglicht, die Reaktion an der Anwendung blutiger konterrevolutionärer Gewalt zu hindern und den für das arbeitende Volk günstigsten Weg zum Sozialismus durchzusetzen. Angesichts  der  Macht  des  internationalen  Finanzkapitals  und  der  transnationalen  Konzerne,  der  voranschreitenden weltweiten Vernetzung der kapitalistischen Produktion und der Integrationsprozesse im Europa der Monopole kommt dem internationalistischen Zusammenwirken der Arbeiterklasse und ihrer Organisationen, der Entwicklung einer abgestimmten Strategie der kommunistischen Parteien und der anderen Linkskräfte  für  die  Verteidigung  der  unmittelbaren  Anliegen  des  arbeitenden  Volkes,  und  mehr  noch  für  den Kampf um die Überwindung der Monopolmacht und die Öffnung des Weges zum Sozialismus, eine wachsende Bedeutung zu. Die DKP ist bemüht, dazu ihren Beitrag zu leisten. Die Losung „Proletarier aller Länder und unterdrückte Völker, vereinigt Euch!“ ist heute aktueller denn je.
+
+
+================================================================================
+CHUNK #27
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge
+💾 COMPRESSED METADATA SIZE: 168 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 13.920000000000002,
+          "width": 25.33288009091376,
+          "x": 56.63999891281128,
+          "y": 109.04001045227052
+        },
+        "char_range": {
+          "end": 95,
+          "start": 92
+        },
+        "page": 13
+      }
+    ]
+  }
+}
+📄 PAGE: 13
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 13, chars 92-95
+     Bbox: x=56.64, y=109.04, w=25.33, h=13.92
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 13: chars 92-95, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 8a4a030c2fb0
+  source_id: 1
+  estimated_tokens: 2
+  actual_tokens: 1
+
+📝 CONTENT (3 chars, 1 tokens):
+----------------------------------------
+und
+
+
+================================================================================
+CHUNK #28
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > b) zur Erarbeitung des Programms
+💾 COMPRESSED METADATA SIZE: 174 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 342.4800091552735,
+          "width": 479.40397111741333,
+          "x": 56.63999891281128,
+          "y": 231.6800079345703
+        },
+        "char_range": {
+          "end": 2108,
+          "start": 189
+        },
+        "page": 13
+      }
+    ]
+  }
+}
+📄 PAGE: 13
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 13, chars 189-2108
+     Bbox: x=56.64, y=231.68, w=479.40, h=342.48
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 13: chars 189-2108, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 7f521d6e56df
+  source_id: 1
+  estimated_tokens: 383
+  actual_tokens: 370
+
+📝 CONTENT (1977 chars, 370 tokens):
+----------------------------------------
+Aus Antrag S 02 Der Entwurf der Sozialismusvorstellungen der DKP und die hierzu vorliegenden inhaltlichen Änderungsvorschläge werden nicht verabschiedet, sondern als Arbeitsmaterial in eine weitere Runde der Parteidiskussion eingebracht mit dem Ziel, dem folgenden Parteitag einen Entwurf vorzulegen, der den Anforderungen an eine Theorie des wissenschaftlichen Sozialismus auf der Höhe der Zeit entspricht und dadurch eine attraktive, ausstrahlende theoretische Grundlage für die Entwicklung revolutionärer, gesellschaftsverändernder Praxis bietet. In dieser folgenden Runde der Diskussion sind insbesondere folgende Fragen weiter zu klären, die heute in unserer Partei unterschiedlich beantwortet werden: 1.  Als Diskussionsvoraussetzung ist zu bestimmen: Was verstehen wir eigentlich unter einer sozialistischen Gesellschaft: – die Übergangsperiode zwischen der kapitalistischen Klassengesellschaft und der klassenlosen Gesellschaft der Zukunft, – oder die erste Phase der klassenlosen Gesellschaft? 2.  Dann muß geklärt werden: Welche allgemeinsten Bestimmungen für die erste Phase der klassenlosen Gesellschaft als der Negation des Kapitalismus können und müssen wir aus der Analyse des heutigen Kapitalismus ableiten? Hier müssen insbesondere folgende Fragen weiter geklärt werden, die bei uns heute umstritten sind: – Ist diese Gesellschaft in einzelnen Ländern oder Ländergruppen zu erreichen oder ist sie nur als Weltgesellschaft vorstellbar? – Kann es in der ersten Phase der klassenlosen kommunistischen Gesellschaft noch Warenproduktion geben? – Benötigt diese Gesellschaft noch einen Staat? – Was kann man heute schon über das Verhältnis Individuum – Gesellschaft und das Verhältnis Mensch – Natur in dieser Gesellschaft aussagen? 3.  Nach der Klärung dieser Fragen können – von dieser Zielbestimmung abgeleitet – die Aufgabenstellungen für den Weg zur klassenlosen Gesellschaft diskutiert und allgemein bestimmt werden;
+
+
+================================================================================
+CHUNK #29
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > b) zur Erarbeitung des Programms
+💾 COMPRESSED METADATA SIZE: 232 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 224.64000709533695,
+          "width": 481.5560451766671,
+          "x": 56.64003825187683,
+          "y": 564.0800170898438
+        },
+        "char_range": {
+          "end": 3645,
+          "start": 2108
+        },
+        "page": 13
+      },
+      {
+        "bbox": {
+          "height": 62.15996559143068,
+          "width": 474.23664488281247,
+          "x": 56.639995098114014,
+          "y": 66.08001136779785
+        },
+        "char_range": {
+          "end": 411,
+          "start": 2
+        },
+        "page": 14
+      }
+    ]
+  }
+}
+📄 PAGES: 13 to 14 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 13, chars 2108-3645
+     Bbox: x=56.64, y=564.08, w=481.56, h=224.64
+   Fragment 1: page 14, chars 2-411
+     Bbox: x=56.64, y=66.08, w=474.24, h=62.16
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 13: chars 2108-3645, 1 bounding boxes
+  Page 14: chars 2-411, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 572235305dcd
+  source_id: 1
+  estimated_tokens: 369
+  actual_tokens: 393
+
+📝 CONTENT (1987 chars, 393 tokens):
+----------------------------------------
+und zwar erstens als Strategie, die zur Eroberung der politischen Macht durch die Arbeiterklasse führt und zweitens als Wegweiser für die soziale Revolution in der folgenden Übergangsperiode vorn Kapitalismus zur klassenlosen Gesellschaft. Hierfür ist es unverzichtbar, den Anlauf zur klassenlosen Gesellschaft seit der Oktoberrevolution als wertvollsten Erfahrungsschatz der kommunistischen Bewegung umfassend auszuwerten und von der oberflächlichen Gegenüberstellung von Leistungen und Fehlentwicklungen zum Verständnis des inneren Zusammenhangs vorzudringen. Nach dem bisherigen Diskussionsverlauf sind hier u.a. folgende Fragen weiter klärungsbedürftig: – Wie muß der Staat nach der politischen Machtergreifung der Arbeiterklasse organisiert sein, was bedeutet hier Demokratie, welche Rolle spielt die Kommunistische Partei, welche die übrigen Organisationen der Arbeiterklasse? – Wie entwickelt sich das Verhältnis von Markt und Plan, welche Rolle spielt das Wertgesetz noch? Erst wenn wir diese Klärung durchgeführt haben, können wir zu Vorstellungen über die gesellschaftliche Entwicklung gelangen, die nicht mehr einfach behaupten, daß der Sozialismus die sozialen Menschenrechte usw. verwirklicht, sondern die herleiten, auf welcher materiellen Grundlage diese Rechte notwendigerweise zum Tragen kommen. Erst dann kommen wir von utopischen Sozialismusvorstellungen zu einer wissenschaftlichen Begründung unserer revolutionären Strategie für den Übergang vom Kapitalismus zur klassenlosen Gesellschaft, zum Sozialismus, zum Kommunismus. Begründung: Der Entwurf der Sozialismusvorstellungen hat eine fruchtbare Diskussion entfacht, die mit dazu dienen kann, den wissenschaftlichen Sozialismus wieder auf die Höhe der Zeit zu bringen und damit ein zentrales Instrument zu schärfen, das der Arbeiterbewegung als handhabbare theoretische Grundlage für die revolutionäre Praxis Kraft und Attraktivität verleiht. Noch sind wir davon jedoch weit entfernt.
+
+
+================================================================================
+CHUNK #30
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > b) zur Erarbeitung des Programms
+💾 COMPRESSED METADATA SIZE: 175 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 194.88000686645503,
+          "width": 480.09908814718995,
+          "x": 56.63998603820801,
+          "y": 118.15997695922852
+        },
+        "char_range": {
+          "end": 1786,
+          "start": 411
+        },
+        "page": 14
+      }
+    ]
+  }
+}
+📄 PAGE: 14
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 14, chars 411-1786
+     Bbox: x=56.64, y=118.16, w=480.10, h=194.88
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 14: chars 411-1786, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 6a0e0ea1a6ab
+  source_id: 1
+  estimated_tokens: 287
+  actual_tokens: 288
+
+📝 CONTENT (1404 chars, 288 tokens):
+----------------------------------------
+Viele Fragen, die im Interesse der theoretischen Klarheit, der Attraktivität des Kommunismus geklärt werden müssen, sind in dem vorliegenden Dokument noch hinter Formelkompromissen versteckt. Der gute Ansatz aus den Widersprüchen der heutigen kapitalistischen Wirklichkeit die grundlegenden Bestimmungen der neuen Gesellschaftsordnung abzuleiten, wurde nicht konsequent zu Ende geführt. Statt dessen werden in dem Abschnitt „Was wird an die Stelle der jetzigen Gesellschaft treten?“ hehre Ziele und Ideale formuliert. Für die heute vorliegenden Sozialismusvorstellungen gilt in gewisser Weise noch das Wort von Friedrich Engels: „Der Sozialismus ist ihnen allen der Ausdruck der absoluten Wahrheit, Vernunft und Gerechtigkeit und braucht nur entdeckt zu werden, um durch eigene Kraft die Welt zu erobern; da die absolute Wahrheit unabhängig ist von Zeit, Raum und menschlicher geschichtlicher Entwicklung, so ist es bloßer Zufall, wann und wo sie entdeckt wird. Dabei ist dann die absolute Wahrheit, Vernunft und Gerechtigkeit bei jedem Schulstifter verschieden; und da bei jedem die besondere Art der absoluten Wahrheit, Vernunft und Gerechtigkeit wieder bedingt ist durch seinen subjektiven Verstand, seine Lebensbedingungen, sein Maß an Kenntnissen und Denkschulung, so ist in diesem Konflikt absoluter Wahrheiten keine andre Lösung möglich, als daß sie sich aneinander abschleißen.
+
+
+================================================================================
+CHUNK #31
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > b) zur Erarbeitung des Programms
+💾 COMPRESSED METADATA SIZE: 175 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 318.48000724792485,
+          "width": 480.2366398760223,
+          "x": 56.639981269836426,
+          "y": 302.9599838256836
+        },
+        "char_range": {
+          "end": 3592,
+          "start": 1786
+        },
+        "page": 14
+      }
+    ]
+  }
+}
+📄 PAGE: 14
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 14, chars 1786-3592
+     Bbox: x=56.64, y=302.96, w=480.24, h=318.48
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 14: chars 1786-3592, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 9eb8449d6938
+  source_id: 1
+  estimated_tokens: 380
+  actual_tokens: 419
+
+📝 CONTENT (1848 chars, 419 tokens):
+----------------------------------------
+Dabei konnte dann nichts anderes herauskommen als eine Art von eklektischem Durchschnitts-Sozialismus, wie er in der Tat bis heute in den Köpfen der meisten sozialistischen Arbeiter in Frankreich und England herrscht, eine äußerst mannigfaltige Schattierungen zulassende Mischung aus den weniger Anstoß erregenden kritischen Auslassungen, ökonomischen Lehrsätzen und gesellschaftlichen Zukunftsvorstellungen der verschiedenen Sektenstifter, eine Mischung, die sich um so leichter bewerkstelligt, je mehr den einzelnen Bestandteilen im Strom der Debatte die scharfen Ecken der Bestimmtheit abgeschliffen sind wie runden Kieseln im Bach. Um aus dem Sozialismus eine Wissenschaft zu machen, mußte er erst auf einen realen Boden gestellt werden.“ (aus: „Die Entwicklung des Sozialismus von der Utopie zur Wissenschaft“, MEW 19, S. 200). Der Begriff Sozialismus hat in dem Entwurf keine klaren Konturen. Ihm werden undifferenziert sowohl Bestimmungen der Übergangsperiode zwischen Kapitalismus und klassenloser Gesellschaft zugeordnet, als auch Bestimmungen, die erst in der darauffolgenden ersten Phase der klassenlosen Gesellschaft zum Tragen kommen können. (Lesetip: Marx und Engels zur Kritik des Gothaer Programms in: MEW 19, 5. 3 – 32, 5. 521 f., MEW 28, 5. 507 f.) Die weitere Diskussion und Klärung ist daher unbedingt erforderlich. Aus Antrag S 03 Der Entwurf „Sozialismus –  die historische Alternative zum Imperialismus“  soll nicht verabschiedet wird, da er den Erfordernissen, denen ein solches Papier entsprechen muß, nicht gerecht wird. Die Voraussetzungen, die ein solcher Text erfüllen muß, sind in den Arbeiten von Karl Marx und Friedrich Engels sichtbar geworden: 1.  Marx und Engels haben niemals ein ausgearbeitetes Sozialismuskonzept vorgelegt – auch im „Manifest der Kommunistischen Partei“ nicht.
+
+
+================================================================================
+CHUNK #32
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > b) zur Erarbeitung des Programms
+💾 COMPRESSED METADATA SIZE: 229 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 177.84000595092778,
+          "width": 481.3342401569902,
+          "x": 56.63995885848999,
+          "y": 611.3599910736084
+        },
+        "char_range": {
+          "end": 4792,
+          "start": 3592
+        },
+        "page": 14
+      },
+      {
+        "bbox": {
+          "height": 161.75999839782716,
+          "width": 474.9566956945801,
+          "x": 56.6399302482605,
+          "y": 66.08001136779785
+        },
+        "char_range": {
+          "end": 671,
+          "start": 2
+        },
+        "page": 15
+      }
+    ]
+  }
+}
+📄 PAGES: 14 to 15 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 14, chars 3592-4792
+     Bbox: x=56.64, y=611.36, w=481.33, h=177.84
+   Fragment 1: page 15, chars 2-671
+     Bbox: x=56.64, y=66.08, w=474.96, h=161.76
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 14: chars 3592-4792, 1 bounding boxes
+  Page 15: chars 2-671, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 2d2452b40f05
+  source_id: 1
+  estimated_tokens: 359
+  actual_tokens: 411
+
+📝 CONTENT (1921 chars, 411 tokens):
+----------------------------------------
+Sie haben lediglich die Probleme benannt, die innerhalb des Kapitalismus nicht zu lösen sind und deren Behebung nur in einem „Verein freier Menschen“, den sie auch als „Kommunismus“ (übrigens nie als „Sozialismus“) bezeichneten, denkbar ist. 2.  Sie haben die bisherigen revolutionären Experimente, Projekte und Erfahrungen solidarisch und kritisch analysiert, z.B. die Pariser Commune. Ebenso verfuhr Rosa Luxemburg nach den ersten Monaten der russischen Revolution. 3.  Der Entwurf „Sozialismus – die historische Alternative zum Imperialismus“ beschreibt zwar zutreffend die Probleme, Fehler, Irrtümer und Verbrechen imperialistischer Politik, unterscheidet aber nicht genügend zwischen solchen Problemen, die noch innerhalb des Kapitalismus. und solchen Problemen, die erst im Sozialismus zu lösen sind. Die Auseinandersetzung mit den Erfahrungen des Realen Sozialismus ist zu wenig selbstkritisch. Externe Ursachen für seinen Zusammenbruch sind überbewertet, interne Ursachen sind untergewichtet. Unserer Meinung nach sollte die DKP nicht ein gesondertes Sozialismuspapier verabschieden, sondern statt dessen in ihr künftiges Grundsatzprogramm einen Abschnitt über unsere gesellschaftlichen Endziele einarbeiten. In diesem sollten die oben unter 1. und 2. genannten, bereits bei Marx und Engels auffindlichen Kriterien, eingehalten werden. Dort sind auch die Erfahrungen mit den bisher praktizierten Formen von Sozialismus – Realer Sozialismus, Genossenschaftssozalismus (von Jugoslawien bis zum KibbuzSozialismus), sogenannter „Demokratischer Sozialismus“ auszuwerten. Aus Antrag S 04 Der Antrag des Parteivorstandes „Sozialismusvorstellungen der DKP“ wird noch nicht zur Abstimmung gestellt. Die Parteidiskussion über das Dokument soll fortgesetzt werden. Begründung: Im Entwurf werden viele richtige und zutreffende Feststellungen getroffen. Er ist jedoch noch unausgereift.
+
+
+================================================================================
+CHUNK #33
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > b) zur Erarbeitung des Programms
+💾 COMPRESSED METADATA SIZE: 175 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 223.9200077819824,
+          "width": 480.3820012931586,
+          "x": 56.639976263046265,
+          "y": 229.28001022338867
+        },
+        "char_range": {
+          "end": 2357,
+          "start": 671
+        },
+        "page": 15
+      }
+    ]
+  }
+}
+📄 PAGE: 15
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 15, chars 671-2357
+     Bbox: x=56.64, y=229.28, w=480.38, h=223.92
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 15: chars 671-2357, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: c07859c94a5b
+  source_id: 1
+  estimated_tokens: 324
+  actual_tokens: 370
+
+📝 CONTENT (1741 chars, 370 tokens):
+----------------------------------------
+Auf einigen Gebieten (Ökonomie, Demokratie, Partei, Staat u.a.) enthält er gravierende Mangel oder ausgesprochene Fehleinschätzungen, die von Marx und Lenin wegführen. Die Erfahrungen der DDR – trotz aller Defizite die größte Errungenschaft in der Geschichte der revolutionären Arbeiterbewegung und des deutschen Volkes – werden nicht gründlich analysiert, obwohl hier erstmals auf deutschem Boden der Sozialismus aufgebaut und in den vier Jahrzehnten ihrer Existenz praktiziert worden ist. Die Beschäftigung mit den „Fehlentwicklungen des Sozialismus“ ist oberflächlich und hält in dieser Form den Kriterien des wissenschaftlichen Sozialismus nicht stand. Eine voreilige Beschlußfassung über ein programmatisches Dokument, das zum Baustein für das künftige Parteiprogramm der DKP werden soll, würde nicht zur Festigung der Einheit der Partei beitragen, sondern konfrontative Stimmungen vertiefen. Insbesondere Genossinnen und Genossen im Osten fänden ihre Auffassungen nicht hinreichend beachtet. Zugleich würden die Erwartungen, die andere linke Kräfte des In- und Auslands in die DKP setzen, enttäuscht. Entscheidungen in ideologischen Fragen können nur nach umfassender Diskussion getroffen, nicht aber per Mehrheitsvotum der Partei „übergestülpt“ werden. Ein Beschluß zur Weiterführung der Diskussion nach bereits erfolgter Beschlußfassung des Parteitages wäre de facto eine Irreführung der Mitgliedschaft, da er keinerlei verbindliche Wirkung mehr hätte. Eine nachträgliche Aufhebung der Parteitagsentscheidungen aber widerspräche den Prinzipien des demokratischen Zentralismus. Nur ein nachfolgender Parteitag wäre nach dem Statut dazu berechtigt, gültige Parteitagsbeschlüsse aufzuheben.
+
+
+================================================================================
+CHUNK #34
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > b) zur Erarbeitung des Programms
+💾 COMPRESSED METADATA SIZE: 230 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 307.20000656127934,
+          "width": 479.40397111741333,
+          "x": 56.6399872303009,
+          "y": 478.400016784668
+        },
+        "char_range": {
+          "end": 3982,
+          "start": 2357
+        },
+        "page": 15
+      },
+      {
+        "bbox": {
+          "height": 51.360000686645506,
+          "width": 478.4811159377756,
+          "x": 56.64000391960144,
+          "y": 66.08001136779785
+        },
+        "char_range": {
+          "end": 331,
+          "start": 2
+        },
+        "page": 16
+      }
+    ]
+  }
+}
+📄 PAGES: 15 to 16 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 15, chars 2357-3982
+     Bbox: x=56.64, y=478.40, w=479.40, h=307.20
+   Fragment 1: page 16, chars 2-331
+     Bbox: x=56.64, y=66.08, w=478.48, h=51.36
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 16: chars 2-331, 1 bounding boxes
+  Page 15: chars 2357-3982, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 203b474ba8c3
+  source_id: 1
+  estimated_tokens: 393
+  actual_tokens: 380
+
+📝 CONTENT (2012 chars, 380 tokens):
+----------------------------------------
+Aus Antrag S 06 Der Entwurf der Sozialismusvorstellungen der DKP und die hierzu vorliegenden inhaltlichen Änderungsvorschläge werden nicht verabschiedet, sondern als Arbeitsmaterial in eine weitere Runde der Parteidiskussion eingebracht mit dem Ziel, dem folgenden Parteitag einen Entwurf vorzulegen, der den Anforderungen an eine Theorie des wissenschaftlichen Sozialismus auf der Höhe der Zeit entspricht und dadurch eine attraktive, ausstrahlende theoretische Grundlage für die Entwicklung revolutionärer, gesellschaftsverändernder Praxis bietet. Die DKP stellt sich die Aufgabe, in dieser folgenden Runde der Diskussion unter anderem folgende Fragen weiter zu klären, die heute in unserer Partei noch unterschiedlich beantwortet werden: 1.  Als Diskussionsvoraussetzung ist zu bestimmen: Was verstehen wir eigentlich unter einer sozialistischen Gesellschaft: – die Übergangsperiode zwischen der kapitalistischen Klassengesellschaft und der klassenlosen Gesellschaft der Zukunft, – oder die erste Phase der klassenlosen Gesellschaft? 2.  Dann muß geklärt werden: Welche allgemeinsten Bestimmungen für die erste Phase der klassenlosen Gesellschaft als der Negation des Kapitalismus können und müssen wir aus der Analyse des heutigen Kapitalismus ableiten? Hier müssen insbesondere folgende Fragen weiter geklärt werden, die bei uns heute umstritten sind: – Ist diese Gesellschaft in einzelnen Ländern oder Ländergruppen zu erreichen oder ist sie nur als Weltgesellschaft vorstellbar? – Kann es in der ersten Phase der klassenlosen kommunistischen Gesellschaft noch Warenproduktion geben? – Benötigt diese Gesellschaft noch einen Staat? – Was kann man heute schon über das Verhältnis Individuum – Gesellschaft und das Verhältnis Mensch –  Natur in dieser Gesellschaft aussagen? 3.  Nach der Klärung dieser Fragen können – von dieser Zielbestimmung abgeleitet – die Aufgabenstellungen für den Weg zur klassenlosen Gesellschaft diskutiert und allgemein bestimmt werden;
+
+
+================================================================================
+CHUNK #35
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > b) zur Erarbeitung des Programms
+💾 COMPRESSED METADATA SIZE: 177 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 294.23998077392577,
+          "width": 481.5560606738747,
+          "x": 56.639995098114014,
+          "y": 107.36001205444336
+        },
+        "char_range": {
+          "end": 2276,
+          "start": 331
+        },
+        "page": 16
+      }
+    ]
+  }
+}
+📄 PAGE: 16
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 16, chars 331-2276
+     Bbox: x=56.64, y=107.36, w=481.56, h=294.24
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 16: chars 331-2276, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 579b97e27a64
+  source_id: 1
+  estimated_tokens: 369
+  actual_tokens: 392
+
+📝 CONTENT (1986 chars, 392 tokens):
+----------------------------------------
+und zwar erstens als Strategie, die zur Eroberung der politischen Macht durch die Arbeiterklasse führt und zweitens als Wegweiser für die soziale Revolution in der folgenden Übergangsperiode vom Kapitalismus zur klassenlosen Gesellschaft. Hierfür ist es unverzichtbar, den Anlauf zur klassenlosen Gesellschaft seit der Oktoberrevolution als wertvollsten Erfahrungsschatz der kommunistischen Bewegung umfassend auszuwerten und von der oberflächlichen Gegenüberstellung von Leistungen und Fehlentwicklungen zum Verständnis des inneren Zusammenhangs vorzudringen. Nach dem bisherigen Diskussionsverlauf sind hier u.a. folgende Fragen weiter klärungsbedürftig: – Wie muß der Staat nach der politischen Machtergreifung der Arbeiterklasse organisiert sein, was bedeutet hier Demokratie, welche Rolle spielt die kommunistische Partei, welche die übrigen Organisationen der Arbeiterklasse? – Wie entwickelt sich das Verhältnis von Markt und Plan, welche Rolle spielt das Wertgesetz noch? Erst wenn wir diese Klärung durchgeführt haben, können wir zu Vorstellungen über die gesellschaftliche Entwicklung gelangen, die nicht mehr einfach behaupten, daß der Sozialismus die sozialen Menschenrechte usw. verwirklicht, sondern die herleiten, auf welcher materiellen Grundlage diese Rechte notwendigerweise zum Tragen kommen. Erst dann kommen wir von utopischen Sozialismusvorstellungen zu einer wissenschaftlichen Begründung unserer revolutionären Strategie für den Übergang vom Kapitalismus zur klassenlosen Gesellschaft, zum Sozialismus, zum Kommunismus. Begründung: Der Entwurf der Sozialismusvorstellungen hat eine fruchtbare Diskussion entfacht, die mit dazu dienen kann, den wissenschaftlichen Sozialismus wieder auf die Höhe der Zeit zu bringen und damit ein zentrales Instrument zu schärfen, das der Arbeiterbewegung als handhabbare theoretische Grundlage für die revolutionäre Praxis Kraft und Attraktivität verleiht. Noch sind wir davon jedoch weit entfernt.
+
+
+================================================================================
+CHUNK #36
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > b) zur Erarbeitung des Programms
+💾 COMPRESSED METADATA SIZE: 176 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 194.88000686645512,
+          "width": 480.09908814718995,
+          "x": 56.63998603820801,
+          "y": 391.51999282836914
+        },
+        "char_range": {
+          "end": 3651,
+          "start": 2276
+        },
+        "page": 16
+      }
+    ]
+  }
+}
+📄 PAGE: 16
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 16, chars 2276-3651
+     Bbox: x=56.64, y=391.52, w=480.10, h=194.88
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 16: chars 2276-3651, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 6a0e0ea1a6ab
+  source_id: 1
+  estimated_tokens: 287
+  actual_tokens: 288
+
+📝 CONTENT (1404 chars, 288 tokens):
+----------------------------------------
+Viele Fragen, die im Interesse der theoretischen Klarheit, der Attraktivität des Kommunismus geklärt werden müssen, sind in dem vorliegenden Dokument noch hinter Formelkompromissen versteckt. Der gute Ansatz aus den Widersprüchen der heutigen kapitalistischen Wirklichkeit die grundlegenden Bestimmungen der neuen Gesellschaftsordnung abzuleiten, wurde nicht konsequent zu Ende geführt. Statt dessen werden in dem Abschnitt „Was wird an die Stelle der jetzigen Gesellschaft treten?“ hehre Ziele und Ideale formuliert. Für die heute vorliegenden Sozialismusvorstellungen gilt in gewisser Weise noch das Wort von Friedrich Engels: „Der Sozialismus ist ihnen allen der Ausdruck der absoluten Wahrheit, Vernunft und Gerechtigkeit und braucht nur entdeckt zu werden, um durch eigene Kraft die Welt zu erobern; da die absolute Wahrheit unabhängig ist von Zeit, Raum und menschlicher geschichtlicher Entwicklung, so ist es bloßer Zufall, wann und wo sie entdeckt wird. Dabei ist dann die absolute Wahrheit, Vernunft und Gerechtigkeit bei jedem Schulstifter verschieden; und da bei jedem die besondere Art der absoluten Wahrheit, Vernunft und Gerechtigkeit wieder bedingt ist durch seinen subjektiven Verstand, seine Lebensbedingungen, sein Maß an Kenntnissen und Denkschulung, so ist in diesem Konflikt absoluter Wahrheiten keine andre Lösung möglich, als daß sie sich aneinander abschleißen.
+
+
+================================================================================
+CHUNK #37
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > b) zur Erarbeitung des Programms
+💾 COMPRESSED METADATA SIZE: 229 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 183.36000640869145,
+          "width": 480.23663391555783,
+          "x": 56.6399872303009,
+          "y": 576.3199996948242
+        },
+        "char_range": {
+          "end": 4876,
+          "start": 3651
+        },
+        "page": 16
+      },
+      {
+        "bbox": {
+          "height": 138.95996482849122,
+          "width": 478.20322218336105,
+          "x": 56.63999938964844,
+          "y": 66.32001304626465
+        },
+        "char_range": {
+          "end": 703,
+          "start": 2
+        },
+        "page": 17
+      }
+    ]
+  }
+}
+📄 PAGES: 16 to 17 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 16, chars 3651-4876
+     Bbox: x=56.64, y=576.32, w=480.24, h=183.36
+   Fragment 1: page 17, chars 2-703
+     Bbox: x=56.64, y=66.32, w=478.20, h=138.96
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 16: chars 3651-4876, 1 bounding boxes
+  Page 17: chars 2-703, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 66462db010a2
+  source_id: 1
+  estimated_tokens: 393
+  actual_tokens: 418
+
+📝 CONTENT (1977 chars, 418 tokens):
+----------------------------------------
+Dabei konnte dann nichts anderes herauskommen als eine Art von eklektischem Durchschnitts-Sozialismus, wie er in der Tat bis heute in den Köpfen der meisten sozialistischen Arbeiter in Frankreich und England herrscht, eine äußerst mannigfaltige Schattierungen zulassende Mischung aus den weniger Anstoß erregenden kritischen Auslassungen, ökonomischen Lehrsätzen und gesellschaftlichen Zukunftsvorstellungen der verschiedenen Sektenstifter, eine Mischung, die sich um so leichter bewerkstelligt, je mehr den einzelnen Bestandteilen im Strom der Debatte die scharfen Ecken der Bestimmtheit abgeschliffen sind wie runden Kieseln im Bach. Um aus dem Sozialismus eine Wissenschaft zu machen, mußte er erst auf einen realen Boden gestellt werden.“ (aus: „Die Entwicklung des Sozialismus von der Utopie zur Wissenschaft“, MEW 19, S. 200 f). Der Begriff Sozialismus hat in dem Entwurf keine klaren Konturen. Ihm werden undifferenziert sowohl Bestimmungen der Übergangsperiode zwischen Kapitalismus und klassenloser Gesellschaft zugeordnet, als auch Bestimmungen, die erst in der darauf folgenden ersten Phase der klassenlosen Gesellschaft zum Tragen kommen können. Die weitere Diskussion und Klärung ist daher unbedingt erforderlich. Aus Antrag S 07 Der Entwurf „Sozialismus – die historische Alternative zum Imperialismus“ wird nicht verabschiedet. Begründung: Er wird den Erfordernissen, denen ein solches Papier entsprechen muß, nicht gerecht. Die Voraussetzungen, die ein solcher Text erfüllen muß, sind in den Arbeiten von Marx und Engels sichtbar geworden: Marx und Engels haben niemals ein ausgearbeitetes Sozialismuskonzept vorgelegt – auch im „Manifest der Kommunistischen Partei“ nicht. Sie haben lediglich die Probleme benannt, die innerhalb des Kapitalismus nicht zu lösen sind und deren Behebung nur in einem „Verein freier Menschen“, den sie auch als „Kommunismus“ (übrigens nie als „Sozialismus“) bezeichneten, denkbar ist.
+
+
+================================================================================
+CHUNK #38
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > b) zur Erarbeitung des Programms
+💾 COMPRESSED METADATA SIZE: 176 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 335.52000625610356,
+          "width": 481.09844614965687,
+          "x": 56.64000391960144,
+          "y": 212.71997833251953
+        },
+        "char_range": {
+          "end": 2565,
+          "start": 703
+        },
+        "page": 17
+      }
+    ]
+  }
+}
+📄 PAGE: 17
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 17, chars 703-2565
+     Bbox: x=56.64, y=212.72, w=481.10, h=335.52
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 17: chars 703-2565, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 7a4b3e3bb237
+  source_id: 1
+  estimated_tokens: 350
+  actual_tokens: 387
+
+📝 CONTENT (1906 chars, 387 tokens):
+----------------------------------------
+Sie haben die bisherigen revolutionären Experimente, Projekte und Erfahrungen solidarisch und kritisch analysiert, z.B. die Pariser Commune. Ebenso verfuhr Rosa Luxemburg nach den ersten Monaten der russischen Revolution. Der Entwurf „Sozialismus – die historische Alternative zum Imperialismus“ beschreibt zwar zutreffend die Probleme, Fehler, Irrtümer und Verbrechen imperialistischer Politik, unterscheidet aber nicht genügend zwischen solchen Problemen, die noch innerhalb des Kapitalismus und solchen Problemen, die erst im Sozialismus zu lösen sind. Die Auseinandersetzung mit den Erfahrungen des Realen Sozialismus ist zu wenig selbstkritisch. Externe Ursachen für seinen Zusammenbruch sind überbewertet, interne Ursachen sind untergewichtet. Unserer Meinung nach sollte die DKP nicht ein gesondertes Sozialismuspapier verabschieden, sondern statt dessen in ihr künftiges Grundsatzprogramm einen Abschnitt über unsere gesellschaftlichen Endziele einarbeiten. In diesem sollten die oben genannten, bereits bei Marx und Engels auffindbaren Kriterien eingehalten werden. Dort sind auch die Erfahrungen mit den bisher praktizierten Formen von Sozialismus – Realer Sozialismus, Genossenschaftssozialismus (von Jugoslawien bis zum Kibbuz-Sozialismus), sogenannter „Demokratischer Sozialismus“ – auszuwerten. Aus Antrag S 08 Das Dokument „Sozialismus – die historische Alternative zum Kapitalismus“ wird vom 14. Parteitag als Diskussionsangebot für die weitere Programmdiskussion der DKP beschlossen. Im Rahmen der Erarbeitung eines neuen Parteiprogramms werden die in diesem Dokument entwickelten Vorstellungen weiter diskutiert. Diese Vorstellungen werden ergänzt durch eine Auflistung der noch nicht genügend diskutierten bzw. kontroversen Fragen. Aus Antrag S 09 1.  Der Parteitag beschließt die vorgelegte Fassung der Sozialismusvorstellungen der DKP „Sozialismus –
+
+
+================================================================================
+CHUNK #39
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > b) zur Erarbeitung des Programms
+💾 COMPRESSED METADATA SIZE: 231 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 231.6000157165528,
+          "width": 480.59324952265104,
+          "x": 56.63997840881348,
+          "y": 549.6799850463867
+        },
+        "char_range": {
+          "end": 4133,
+          "start": 2565
+        },
+        "page": 17
+      },
+      {
+        "bbox": {
+          "height": 61.68000228881836,
+          "width": 479.8772166833491,
+          "x": 56.63999938964844,
+          "y": 66.08001136779785
+        },
+        "char_range": {
+          "end": 344,
+          "start": 2
+        },
+        "page": 18
+      }
+    ]
+  }
+}
+📄 PAGES: 17 to 18 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 17, chars 2565-4133
+     Bbox: x=56.64, y=549.68, w=480.59, h=231.60
+   Fragment 1: page 18, chars 2-344
+     Bbox: x=56.64, y=66.08, w=479.88, h=61.68
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 17: chars 2565-4133, 1 bounding boxes
+  Page 18: chars 2-344, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 4cb62910ea71
+  source_id: 1
+  estimated_tokens: 375
+  actual_tokens: 400
+
+📝 CONTENT (1949 chars, 400 tokens):
+----------------------------------------
+die historische Alternative zum Kapitalismus‘ nicht als abgeschlossenes Dokument, sondern als den bisherigen Erkenntnisstand zu dieser Problematik, der durch eine zielstrebige Arbeit des Parteivorstandes und der Programmkommission sowie eine breite Diskussion in der Parteibasis erweitert und zu einem Dokument mit programmatischem Charakter entwickelt werden muß. 2.  Der Parteitag beauftragt den Parteivorstand und die Programmkommission, die Arbeit an den Sozialismusvorstellungen konzentriert auf die sich aus der nachfolgenden Begründung und der Diskussion auf dem Parteitag ergebenden Schwerpunkte fortzusetzen und bis zum nächsten Parteitag im Jahre 2000 eine Endfassung zur Beratung und Beschlußfassung vorzulegen. Begründung: Neben den vielen richtigen Aussagen gibt es im vorgelegten Material eine Reihe offener bzw. nicht genügend geklärter prinzipieller Fragen, die über Anträge an den Parteitag mit anschließender Abstimmung nicht zu klären sind. Die Beschlußfähigkeit des Materials ist somit nicht ausreichend gegeben. Als offene bzw. weiter zu klärende prinzipielle Fragen und Probleme werden betrachtet: 1.  Die Analyse der 40 bzw. 70 Jahre Sozialismus erscheint nicht abgeschlossen, die Nutzung der bisher gewonnenen Erkenntnisse für die Erarbeitung unserer Sozialismusvorstellungen nicht ausreichend und die abgeleiteten Wertungen nicht in jedem Falle akzeptabel. Die Wertung der 40 Jahre Sozialismus z. B. als Versuch ist abwertend und steht der Tatsache entgegen, daß die sozialistische DDR das Beste war, was die deutsche Arbeiterbewegung hervorgebracht hat. 2.  Die für die Erarbeitung der Sozialismusvorstellungen der DKP notwendige Analyse der kommunistischen Bewegung besonders hinsichtlich einer möglichen Mitverantwortung für die Niederlage des Sozialismus und ihrer Voraussetzungen für die Übernahme der Verantwortung bei der Überwindung der kapitalistischen Gesellschaft unterbleibt gänzlich. 3.
+
+
+================================================================================
+CHUNK #40
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > b) zur Erarbeitung des Programms
+💾 COMPRESSED METADATA SIZE: 175 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 314.15999992370604,
+          "width": 480.60795957377263,
+          "x": 56.63999629020691,
+          "y": 117.6800136566162
+        },
+        "char_range": {
+          "end": 2354,
+          "start": 344
+        },
+        "page": 18
+      }
+    ]
+  }
+}
+📄 PAGE: 18
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 18, chars 344-2354
+     Bbox: x=56.64, y=117.68, w=480.61, h=314.16
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 18: chars 344-2354, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 5c62fa8a8ca9
+  source_id: 1
+  estimated_tokens: 402
+  actual_tokens: 410
+
+📝 CONTENT (2048 chars, 410 tokens):
+----------------------------------------
+Die Aussagen über den Weg zum Sozialismus sind nicht eindeutig und umfassend genug und beachten darüber hinaus die diesbezüglichen theoretischen und durch die Praxis bewiesenen Erkenntnisse der Klassiker nicht in der erforderlichen Weise. Die Orientierung auf die Verteidigung der sozialen und demokratischen Errungenschaften, die Veränderung des parlamentarischen Kräfteverhältnisses und die grundlegende antimonopolistisch-demokratische Umgestaltung reicht nicht aus, noch dazu, da nicht klar wird, was mit der Veränderung des parlamentarischen Kräfteverhältnisses beabsichtigt wird, was der Inhalt der Umgestaltung sein soll und ob sie unter den gegenwärtigen Bedingungen realisierbar sind. Solche Fragen wie: die Vorbereitung der Menschen auf die Revolution, die Art und Weise der Eroberung der politischen Macht der Arbeiterklasse, die Zerschlagung des alten Staates, die Errichtung der Diktatur des Proletariats als Staat der Arbeiterklasse und die Verteidigung der Revolution auch mit militärischen Mitteln werden nicht beantwortet. Nachteilig wirkt sich auch aus, daß an keiner Stelle die Hauptetappen der Errichtung der kommunistischen Gesellschaft – die Übergangsperiode vom Kapitalismus zum Sozialismus, der Sozialismus und der Kommunismus – genannt werden, obwohl das eine gesicherte Erkenntnis ist und für das Verständnis unserer Gedanken nicht unerheblich wäre. 4.  Die Aussagen zur Demokratie sind nicht eindeutig und umfassend genug. So wird kaum erkennbar, daß Demokratie im Sozialismus auch Repressionen beinhaltet. Des weiteren werden die Formen sozialistischer Machtorgane unverständlich ungenau dargestellt und die Richtigkeit der Aussage über die Zulassung einer Opposition in einem sozialistischen Parlament von uns bezweifelt. Die Aussagen über den Beginn des Abbaus des Staates schon im Sozialismus widersprechen den Erfahrungen der erlebten sozialistischen Praxis und sind somit nicht akzeptabel. Das gleiche ist zutreffend für die Bestimmung des Platzes der kommunistischen Partei im Sozialismus.
+
+
+================================================================================
+CHUNK #41
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > b) zur Erarbeitung des Programms
+💾 COMPRESSED METADATA SIZE: 174 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 332.6399975585938,
+          "width": 481.56235938341865,
+          "x": 56.639928102493286,
+          "y": 438.8000144958496
+        },
+        "char_range": {
+          "end": 4204,
+          "start": 2354
+        },
+        "page": 18
+      }
+    ]
+  }
+}
+📄 PAGE: 18
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 18, chars 2354-4204
+     Bbox: x=56.64, y=438.80, w=481.56, h=332.64
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 18: chars 2354-4204, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: dbbcdaffd1d1
+  source_id: 1
+  estimated_tokens: 348
+  actual_tokens: 375
+
+📝 CONTENT (1885 chars, 375 tokens):
+----------------------------------------
+5.  Die Darstellung des Aufbaus einer sozialistischen Selbstverwaltung als Hauptinhalt der ersten Schritte zum Sozialismus im Abschnitt Ökonomie widerspricht der richtigen Forderung nach einer sozialistischen Planwirtschaft sowie den Erfahrungen der Vergangenheit (Jugoslawien) und wird somit für nicht richtig gehalten. Gänzlich unbeachtet bleibt die Gestaltung der Landwirtschaft im zukünftigen Sozialismus. Aus Antrag S 10 Der Parteitag möge über den vorliegenden Entwurf noch nicht abstimmen, sondern beschließen, die Diskussion zum Sozialismuspapier weiterzuführen. Begründung: 1.  Im vorliegenden Entwurf wird die historische Stellung des Sozialismus ungenügend herausgearbeitet. Statt als Resultat des Wirkens gesellschaftlicher Gesetze erscheint der Sozialismus als eine zwar erstrebenswerte, aber keineswegs objektiv notwendige Entwicklungsstufe der menschlichen Gesellschaft. Statt als unumgängliches Übergangsstadium zum Kommunismus wird der Sozialismus als eigenständige Gesellschaftsformation beschrieben. Die Formulierungen des Papiers vermitteln darüber hinaus einen Eindruck vom Sozialismus als einem Zustandes und nicht einer Bewegung weg vom Kapitalismus und hin zum Kommunismus. 2.  Das Sozialismuspapier geht auf grundlegende Bestandteile des Marxismus-Leninismus, vor allem der Revolutions- und der Parteitheorie, nicht ein. Es entsteht der Eindruck, daß es noch keinerlei gesicherte Erkenntnisse über den Weg vom Kapitalismus zum Sozialismus, über die Stellung der Klassen oder über die Rolle der kommunistischen Parteien gibt. Wir sind hingegen der Auffassung, daß ein Großteil gerade der Leninschen Lehre unbedingt zu den gesicherten Erkenntnissen der Gesellschaftswissenschaften zu rechnen ist und seinen Niederschlag in einem solchen Dokument finden muß. 3.  Der Frage der sozialistischen Demokratie wird zuwenig Aufmerksamkeit geschenkt.
+
+
+================================================================================
+CHUNK #42
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > b) zur Erarbeitung des Programms
+💾 COMPRESSED METADATA SIZE: 232 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 21.600000457763713,
+          "width": 464.2861967533887,
+          "x": 70.79997062683105,
+          "y": 761.3600120544434
+        },
+        "char_range": {
+          "end": 4321,
+          "start": 4204
+        },
+        "page": 18
+      },
+      {
+        "bbox": {
+          "height": 337.2000008392334,
+          "width": 478.9302160141437,
+          "x": 56.63999938964844,
+          "y": 66.08001136779785
+        },
+        "char_range": {
+          "end": 1932,
+          "start": 2
+        },
+        "page": 19
+      }
+    ]
+  }
+}
+📄 PAGES: 18 to 19 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 18, chars 4204-4321
+     Bbox: x=70.80, y=761.36, w=464.29, h=21.60
+   Fragment 1: page 19, chars 2-1932
+     Bbox: x=56.64, y=66.08, w=478.93, h=337.20
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 18: chars 4204-4321, 1 bounding boxes
+  Page 19: chars 2-1932, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 079e9f9e43eb
+  source_id: 1
+  estimated_tokens: 410
+  actual_tokens: 417
+
+📝 CONTENT (2085 chars, 417 tokens):
+----------------------------------------
+Die Beschreibungen von Formen demokratischer Entscheidungsfindung schildern eine gut entwickelte bürgerliche Demokratie, aber keine historisch völlig neue Demokratie, wie sie vor allem von Lenin in seinen Werken ausführlich analysiert wurde. Wir halten es für unverzichtbar, den grundlegend neuen Charakter der sozialistischen Demokratie herauszuarbeiten und zu begründen. 4. Historische Erfahrungen der Pariser Kommune und der sozialistischen Länder, insbesondere der DDR, werden nur ungenügend verwertet. Das Papier nennt zwar Gründe für das Ende des Sozialismus in Osteuropa, greift aber fast gar nicht auf den reichen Erfahrungsschatz bewährter Formen und Methoden zurück, der in der DDR und den anderen sozialistischen Ländern entstanden ist und eine wertvolle Hilfe für einen erneuten Versuch zum Aufbau des Sozialismus werden könnte. Wir halten es darüber hinaus für ein Versäumnis, daß die aktuellen Praxis von noch existierenden sozialistischen Ländern keinen Niederschlag in diesem Dokument gefunden hat. Generell haben wir den Eindruck, daß es sich bei der Gesellschaft, die in dem Sozialismuspapier beschrieben wird, um eine Gesellschaft mit bürgerlichen Mechanismen handelt, die aber viel friedlicher, demokratischer und gerechter als der derzeitige Kapitalismus ist. Eine solche Gesellschaft halten wir für prinzipiell unmöglich. Die im Sozialismuspapier genannten Ziele sind nach unserer Auffassung nur zu verwirklichen, wenn ein radikaler Bruch mit den derzeit herrschenden Verhältnissen erfolgt, wenn die bisherigen Mechanismen und Wirkungsprinzipien der Klassengesellschaft durch völlig neue gesellschaftliche Beziehungen ersetzt werden. Mit dem vorliegenden Entwurf des Sozialismuspapiers ist es noch nicht geglückt, diese aufzuzeigen. Aus Antrag S 11 Der Parteitag möge beschließen, die Diskussion zu den Sozialismusvorstellungen der DKP fortzuführen mit dem Auftrag, diese Diskussion als wesentlichen Bestandteil der Vorbereitung eines neuen Parteiprogramms zu organisieren. Begründung: 1.  Das Konzept der DKP zum Sozialismus ist –
+
+
+================================================================================
+CHUNK #43
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > b) zur Erarbeitung des Programms
+💾 COMPRESSED METADATA SIZE: 175 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 79.68000228881834,
+          "width": 465.1166540571594,
+          "x": 56.6399712562561,
+          "y": 393.2000122070313
+        },
+        "char_range": {
+          "end": 2394,
+          "start": 1932
+        },
+        "page": 19
+      }
+    ]
+  }
+}
+📄 PAGE: 19
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 19, chars 1932-2394
+     Bbox: x=56.64, y=393.20, w=465.12, h=79.68
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 19: chars 1932-2394, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 7f39782657f2
+  source_id: 1
+  estimated_tokens: 86
+  actual_tokens: 93
+
+📝 CONTENT (469 chars, 93 tokens):
+----------------------------------------
+bezogen auf die Zielstellung ihrer Politik der wichtigste Bestandteil ihrer Programmatik. 2.  Die gegenwärtig vorliegende Fassung der Sozialismusvorstellungen hat nach den von uns zu übersehenden Diskussionen in wesentlichen Fragen stark unterschiedliche Positionen sichtbar gemacht. 3.  Ein Abschluß der Diskussion in dieser Phase würde die dringend erforderlich theoretische Diskussion spürbar behindern und die Ausarbeitung des neuen Parteiprogramms erschweren.
+
+
+================================================================================
+CHUNK #44
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Zum Abschnitt „Mit dem Kapitalismus brechen“
+💾 COMPRESSED METADATA SIZE: 225 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 265.20000846862797,
+          "width": 477.70777836008995,
+          "x": 56.63997840881348,
+          "y": 519.2000122070312
+        },
+        "char_range": {
+          "end": 4380,
+          "start": 2438
+        },
+        "page": 19
+      },
+      {
+        "bbox": {
+          "height": 10.079999999999998,
+          "width": 437.022483129039,
+          "x": 56.63999938964844,
+          "y": 66.08001136779785
+        },
+        "char_range": {
+          "end": 95,
+          "start": 2
+        },
+        "page": 20
+      }
+    ]
+  }
+}
+📄 PAGES: 19 to 20 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 19, chars 2438-4380
+     Bbox: x=56.64, y=519.20, w=477.71, h=265.20
+   Fragment 1: page 20, chars 2-95
+     Bbox: x=56.64, y=66.08, w=437.02, h=10.08
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 20: chars 2-95, 1 bounding boxes
+  Page 19: chars 2438-4380, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 12604bb3d5af
+  source_id: 1
+  estimated_tokens: 356
+  actual_tokens: 405
+
+📝 CONTENT (2072 chars, 405 tokens):
+----------------------------------------
+Aus Antrag S 18 Neue Entwicklungen im Imperialismus Getrieben von der kapitalistischen Konkurrenz und dem technischen Fortschritt ist in den beiden letzten Jahrzehnten die Globalisierung der Ökonomie rasch vorangeschritten und in Widerspruch zu nationalen Wirtschaftsräumen und den beschränkten Möglichkeiten nationaler Wirtschaftspolitik geraten. Nationale Wirtschaftsschranken wurden niedergerissen, die Märkte geöffnet und die Regulierungsfunktion der Nationalstaaten untergraben und entwertet. Mit der Liberalisierung des internationalen Kapitalmarktes und der internationalen lnvestitionspolitik werden die Voraussetzungen für die weltweite Mobilisierung ungeheurer Kapitalmassen geschaffen. Das Spekulationskapital erhält besondere Vorrechte und gewinnt eine noch nie dagewesene Bedeutung. Globalisierung, Öffnung der Märkte, Deregulierung und Privatisierung lösten weltweit eine gigantische Konzentrationswelle aus. Die transnationalen Konzerne und Finanzgruppen sind die treibenden Kräfte der Globalisierung. Sie machen die ganze Welt zum unbeschränkten Handels-, Investitions- und Produktionsraum. Über die Welt verteilt kombinieren sie in einem konzerninternen Netzwerk die fortschrittlichste Technologie mit günstiger Arbeitskraft und billigen Rohstoffen. Sie organisieren Zulieferungen und Produktion über verschiedene Unternehmen in der ganzen Welt. Bei ihnen ist die Internationalisierung der Mehrwertproduktion die bestimmende Erscheinung. In transnationalen Produktionsnetzen führen sie die Produktions- und „Kopf“arbeiter durch den engen Entwicklungs-, Produktions- und Zuliefererverbund in einem weltweiten – für diese allerdings schwer durchschaubaren – unmittelbaren Kooperations- und Konkurrenzzusammenhang zusammen. Ent-Industrialisierung und gleichzeitiger Aufbau modernster Fertigung wird zu einer globalen Erscheinung. Über die ganze Welt verstreut entstehen hochproduktive Inseln in einem weltweiten Meer des Desasters. In São Paulo oder Singapur, in Delhi oder Mexiko entstehen Zonen der Produktion und Konsumtion –
+
+
+================================================================================
+CHUNK #45
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Zum Abschnitt „Mit dem Kapitalismus brechen“
+💾 COMPRESSED METADATA SIZE: 173 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 234.96000869750975,
+          "width": 478.6728076382997,
+          "x": 56.63995051383972,
+          "y": 66.08001136779785
+        },
+        "char_range": {
+          "end": 1950,
+          "start": 95
+        },
+        "page": 20
+      }
+    ]
+  }
+}
+📄 PAGE: 20
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 20, chars 95-1950
+     Bbox: x=56.64, y=66.08, w=478.67, h=234.96
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 20: chars 95-1950, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 973bab494de4
+  source_id: 1
+  estimated_tokens: 353
+  actual_tokens: 401
+
+📝 CONTENT (1903 chars, 401 tokens):
+----------------------------------------
+eingegliedert in das internationale Netz der Kapitalakkumulation –, die sich nur wenig von den Zentren Europas, Japans oder der Vereinigten Staaten unterscheiden. Aber der Großteil der Bevölkerung ist von diesem Prozeß ausgeschlossen; Arbeitslosigkeit, Armut, Marginalisierung, Ausgrenzung und soziale Polarisierung nehmen weltweit zu. Ebensowenig führt dieser Prozeß zu einer eigenständigen Entwicklung der unterentwickelten Länder. Paradoxerweise spielen die Nationalstaaten, die als Hindernis für die weitere Entwicklung des Weltmarktes betrachtet werden, eine bedeutende Rolle im Prozeß der Globalisierung. Sie schaffen die gesetzlichen Voraussetzungen für die Öffnung der Märkte, die Privatisierung des öffentlichen Eigentums zugunsten privater Monopole und für die Mobilisierung öffentlicher Mittel für die Unterstützung transnationaler Kapitalgruppen für deren Weltmarktexpansion. Sie schränken demokratische Rechte ein, bekämpfen die Gewerkschaften, deregulieren die Arbeitsbeziehungen und privatisieren die Medien, damit diese in einem noch nie dagewesenen Ausmaß zur Manipulation und zur Vereinzelung der Menschen eingesetzt werden können. Der sog. „Sozial- oder Wohlfahrtsstaat“ wird zu einem Hemmnis für die Weltmarktexpansion der Monopole. In dem Maße wie die Nationalstaaten die Globalisierung im Interesse der transnationalen Konzerne vorantreiben, unterhöhlen sie ihre Regulierungsfähigkeit. Die Macht der Märkte wird allgemein. Über internationale Abkommen soll den Staaten nur noch das Recht und die Pflicht zugestanden werden, für politische Sicherheit und ein günstiges lnvestitionsklima zu sorgen und den freien Gewinntransfer zu garantieren. Aber auch mit Wirtschaftsblockaden und militärischen Mitteln setzen die imperialistischen Zentren, z.Zt. v.a. die USA, ihre „Neue Weltordnung“ und den freien Zugang zu Märkten und Ressourcen durch.
+
+
+================================================================================
+CHUNK #46
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Zum Abschnitt „Mit dem Kapitalismus brechen“
+💾 COMPRESSED METADATA SIZE: 175 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 324.4799633789063,
+          "width": 481.5286941678029,
+          "x": 56.63995289802551,
+          "y": 308.4800205230713
+        },
+        "char_range": {
+          "end": 3818,
+          "start": 1950
+        },
+        "page": 20
+      }
+    ]
+  }
+}
+📄 PAGE: 20
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 20, chars 1950-3818
+     Bbox: x=56.64, y=308.48, w=481.53, h=324.48
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 20: chars 1950-3818, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 74206b9c5a8b
+  source_id: 1
+  estimated_tokens: 359
+  actual_tokens: 392
+
+📝 CONTENT (1904 chars, 392 tokens):
+----------------------------------------
+Die wachsende Internationalisierung führt zur Herausbildung von regionalen Wirtschaftsblöcken, die in Konkurrenz zueinander stehen, aber auch vielfältig miteinander verbunden sind. Gleichzeitig wächst die Bedeutung und der Einfluß von internationalen Institutionen wie Weltbank, Internationaler Währungsfonds IWF, OECD, G-7-Treffen, Welthandelsorganisation WTO. Mit Hilfe dieser Einrichtungen festigen die imperialistischen Hauptländer ihre Hegemonie im Prozeß der Globalisierung. Bei der Globalisierung handelt es sich sowohl um einen objektiven Prozeß wie auch um eine neue Phase im historischen Prozeß der Internationalisierung des Kapitals. Die qualitativen Veränderungen der heutigen Ökonomie, Politik und Gesellschaft verändern auch die Bedingungen, unter denen die Linke und die Arbeiterbewegung den Kampf um soziale Gerechtigkeit, Entwicklung, Frieden, Demokratie und Menschenrechte führen muß. Seite 2, Zeile 37: einfügen „Aus diesem Grunde nennen wir diese zweite Klasse weiterhin die Arbeiterklasse, wohl wissend, daß diese Klasse heute in sich vielfach strukturiert ist.“ Es taucht eine große Vielfalt neuer sozialer Akteure auf. Der sich globalisierende Kapitalismus globalisiert und multipliziert seine Totengräber. Mit der antirassistischen Bewegung, in der Geschlechterfrage, zu Umwelt- und vielen anderen Fragen agieren neue Kräfte autonom. Die Existenz einer breiten Schicht von Ausgebeuteten und Ausgegrenzten eröffnet die Möglichkeit und die Notwendigkeit, alle Betroffenen in einem alternativen politischen und sozialen Projekt zusammenzuführen, sie als Gesamtheit in ihrer Vielfalt und Autonomie zu vereinen. weiter wie bisher: „Die Arbeiterklasse muß, der historischen Verantwortung entsprechend, die entscheidende Kraft zur Rettung der Zivilisation und zur Erkämpfung des Übergangs vom Kapitalismus zum Sozialismus sein.“ Aus Antrag S 21 Seite 1:
+
+
+================================================================================
+CHUNK #47
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Zum Abschnitt „Mit dem Kapitalismus brechen“
+💾 COMPRESSED METADATA SIZE: 232 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 144.47999771118168,
+          "width": 477.94028472115065,
+          "x": 56.64001178741455,
+          "y": 641.1199836730957
+        },
+        "char_range": {
+          "end": 4858,
+          "start": 3818
+        },
+        "page": 20
+      },
+      {
+        "bbox": {
+          "height": 113.99999816894533,
+          "width": 481.1040761618641,
+          "x": 56.63997983932495,
+          "y": 66.56001281738281
+        },
+        "char_range": {
+          "end": 792,
+          "start": 2
+        },
+        "page": 21
+      }
+    ]
+  }
+}
+📄 PAGES: 20 to 21 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 20, chars 3818-4858
+     Bbox: x=56.64, y=641.12, w=477.94, h=144.48
+   Fragment 1: page 21, chars 2-792
+     Bbox: x=56.64, y=66.56, w=481.10, h=114.00
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 20: chars 3818-4858, 1 bounding boxes
+  Page 21: chars 2-792, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: ed47b41836e3
+  source_id: 1
+  estimated_tokens: 344
+  actual_tokens: 423
+
+📝 CONTENT (1884 chars, 423 tokens):
+----------------------------------------
+Kapitalismus, Imperialismus, Krieg Die ökonomische Globalisierung verändert zwar das Verhältnis der transnational operierenden Konzerne und des Finanzkapitals zu den Nationalstaaten, sie hat aber nicht ,Entstaatlichung‘ zur Folge, sondern das Gegenteil. Mehr denn je wird der Staat als Machtinstrument zur Absicherung der Kapitalinteressen, als Repressionsinstrument nach innen und als militärischer Machtapparat nach außen gebraucht. Nachdem der von der Sowjetunion geführte Block sozialistischer Staaten als gemeinsamer Hauptfeind des ,Westens‘ nicht mehr existiert, verschärfen sich wieder die Rivalitäten zwischen den imperialistischen Staaten, vor allem zwischen den drei wirtschaftlich dominierenden Machtblöcken USA/NAFTA, Deutschland/EU und Japan/Südostasien. Die imperialistischen Hauptländer erheben in Konkurrenz zueinander Ansprüche auf den „ungehinderten Zugang zu Märkten und Rohstoffen in aller Welt“ (z.B. Verteidigungspolitische Richtlinien, VPR, Bonn 1992). Der Konkurrenzkampf um Vorherrschaft und Einflußgebiete wird mit allen Mitteln – von Handelstransaktionen bis hin zu Militärinterventionen – ausgetragen. Im Kampf um die Neuaufteilung der Welt versucht jeder, möglichst vorteilhafte Ausgangsstellungen zu besetzen und strategisch wichtige Regionen den Konkurrenten zu entziehen. Die USA sind heute nicht mehr unumstritten die kapitalistische Weltmacht Nr. 1. Während Deutschland zum Exportweltmeister aufstieg, sank der Anteil der USA am Weltbruttosozialprodukt von 50 % am Ende des 2. Weltkriegs auf heute etwa 25 %. Je stärker der US-Imperialismus ökonomisch zurückfällt, um so aggressiver verteidigt er seine bisher noch unangefochtene militärische Führungsrolle. Erklärtes Ziel der USA ist es, „dem Aufstieg jedes möglichen Konkurrenten globaler Dimension zuvorzukommen“ („No-rivals“Papier des Pentagon, 1992).
+
+
+================================================================================
+CHUNK #48
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Zum Abschnitt „Mit dem Kapitalismus brechen“
+💾 COMPRESSED METADATA SIZE: 175 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 236.39999588012697,
+          "width": 476.23387531553146,
+          "x": 56.63998532295227,
+          "y": 188.7200107574463
+        },
+        "char_range": {
+          "end": 2586,
+          "start": 792
+        },
+        "page": 21
+      }
+    ]
+  }
+}
+📄 PAGE: 21
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 21, chars 792-2586
+     Bbox: x=56.64, y=188.72, w=476.23, h=236.40
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 21: chars 792-2586, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 7db7ab854efa
+  source_id: 1
+  estimated_tokens: 348
+  actual_tokens: 414
+
+📝 CONTENT (1868 chars, 414 tokens):
+----------------------------------------
+Nach Jahren aufgezwungener außenpolitischer Beschränkung hat sich als neue Großmacht Deutschland auf der weltpolitischen Bühne zurückgemeldet. Als Kraftquelle für seinen dritten Aufstieg soll ihm Europa dienen. Der deutsche Imperialismus will nicht mehr nur ökonomisch, sondern auch politisch und militärisch zur Führungsmacht in Europa werden. Nach dem Motto „ ... und bist du nicht willig, so brauch‘ ich Gewalt“ hat Kanzler Kohl die Einigung Europas nach deutschem Konzept zur „Frage von Krieg und Frieden im 21. Jahrhundert“ erklärt. Zentrale Bedeutung wird dabei der Herstellung eigenständiger militärischer Handlungsfähigkeit – unabhängig von den USA – beigemessen (z.B. im Kerneuropa-Papier der CDU/CSU, 1994), denn „trotz prinzipieller Übereinstimmung werden sich die deutschen Interessen nicht in jedem Einzelfall mit den Interessen der Verbündeten ... decken“ (VPR). Unbeschadet seiner konkurrierenden Ambitionen kollaboriert der deutsche Imperialismus überall dort und in dem Maß, wo bzw. wie es ihm zur Stärkung seiner Machtpositionen nützlich erscheint, mit dem US-Imperialismus. Dies gilt für die (vorerst noch) ,friedliche‘ Erweiterung seines Hinterlandes (Ost-Erweiterung von NATO und EU) und die Unterwerfung Rußlands und der übrigen Länder der ehemaligen Sowjetunion unter imperialistische Machtansprüche ebenso wie für die Anzettelung von Kriegen, die sich nutzen lassen, um die ,Normalisierung‘ Deutschlands im Sinne der Wiederherstellung der militärischen Kriegsfähigkeit sowie der innen- und außenpolitischen Akzeptanz weltweiter Kriegseinsätze der Bundeswehr voranzutreiben (Jugoslawien, Golf etc.). Aufgrund seiner „globalen Interessen“ lasse sich die künftige Militärpolitik Deutschlands „weder inhaltlich noch geographisch eingrenzen“, so die Verteidigungspolitischen Richtlinien.
+
+
+================================================================================
+CHUNK #49
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Zum Abschnitt „Mit dem Kapitalismus brechen“
+💾 COMPRESSED METADATA SIZE: 175 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 34.55999954223631,
+          "width": 477.2404456719304,
+          "x": 56.63997960090637,
+          "y": 433.2800064086914
+        },
+        "char_range": {
+          "end": 2893,
+          "start": 2586
+        },
+        "page": 21
+      }
+    ]
+  }
+}
+📄 PAGE: 21
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 21, chars 2586-2893
+     Bbox: x=56.64, y=433.28, w=477.24, h=34.56
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 21: chars 2586-2893, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 35695a1e62e6
+  source_id: 1
+  estimated_tokens: 66
+  actual_tokens: 66
+
+📝 CONTENT (311 chars, 66 tokens):
+----------------------------------------
+Wer 1989/91 noch glaubte, die Welt würde durch die Niederlage des Sozialismus friedlicher, konnte seither beobachten, daß das Gegenteil der Fall ist und die Aggressivität, mit der die Konkurrenz zwischen den Imperialisten ausgetragen wird, sich in den letzten Jahren bereits wieder erheblich verschärft hat.
+
+
+================================================================================
+CHUNK #50
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Zum Abschnitt „Leistungen und Fehlentwicklungen des realen Sozialismus“
+💾 COMPRESSED METADATA SIZE: 228 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 269.03999526977543,
+          "width": 476.39185147792296,
+          "x": 56.63998317718506,
+          "y": 513.9200057983398
+        },
+        "char_range": {
+          "end": 4576,
+          "start": 2964
+        },
+        "page": 21
+      },
+      {
+        "bbox": {
+          "height": 50.640001373291014,
+          "width": 474.11883658920783,
+          "x": 56.63999938964844,
+          "y": 66.08001136779785
+        },
+        "char_range": {
+          "end": 310,
+          "start": 2
+        },
+        "page": 22
+      }
+    ]
+  }
+}
+📄 PAGES: 21 to 22 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 21, chars 2964-4576
+     Bbox: x=56.64, y=513.92, w=476.39, h=269.04
+   Fragment 1: page 22, chars 2-310
+     Bbox: x=56.64, y=66.08, w=474.12, h=50.64
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 21: chars 2964-4576, 1 bounding boxes
+  Page 22: chars 2-310, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: b4d8a8afe70f
+  source_id: 1
+  estimated_tokens: 369
+  actual_tokens: 401
+
+📝 CONTENT (1973 chars, 401 tokens):
+----------------------------------------
+Aus Antrag S 15 Seite 4, Zeile 9: In den sozialistischen Ländern wurde also kein neuer, dem Sozialismus entsprechender Typ der Produktivkraftentwicklung geschaffen, der aber notwendig geworden war, um die Aneignung der Natur, die Befriedigung der menschlichen Bedürfnisse und die gesellschaftlichen Beziehungen der Menschen zueinander auf moderne, wissenschaftliche und humane Art voranzutreiben. Seite 4, Zeile 13: Eine der inneren Ursachen für die Niederlage des Sozialismus sehen wir darin, daß das garantierte Grundrecht der Bürger auf Mitbestimmung und Mitgestaltung nicht in einem umfassenden Maße zur moralischen Verpflichtung eines jeden werden konnte. Dadurch fehlten der Gesellschaft die Menschen, die die Widersprüche innerhalb des Sozialismus hätten bewältigen können, um so – entsprechend dem erreichten Entwicklungsstand – der Gesellschaft immer neue revolutionäre Entwicklungsschübe zu geben. Statt dessen erstarrten die gesellschaftlichen Verhältnisse mehr und mehr. Aus Antrag 18 6. Stern, 2. Absatz einfügen nach „Partei und Staat verschmolzen mehr und mehr zu einem administrativbürokratischen Apparat.“ Entgegen dem Leninschen Ansatz der Machtausübung durch die Massen – dem Fundament einer neuen politischen Ordnung – wurde unter den außerordentlichen Bedingungen eines rückständigen Landes, des Bürgerkrieges, der internationalen Isolierung und der extremen äußeren Bedrohungssituation des neuen Sowjetstaates die gesamte Macht bei der Staats- und Parteiführung konzentriert. Der Ausnahmezustand eines revolutionären Übergangs wurde als Dauerzustand gerechtfertigt, soziale und politische Konflikte innerhalb der neuen Ordnung mit Terror und administrativem Zwang unterdrückt und die Verstaatlichung auf alle gesellschaftlichen Bereiche ausgedehnt. Die sozialistische Demokratie blieb nicht nur unterentwickelt, sie wurde durch die Mißachtung sozialistischer Rechtsstaatlichkeit massiv verletzt. gestrichen wird:
+
+
+================================================================================
+CHUNK #51
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Zum Abschnitt „Leistungen und Fehlentwicklungen des realen Sozialismus“
+💾 COMPRESSED METADATA SIZE: 176 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 247.44000633239745,
+          "width": 481.07420701794945,
+          "x": 56.63999938964844,
+          "y": 106.64001274108888
+        },
+        "char_range": {
+          "end": 2115,
+          "start": 310
+        },
+        "page": 22
+      }
+    ]
+  }
+}
+📄 PAGE: 22
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 22, chars 310-2115
+     Bbox: x=56.64, y=106.64, w=481.07, h=247.44
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 22: chars 310-2115, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: fcf2a406987d
+  source_id: 1
+  estimated_tokens: 351
+  actual_tokens: 379
+
+📝 CONTENT (1838 chars, 379 tokens):
+----------------------------------------
+„Die extreme äußere Bedrohungssituation der Sowjetunion führte nach innen zu Repression und Terror. Bloße Verstaatlichung trat an die Stelle wirklicher Vergesellschaftung. Die Folge war eine zunehmende Entfremdung vom sozialistischen Eigentum.“ Ergänzung - nach dem 6. Stern einen neuen Punkt einfügen: (Seite 3, Zeile 57) * Politische Macht wurde auf die Eroberung und Verteidigung der Staatsmacht reduziert. Der Sozialismus sollte mittels der Allmacht eines sozialistischen Staates durchgesetzt werden. Durch die Verstaatlichung des gesamten gesellschaftlichen Lebens gab es keine Mechanismen zur Konsensbildung unterschiedlicher sozialer und politischer Interessen. Die ungenügende Entwicklung einer sozialistische Demokratie und das Fehlen einer sozialistischen „Zivilgesellschaft“ wurden in den letzten Jahren der Existenz der sozialistischen Länder zu einem immer schwerwiegenderen Hemmnis für eine dynamische Entwicklung. Dadurch wurde der sozialistische Staat zur Staatsgewalt, ohne daß die Klasse, der dieser Staat zur Herrschaft verhelfen sollte, eine führende Rolle in der Gesellschaft ausübte. Der sozialistische Staat konnte sich durch einen Ausbau der staatlichen Gewalt eine Zeitlang als herrschende Macht behaupten, entfremdet sich aber zunehmend von der Gesellschaft und auch von der ihn tragenden Klasse. Durch einen Ausbau des Gewaltapparats konnte diese grundlegende Krise jahrzehntelang verdeckt, aber nicht gelöst werden. Das Resultat war die vollkommene Unterhöhlung der politischen Ordnung, die schließlich widerstandslos zusammenbrach. In den sozialistischen Ländern trat an die Stelle einer wirklich führenden Partei, die sich im gesellschaftlichen Wettstreit der Meinungen als überlegen erweist, eine Partei, deren Führungsrolle zunehmend nur mehr mit der Staatsmacht behauptet wurde.
+
+
+================================================================================
+CHUNK #52
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Zum Abschnitt „Leistungen und Fehlentwicklungen des realen Sozialismus“
+💾 COMPRESSED METADATA SIZE: 175 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 279.59998519897465,
+          "width": 481.6766907164001,
+          "x": 56.63999938964844,
+          "y": 344.0000190734863
+        },
+        "char_range": {
+          "end": 4067,
+          "start": 2115
+        },
+        "page": 22
+      }
+    ]
+  }
+}
+📄 PAGE: 22
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 22, chars 2115-4067
+     Bbox: x=56.64, y=344.00, w=481.68, h=279.60
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 22: chars 2115-4067, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 4859e62e7b25
+  source_id: 1
+  estimated_tokens: 365
+  actual_tokens: 403
+
+📝 CONTENT (2000 chars, 403 tokens):
+----------------------------------------
+Die führende Rolle der Partei wurde nicht in der ideologischpolitischen Auseinandersetzung unter Beweis gestellt, sondern es wurde auf administrativem Weg ein Führungsanspruch durchgesetzt. So verloren die Kommunisten die Fähigkeit, konkret die Partei der revolutionären Volksmacht und die Vorkämpfer einer neuen Gesellschaft zu sein. Die Ansätze zur Identifizierung mit dem Sozialismus wurden untergraben. Aus Antrag S 27 Seite 3, Zeile 58: Ersetze den Spiegelstrich: „Dieses Sozialismusmodell wurden nach dem zweiten Weltkrieg auf die Länder übertragen ... mußte destabilisieren.“ durch: „Nach dem Sieg der Anti-Hitler-Koalition wurde in den von der Roten Armee befreiten Gebieten Osteuropas und Deutschlands die Grundlage für eine alternative Entwicklung zum Kapitalismus gelegt. Nach der Lösung der zunächst dringendsten Aufgaben, der Beseitigung der faschistischen Herrschaftsstrukturen und der Wiederherstellung der zerstörten Volkswirtschaften, begann eine Etappe der antifaschistisch-demokratschen Neuordnung, die in den verschiedenen Ländern zu neuartigen und unterschiedlichen Entwicklungsvarianten von Übergängen zum Sozialismus führten. Konnten trotz der Nachkriegswirkungen und der Folgen des Kalten Krieges zunächst bedeutende wirtschaftliche Erfolge erreicht werden, so erwiesen sich diese Sozialismusvarianten später als zu wenig flexibel, um die Anforderungen der wissenschaftlich-technischen Revolution zu meistern. Widersprüche, die sich auf der neuen Grundlage entwickelten, wurden nicht ausreichend produktiv genutzt. Die Folge war, daß die sozialistischen Länder in der Entwicklung der Arbeitsproduktivität und des materiellen Lebensstandards immer weiter hinter den entwickelten kapitalistischen Ländern zurückblieben. Das mußte destabilisieren.“ Schließe an die obige Änderung einen neuen Spiegelstrich an: „In der Sowjetischen Besatzungszone Deutschlands entstand mit der späteren DDR der erste sozialistische Staat auf deutschem Boden.
+
+
+================================================================================
+CHUNK #53
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Zum Abschnitt „Leistungen und Fehlentwicklungen des realen Sozialismus“
+💾 COMPRESSED METADATA SIZE: 228 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 157.20000274658207,
+          "width": 475.91666330780026,
+          "x": 56.63998341560364,
+          "y": 613.5200042724609
+        },
+        "char_range": {
+          "end": 5288,
+          "start": 4067
+        },
+        "page": 22
+      },
+      {
+        "bbox": {
+          "height": 104.39999397277832,
+          "width": 480.9566364325043,
+          "x": 56.63999581336975,
+          "y": 66.08001136779785
+        },
+        "char_range": {
+          "end": 768,
+          "start": 2
+        },
+        "page": 23
+      }
+    ]
+  }
+}
+📄 PAGES: 22 to 23 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 22, chars 4067-5288
+     Bbox: x=56.64, y=613.52, w=475.92, h=157.20
+   Fragment 1: page 23, chars 2-768
+     Bbox: x=56.64, y=66.08, w=480.96, h=104.40
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 22: chars 4067-5288, 1 bounding boxes
+  Page 23: chars 2-768, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 4d06e3bd06fe
+  source_id: 1
+  estimated_tokens: 392
+  actual_tokens: 417
+
+📝 CONTENT (2031 chars, 417 tokens):
+----------------------------------------
+Die Erfahrungen des sozialistischen Aufbaus der DDR bilden gerade für die deutschen Kommunistinnen und Kommunisten den Erfahrungsschatz, den sie vor allen antisozialistischen Geschichtsklitterungen zu bewahren haben. Die DDR war insgesamt die größte Errungenschaft, die die revolutionäre deutsche Arbeiterbewegung vorzuweisen hat. Unter den ungünstigen politischen, militärischen, wirtschaftlichen und ideologischen Umständen entstand ein Staat der Arbeiter, Bauern und der werktätigen Intelligenz, der in 40 Jahren vorerst einmalige soziale, politische und kulturelle Bedingungen für die Arbeitenden schuf. Ein Drittel des Herrschaftsbereiches des deutschen Imperialismus wurde seinem Einfluß entzogen. Damit hatte er sich nach 1945 nie abgefunden. Seine geballten politischen, wirtschaftlichen und ideologischen Apparate waren über die ganze Zeit darauf ausgerichtet, die Bevölkerung der DDR von den Vorzügen des „freien Westens“ und der „sozialen Marktwirtschaft“ zu überzeugen Diese Rechnung ging, begünstigt durch ökonomische und politische Defizite, Deformationen und Fehler der DDR, auf. Die Hoffnungen und Erwartungen der Antifaschisten, Sozialisten und Kommunisten nach 1945 in Deutschland auf einen dauerhaften Sieg einer sozialistischen Alternative blieben unerfüllt. Die Niederlage der DDR stellt eine schwere Niederlage für alle dar, die sich für eine Alternative zum Kapitalismus einsetzen. Die DKP steht zu den Erfahrungen der DDR; sie verteidigt alle diejenigen, die heute wegen ihrer aktiven Mitwirkung am Aufbau des ersten sozialistischen deutschen Staates verfolgt und diskriminiert werden.“ Füge neu ein als letzten Absatz in diesem Kapitel: „Der reale Sozialismus war und bleibt die bislang größte Errungenschaft der internationalen Arbeiterbewegung. Durch seine Existenz, durch die Kraft seines Beispiels und durch praktische Solidarität erwies er darüber hinaus allen für ihre soziale und nationale Befreiung kämpfenden Kräften in der Welt Rückhalt und Unterstützung.
+
+
+================================================================================
+CHUNK #54
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Zum Abschnitt „Leistungen und Fehlentwicklungen des realen Sozialismus“
+💾 COMPRESSED METADATA SIZE: 173 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 92.40000160217284,
+          "width": 478.0752364250087,
+          "x": 56.63999581336975,
+          "y": 178.160005569458
+        },
+        "char_range": {
+          "end": 1525,
+          "start": 768
+        },
+        "page": 23
+      }
+    ]
+  }
+}
+📄 PAGE: 23
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 23, chars 768-1525
+     Bbox: x=56.64, y=178.16, w=478.08, h=92.40
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 23: chars 768-1525, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 756fcd41cdeb
+  source_id: 1
+  estimated_tokens: 146
+  actual_tokens: 169
+
+📝 CONTENT (774 chars, 169 tokens):
+----------------------------------------
+Mit wachsendem Abstand zu seiner Niederlage in den Ländern des Warschauer Paktes wird deutlicher, daß er selbst noch in der Phase seines Niedergangs den werktätigen Massen und Schichten eine lebenswerte Perspektive geboten hatte als der nach dem Sieg der Konterrevolution neuerrichtete Kapitalismus. Massenarbeitslosigkeit, soziale Deklassierung, Verarmung, millionenfacher Hunger, Kinderelend, Prostitution und überbordende Kriminalität sind unübersehbar geworden Die krassen sozialen Gegensätze zwischen einer neuen Bourgeoisie und immer größeren Schichten des werktätigen Volkes, die in Not und Armut versinken, all dies sind neue Erfahrungen, die bei Millionen Menschen zu einer Rückbesinnung auf die Errungenschaften des realen Sozialismus geführt haben.“
+
+
+================================================================================
+CHUNK #55
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Sozialismus“
+💾 COMPRESSED METADATA SIZE: 176 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 306.95998867034916,
+          "width": 481.4390395350253,
+          "x": 56.639976263046265,
+          "y": 331.2800073623657
+        },
+        "char_range": {
+          "end": 3049,
+          "start": 1580
+        },
+        "page": 23
+      }
+    ]
+  }
+}
+📄 PAGE: 23
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 23, chars 1580-3049
+     Bbox: x=56.64, y=331.28, w=481.44, h=306.96
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 23: chars 1580-3049, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 4c2ac92b5e91
+  source_id: 1
+  estimated_tokens: 309
+  actual_tokens: 332
+
+📝 CONTENT (1522 chars, 332 tokens):
+----------------------------------------
+Aus Antrag S 17 Seite 5, Zeile 6: vor der Zwischenüberschrift „Was wird an die Stelle ...“) Ersatzlos streichen den ganzen Absatz von „Letzten Endes ...“ bis „... geprägt ist.“ Begründung: Der Sozialismus wird sich nur dann bewähren, wenn er zum Kommunismus voranschreitet, wenn die Klassen aufgehoben werden, die Ausbeutung des Menschen durch den Menschen keinerlei ökonomische Grundlage mehr hat und der neue Mensch entstanden ist. Hingegen bewahrt uns auch eine weltweite Verbreitung des Sozialismus (Übergangsgesellschaft!!!) nicht vor der Konterrevolution. Aus Antrag S 27 Seite 2, Zeile 57: Füge an nach Brot: „Er erwächst nicht zuletzt auch aus der Entwicklung der Produktivkräfte, die eine weltumspannende proletarische Organisation der Produktion ermöglichen.“ Zum Abschnitt „Was wird an die Stelle der jetzigen Gesellschaft treten? Seite 5, Zeile 37: Internationalismus: Ersetze: „Die Sozialisten aller Welt arbeiten zusammen mit dem Ziel, eine Kampfgemeinschaft ... herzustellen.“ durch: „Die Sozialisten der ganzen Welt arbeiten zusammen Sie bilden eine Kampfgemeinschaft gegen den Imperialismus und für die Bewahrung des Friedens. Sie üben aktive Solidarität mit allen Unterdrückten und Ausgebeuteten dieser Welt und unterstützen ihre Befreiung und Entwicklung; sie fördern das freundschaftliche Zusammenleben der Völker in gegenseitiger Achtung und stellen die notwendige Zusammenarbeit der Parteien und Staaten her, die sich auf dem Wege zum Sozialismus befinden.“
+
+
+================================================================================
+CHUNK #56
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Zum Abschnitt „Ökonomie“
+💾 COMPRESSED METADATA SIZE: 228 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 102.96000297546392,
+          "width": 479.9966546484374,
+          "x": 56.63995122909546,
+          "y": 684.319995880127
+        },
+        "char_range": {
+          "end": 3797,
+          "start": 3073
+        },
+        "page": 23
+      },
+      {
+        "bbox": {
+          "height": 195.84001548767088,
+          "width": 481.819020915574,
+          "x": 56.639967918396,
+          "y": 66.08001136779785
+        },
+        "char_range": {
+          "end": 1154,
+          "start": 2
+        },
+        "page": 24
+      }
+    ]
+  }
+}
+📄 PAGES: 23 to 24 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 23, chars 3073-3797
+     Bbox: x=56.64, y=684.32, w=480.00, h=102.96
+   Fragment 1: page 24, chars 2-1154
+     Bbox: x=56.64, y=66.08, w=481.82, h=195.84
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 23: chars 3073-3797, 1 bounding boxes
+  Page 24: chars 2-1154, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: be23e130dfe2
+  source_id: 1
+  estimated_tokens: 345
+  actual_tokens: 378
+
+📝 CONTENT (1903 chars, 378 tokens):
+----------------------------------------
+Aus Antrag S 18 Werden die gesellschaftlichen Ziele in einem demokratischen Prozeß erarbeitet, dann kann auch herausgefunden werden, wieviel Plan und wieviel Markt benötigt werden, um diese Ziele zu erreichen. Der zentrale, demokratisch bestimmte Plan ist das entscheidende Instrument sozialistischer Ökonomie. Im Plan werden allerdings nur die Grundproportionen und Hauptrichtungen der wirtschaftlichen und technologischen Orientierung bestimmt. In der Kombination von Plan und Markt, von makro- und mikroökonomischen Anreizen müssen Regulierungsmechanismen wirken, die zu einem effizienten Umgang mit der gesellschaftlichen Arbeitszeit führen und den technologischem Fortschritt zur Produktivitätssteigerung und Ressourceneinsparung fördern. Zur Messung der Effizienz müssen die Betriebe in einem unmittelbaren Kontakt zu den Abnehmern stehen. Innerhalb der Betriebe müssen die Produzenten umfassende Mitbestimmungsmöglichkeiten ausüben können, damit sie nicht zum Objekt fremder Entscheidungen werden bzw. die Konsequenzen fremder Entscheidungen tragen müssen. Auf diese Weise kann die Marktregulierung zur Erreichung der gemeinschaftlich geplanten Ziele eingesetzt und als Element des Planungsprozesses integriert werden. Über einen langen Zeitraum wird der Sozialismus eine gemischte Wirtschaft zur Erreichung gesellschaftlicher Ziele nutzen. Bei den entscheidenden Produktionsmitteln, den Großkonzernen und Banken wird das private Eigentum gebrochen sein. Daneben wird genossenschaftliches und privates Eigentum an Produktionsmittel existieren. Die Herausbildung sozialistischen Eigentums und der Übergang zu einer sozialistischen Produktionsweise wird wahrscheinlich nur in einem langwierigen, komplexen gesellschaftlichen Prozeß erfolgen können. Aus Antrag S 27 Seite 6, Zeile 10: Ersetze: „Der Sozialismus führt einen grundlegenden Bruch ... Planung und Leitung.“ durch:
+
+
+================================================================================
+CHUNK #57
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Zum Abschnitt „Ökonomie“
+💾 COMPRESSED METADATA SIZE: 176 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 308.8799706268311,
+          "width": 475.7140342609979,
+          "x": 56.639952421188354,
+          "y": 251.84002685546875
+        },
+        "char_range": {
+          "end": 3130,
+          "start": 1154
+        },
+        "page": 24
+      }
+    ]
+  }
+}
+📄 PAGE: 24
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 24, chars 1154-3130
+     Bbox: x=56.64, y=251.84, w=475.71, h=308.88
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 24: chars 1154-3130, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 8b60cbb345ca
+  source_id: 1
+  estimated_tokens: 362
+  actual_tokens: 404
+
+📝 CONTENT (2019 chars, 404 tokens):
+----------------------------------------
+„Der Sozialismus bricht grundlegend mit der kapitalistischen Wirtschaftsweise, die auf Erzielung maximalen Profits durch die Ausbeutung der menschlichen Arbeitskraft und den verschwenderischen Umgang mit den Naturressourcen gerichtet ist. Im Sozialismus befriedigen die Menschen Ihre materiellen und kulturellen Bedürfnisse durch eine hohe Produktivität der gesellschaftlichen Arbeit. Auf der Grundlage gesellschaftlicher Planung und Leitung wenden sie eine neue, die natürlichen Reichtümer bewahrende Wirtschaftsweise an.“ Seite 6, Zeile 44: Ersetze: „Nach und nach werden immer weitere Bereiche durch gemeinschaftliche Tätigkeit ... garantiert sein,“ durch: „Nach und nach werden immer weitere Bereiche durch gemeinschaftliche Tätigkeit statt durch die privatwirtschaftlichen Marktgesetze geprägt. Bislang in den individuellen Bereich abgedrängte reproduktive Tätigkeiten (Hausarbeit) können wieder gesellschaftlich ausgeübt werden – die Grenzen zwischen gesellschaftlicher Produktion und individueller Reproduktion werden aufhebbar. Von Anfang an werden gesellschaftlich sinnvolle Arbeit, menschenwürdiges Wohnen, gesunde Nahrung, Kleidung und Bildung garantiert sein.“ Aus Initiativ-Abänderungsanträgen: Seite 8, vor Zeile 44: Das persönliche Eigentum an Konsumtionsmitteln, bestehend aus Ersparnissen, Wohneigentum, Grund und Boden für Erholungszwecke usw. wird garantiert. Es entsteht im Sozialismus neu ausschließlich auf der Grundlage eigener Arbeitsleistung und wird besonders geschützt und entwickelt. Seite 8, Zeile 44, bis Seite 9, Zeile 13, soll durch folgenden Text ersetzt werden: Die unterschiedlichen Formen des gesellschaftlichen Eigentums und das vorhandene Privateigentum an den Produktionsmiteln erfordern im Sozialismus noch Äquivalentenaustausch und damit Warenproduktion. Warenproduktion und Marktbeziehungen  sind im Sozialismus jedoch Grenzen gesetzt. Vor allem hört die Arbeitskraft auf, eine Ware zu sein. Damit wird die Ausbeutung des Menschen überwunden.
+
+
+================================================================================
+CHUNK #58
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Zum Abschnitt „Ökonomie“
+💾 COMPRESSED METADATA SIZE: 175 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 211.44000251770024,
+          "width": 469.5492319017302,
+          "x": 56.63993692398071,
+          "y": 568.1599979400635
+        },
+        "char_range": {
+          "end": 4077,
+          "start": 3130
+        },
+        "page": 24
+      }
+    ]
+  }
+}
+📄 PAGE: 24
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 24, chars 3130-4077
+     Bbox: x=56.64, y=568.16, w=469.55, h=211.44
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 24: chars 3130-4077, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 33968964cb1b
+  source_id: 1
+  estimated_tokens: 195
+  actual_tokens: 190
+
+📝 CONTENT (973 chars, 190 tokens):
+----------------------------------------
+Weite Bereiche des gesellschaftlichen Lebens wie ·  Bildung ·  Gesundheit ·  Soziale Sicherungssysteme ·  Sport ·  Erholung ·  Schutz der Natur ·  Kultur werden dem Marktmechanismus zunehmend entzogen. Von Anfang an werden das Recht auf Arbeit, das Recht auf Wohnung, Nahrung und Kleidung garantiert sein. Da im Sozialismus der Reichtum jedoch noch nicht so weit entwickelt ist, um eine unmittelbare Verteilung der Produkte nach Bedürfnissen zu gewährleisten, und die verschiedenen Produktionskollektive ihre Erzeugnisse entsprechend der von ihnen notwendig verausgabten Arbeit austauschen müssen, existieren objektiv Warenproduktion und Wertgesetz des Sozialismus. Unter diesen Bedingungen wird auch die Leistung des Einzelnen Maßstab für die Entlohnung seiner Arbeit sein. In den internationalen Austauschbeziehungen sind insbesondere den Völkern der Dritten Welt Preise zu garantieren, die dem Aufwand an notwendiger Arbeit in ihren Ländern gerecht werden.
+
+
+================================================================================
+CHUNK #59
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Zum Abschnitt „Demokratie“
+💾 COMPRESSED METADATA SIZE: 175 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 241.20000656127928,
+          "width": 480.61315471885814,
+          "x": 56.639976024627686,
+          "y": 104.48001098632812
+        },
+        "char_range": {
+          "end": 1947,
+          "start": 28
+        },
+        "page": 25
+      }
+    ]
+  }
+}
+📄 PAGE: 25
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 25, chars 28-1947
+     Bbox: x=56.64, y=104.48, w=480.61, h=241.20
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 25: chars 28-1947, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 3800f5041477
+  source_id: 1
+  estimated_tokens: 384
+  actual_tokens: 391
+
+📝 CONTENT (1965 chars, 391 tokens):
+----------------------------------------
+Aus Antrag S 18 Seite 7, Zeile 22: einfügen „Der Beginn des sozialistischen Weges ist nicht als Putsch denkbar, sondern nur als Ergebnis des Handelns von Millionen – also als Ausdruck tiefer Demokratie.“ Die sozialistische Revolution ist nicht die Überwindung der bürgerlichen Gesellschaft, sondern zunächst die Übernahme der Staatsmacht. Dieser politische Durchbruch wird ermöglicht und stabilisiert in dem Maße als sich die Arbeiterklasse als Repräsentant der gesamten Gesellschaft verankert, die führende Rolle in der Gesellschaft erringt. Das Feld dieser Auseinandersetzung ist die „Zivile Gesellschaft“, jener Bereich zwischen Ökonomie und Staat, in der das Einverständnis der Menschen mit den sozialen, kulturellen und politischen Verhältnissen hergestellt wird. Auch der Sozialismus braucht diese Sphäre in der Gesellschaft, die im heutigen Kapitalismus zu einem hocheffektiven Teil des Herrschaftssystems geworden ist. Der Kampf vor und nach der politischen Revolution ist durch den Kampf um die Hegemonie verbunden. Die politische Revolution selbst kann vielfältige Formen annehmen; sie wird nur dauerhaft sein, wenn die Entmachtung der Bourgeoisie und die Entwicklung neuer Formen der Volksmacht im revolutionären Prozeß zunehmend mit der Herausbildung einer sozialistischen Zivilgesellschaft einhergeht. Außerdem, und dies ist der wesentliche Aspekt, hat die weltweite Erfahrung der letzten Jahre sehr klar gemacht, daß die sozialistische Macht demokratisch sein muß. In ihrem partizipativen demokratischen Charakter, und nicht in der puren Fähigkeit etwas zu erzwingen, liegt für die revolutionäre Macht die Garantie, auch angesichts einer sich restaurierenden Konterrevolution zu überleben. In ihrem demokratischen und partizipativen Charakter liegt auch die Garantie für ökonomische Leistungsfähigkeit, soziale Gerechtigkeit und Emanzipation. Demokratie ist ein struktureller Bestandteil des künftigen Sozialismus.
+
+
+================================================================================
+CHUNK #60
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Zum Abschnitt „Demokratie“
+💾 COMPRESSED METADATA SIZE: 176 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 139.19998558044432,
+          "width": 480.47667278732297,
+          "x": 56.63997173309326,
+          "y": 335.6000175476074
+        },
+        "char_range": {
+          "end": 2643,
+          "start": 1947
+        },
+        "page": 25
+      }
+    ]
+  }
+}
+📄 PAGE: 25
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 25, chars 1947-2643
+     Bbox: x=56.64, y=335.60, w=480.48, h=139.20
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 25: chars 1947-2643, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: a8cd10fa55b7
+  source_id: 1
+  estimated_tokens: 134
+  actual_tokens: 153
+
+📝 CONTENT (726 chars, 153 tokens):
+----------------------------------------
+Sozialistische Demokratie muß die Errungenschaften der bürgerlichen Demokratie in sich aufheben und sie muß weiter gehen als die durch Klasseninteressen begrenzte bürgerliche Demokratie. Aus Antrag S 27 Seite 8, Zeile 34: Füge ein nach: „... Widerstand des Großkapitals durchsetzen.“ den neuen Satz: „Die historischen Erfahrungen aller sozialistischen Revolutionen – nicht zuletzt auch die Erfahrungen von Chile 1973 – verbieten alle Illusionen über einen freiwilligen Rücktritt der Kapitalistenklasse von der Macht und einen gemütlichen, rein parlamentarisch-reformerischen „Spaziergang zum Sozialismus.“ (Weiter mit dem bestehenden Satz:) „Auseinandersetzungen werden im Sozialismus andauern, ...“
+
+
+================================================================================
+CHUNK #61
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Zum Abschnitt „Der Weg zum Sozialismus“
+💾 COMPRESSED METADATA SIZE: 228 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 259.68000419616703,
+          "width": 483.1552565426674,
+          "x": 56.63999938964844,
+          "y": 520.6400032043457
+        },
+        "char_range": {
+          "end": 3661,
+          "start": 2682
+        },
+        "page": 25
+      },
+      {
+        "bbox": {
+          "height": 145.9200001525879,
+          "width": 481.5673162868828,
+          "x": 56.63998055458069,
+          "y": 66.08001136779785
+        },
+        "char_range": {
+          "end": 789,
+          "start": 2
+        },
+        "page": 26
+      }
+    ]
+  }
+}
+📄 PAGES: 25 to 26 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 25, chars 2682-3661
+     Bbox: x=56.64, y=520.64, w=483.16, h=259.68
+   Fragment 1: page 26, chars 2-789
+     Bbox: x=56.64, y=66.08, w=481.57, h=145.92
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 26: chars 2-789, 1 bounding boxes
+  Page 25: chars 2682-3661, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: cec5593e2dc5
+  source_id: 1
+  estimated_tokens: 348
+  actual_tokens: 414
+
+📝 CONTENT (1808 chars, 414 tokens):
+----------------------------------------
+Aus Antrag S 22 Wir beantragen bei der Verabschiedung und weiteren Ausarbeitung der „Sozialismusvorstellungen der DKP“ als Arbeits- und Diskussionsgrundlage für die künftige Programmarbeit der DKP, die Aussagen zu folgenden Bereichen zu konkretisieren: 1.  Zu den ehemaligen sozialistischen Ländern Europas ( Sowjetunion u. a.); 2.  Zu bereits bestehenden sozialistischen Ländern auf anderen Kontinenten; 3.  Zu den allgemein gültigen Wesensmerkmalen des Sozialismus. * * * * * Aus Antrag S 01 1.  Antrag „Sozialismus - die historische Alternative zum Imperialismus - Sozialismusvorstellungen der DKP“ wird als Arbeits- und Diskussionsgrundlage für die weitere Programmarbeit beschlossen. 2.  Als Diskussions- und Arbeitsgrundlage beschlossenes Material und weitere Fragestellungen werden in einem Anhang zu dem Text als Diskussionsangebot veröffentlicht. 3.  Die Programmkommission wird beauftragt, weitere Diskussionen im Rahmen der Erarbeitung unseres neuen Parteiprogramms zu organisieren. 4.  Der Parteivorstand wird beauftragt, eine ständige Kommission zu bilden, die die Aufgabe erhält, den Sozialismus der DDR zu erforschen. Zum 50. Jahrestag der Gründung der DDR soll eine erte Arbeitskonferenz durchgeführt werden. Die Kommission soll Ost-West-paritätisch besetzt sein und von einem Parteivorstandsmitglied geleitet werden. Aus Antrag S 12 Der 14. Parteitag beschließt, mit der Erarbeitung eines neuen Parteiprogramms zu beginnen. Wir können auf das Statut und wichtige programmatische Bausteine aufbauen, so auf die Thesen zur programmatischen Orientierung und das Aktionsprogramm. Einbezogen werden die von diesem Parteitag als Arbeits- und Diskussionsgrundlage beschlossenen Sozialismusvorstellungen der DKP. Der Parteivorstand wird beauftragt, einen Entwurf zu erarbeiten.
+
+
+================================================================================
+CHUNK #62
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Zum Abschnitt „Der Weg zum Sozialismus“
+💾 COMPRESSED METADATA SIZE: 173 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 148.0799713897705,
+          "width": 479.8895029765017,
+          "x": 56.63998317718506,
+          "y": 219.92001152038577
+        },
+        "char_range": {
+          "end": 1841,
+          "start": 789
+        },
+        "page": 26
+      }
+    ]
+  }
+}
+📄 PAGE: 26
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 26, chars 789-1841
+     Bbox: x=56.64, y=219.92, w=479.89, h=148.08
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 26: chars 789-1841, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 1b1a2b89e617
+  source_id: 1
+  estimated_tokens: 216
+  actual_tokens: 210
+
+📝 CONTENT (1066 chars, 210 tokens):
+----------------------------------------
+Begründung Die DKP benötigt ein neues Parteiprogramm, in dem dargelegt wird, wie wir uns Alternativen zu diesem Gesellschaftssystem vorstellen können und welcher Weg aus unserer Sicht notwendig ist, um zu diesem Ziel zu gelangen. Mit einem neuen Programm erarbeiten wir zugleich wesentliche Erfahrungen, die sich aus dem Zusammenbruch und der Zerschlagung des Sozialismus in Europa ergeben. Die DKP profiliert sich als eine Partei, die die wissenschaftliche Weltanschauung, die Theorien von Marx, Engels und Lenin und anderer marxistischer Wissenschaftlerinnen und Wissenschaftler bewahrt und auf dieser Grundlage neue, zukunftsorientierte Antworten gibt. Die gründliche Erarbeitung inner- und außerhalb der Partei kann ein wichtiger Bestandteil des notwendigen Dialogs der Linken in der Bundesrepublik Deutschland sein. Gleichzeitig dient diese Diskussion der Selbstverständigung der Mitglieder der DKP. Das Programm ist eine Möglichkeit, vor allem interessierten jungen Menschen ein politisches Angebot zu machen. Es kann ein Werbeträger für die DKP sein.
+
+
+================================================================================
+CHUNK #63
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Beschluß des 14. Parteitags der DKP:
+💾 COMPRESSED METADATA SIZE: 166 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 12.0,
+          "width": 208.60950000831505,
+          "x": 193.1999969482422,
+          "y": 179.84001541137695
+        },
+        "char_range": {
+          "end": 72,
+          "start": 38
+        },
+        "page": 27
+      }
+    ]
+  }
+}
+📄 PAGE: 27
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 27, chars 38-72
+     Bbox: x=193.20, y=179.84, w=208.61, h=12.00
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 27: chars 38-72, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: be6d47dbbedb
+  source_id: 1
+  estimated_tokens: 5
+  actual_tokens: 10
+
+📝 CONTENT (36 chars, 10 tokens):
+----------------------------------------
+„Sozialismusvorstellungen der DKP:
+
+
+================================================================================
+CHUNK #64
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Sozialismus - die historische Alternative zum Kapitalismus“
+💾 COMPRESSED METADATA SIZE: 229 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 148.32000549316405,
+          "width": 474.3426254829907,
+          "x": 56.63999605178833,
+          "y": 218.24001598358151
+        },
+        "char_range": {
+          "end": 966,
+          "start": 131
+        },
+        "page": 27
+      },
+      {
+        "bbox": {
+          "height": 54.72003738403319,
+          "width": 390.29059960304113,
+          "x": 56.63999938964844,
+          "y": 75.91997241973877
+        },
+        "char_range": {
+          "end": 232,
+          "start": 2
+        },
+        "page": 28
+      }
+    ]
+  }
+}
+📄 PAGES: 27 to 28 (multi-page chunk)
+📊 FRAGMENTS: 2 items
+   Fragment 0: page 27, chars 131-966
+     Bbox: x=56.64, y=218.24, w=474.34, h=148.32
+   Fragment 1: page 28, chars 2-232
+     Bbox: x=56.64, y=75.92, w=390.29, h=54.72
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  2 pages with content
+  Page 28: chars 2-232, 1 bounding boxes
+  Page 27: chars 131-966, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: c9adc50e20a7
+  source_id: 1
+  estimated_tokens: 201
+  actual_tokens: 276
+
+📝 CONTENT (1092 chars, 276 tokens):
+----------------------------------------
+1.  Der Antrag „Sozialismus - die historische Alternative zum Imperialismus - Sozialismusvorstellungen der DKP“ wird als Arbeits- und Diskussionsgrundlage für die weitere Programmarbeit beschlossen. 2.  Als Arbeits- und Diskussionsgrundlage beschlossene Anträge und weitere Fragestellungen werden in einem Anhang zu dem Text als Diskussionsangebot veröffentlicht. 3.  Die Programmkommission wird beauftragt, weitere Diskussionen im Rahmen der Erarbeitung unseres neuen Parteiprogramms zu organisieren. 4.  Der Parteivorstand wird beauftragt, eine ständige Kommission zu bilden, die die Aufgabe erhält, den Sozialismus der DDR zu erforschen. Zum 50. Jahrestag der Gründung der DDR soll eine erste Arbeitskonferenz durchgeführt werden. Die Kommission soll Ost-West-paritätisch besetzt sein und von einem Parteivorstandsmitglied geleitet werden. DKP-Parteivorstand DKP-Bezirksvorstand Brandenburg Hoffnungstraße 18, 45127 Essen, c/o Brigitte Müller Telefon 0201-22 51 48/49 Schulwinkel 5, 14641 Wansdorf Fax 0201-20 24 67 Telefon 033231-6 06 61 eMail: dkp.pv@t-online.de Internet::
+
+
+================================================================================
+CHUNK #65
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Sozialismus - die historische Alternative zum Kapitalismus“
+💾 COMPRESSED METADATA SIZE: 174 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 372.9600257110596,
+          "width": 383.75504238584045,
+          "x": 56.63999652862549,
+          "y": 122.719970703125
+        },
+        "char_range": {
+          "end": 1260,
+          "start": 232
+        },
+        "page": 28
+      }
+    ]
+  }
+}
+📄 PAGE: 28
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 28, chars 232-1260
+     Bbox: x=56.64, y=122.72, w=383.76, h=372.96
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 28: chars 232-1260, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: 41692786d7d9
+  source_id: 1
+  estimated_tokens: 215
+  actual_tokens: 379
+
+📝 CONTENT (1073 chars, 379 tokens):
+----------------------------------------
+DKP in Sachsen-Anhalt http://home-t-online.de/home/dkp.pv c/o Klaus Neuber Lützener Straße 15, DKP-Bezirksvorstand 06231 Bad Dürrenberg Schleswig-Holstein Stadtfeldkamp 22, 24114 Kiel DKP in Sachsen Telefon 0431-67 10 84 c/o Jürgen Voigt Culitzscher Straße 34, DKP-Bezirksvorstand Hamburg 08112 Wilkau-Haßlau Tarpenbekstraße 66, 20251 Hamburg Telefon 040-4 80 49 00 DKP in Thüringen Fax 040-4 80 42 19 Postfach 66, 99002 Erfurt DKP-Bezirksvorstand Bremen Karl-Liebknecht-Schule der DKP c/o Christoph Gerdes Am Stadtpark 68, 51373 Leverkusen Fritz-Reuter-Straße 13, Telefon 0214-4 54 18 27576 Bremerhaven Fax 0214-4 64 50 Telefon 0471-5 77 49 DKP-Bezirksvorstand Niedersachsen Volgersweg 6 a, 30175 Hannover Telefon 0511-34 42 23 DKP-Bezirksvorstand Ruhr-Westfalen Hoffnungstraße 18, 45127 Essen Telefon 0201-22 51 47 Fax 0201-20 24 67 DKP-Bezirksvorstand Rheinland-Westfalen Am Stadtpark 68, 51373 Leverkusen Telefon 0214-4 93 23 Fax 0214-4 64 50 DKP-Bezirksvorstand Hessen Hansteinstraße 4, 60318 Frankfurt/Main Telefon und Fax 069-5 97 56 73 (Büro Di. und Do.
+
+
+================================================================================
+CHUNK #66
+================================================================================
+📑 HEADING: lismus > Inhalt > Demokratie > oder Ergänzungsanträge > Sozialismus - die historische Alternative zum Kapitalismus“
+💾 COMPRESSED METADATA SIZE: 175 bytes
+🔍 DECOMPRESSED METADATA STRUCTURE:
+{
+  "format_location": {
+    "format": "Pdf",
+    "fragments": [
+      {
+        "bbox": {
+          "height": 288.71999065399166,
+          "width": 141.172501312856,
+          "x": 56.63999652862549,
+          "y": 487.75999641418457
+        },
+        "char_range": {
+          "end": 1862,
+          "start": 1260
+        },
+        "page": 28
+      }
+    ]
+  }
+}
+📄 PAGE: 28
+📊 FRAGMENTS: 1 items
+   Fragment 0: page 28, chars 1260-1862
+     Bbox: x=56.64, y=487.76, w=141.17, h=288.72
+
+🔄 DOCUMENT RANGE CONVERSION (for rznapp):
+  1 pages with content
+  Page 28: chars 1260-1862, 1 bounding boxes
+📊 CORE DATA:
+  chunk_id: ada12951d775
+  source_id: 1
+  estimated_tokens: 117
+  actual_tokens: 223
+
+📝 CONTENT (633 chars, 223 tokens):
+----------------------------------------
+13-19 Uhr besetzt) DKP-Bezirksvorstand Rheinland-Pfalz Hermannstraße 36, 67547 Worms DKP-Bezirksvorstand Saar Ebersteinstraße 6, 66117 Saarbrücken Telefon 0681-5 89 62 04 Fax 0681-5 84 62 03 DKP-Bezirksvorstand Baden-Württemberg Reinsburgstraße 178 A, 70197 Stuttgart Telefon 0711-6 59 99 00 DKP-Bezirksvorstand Nordbayern Schweppermannstraße 19, 90408 Nürnberg DKP-Bezirksvorstand Südbayern c/o Werner Feldmann Dornröschenweg 5, 82223 Eichenau Telefon 08141-2 28 79 DKP-Bezirksvorstand Berlin Franz-Mehring-Platz 1, 10243 Berlin Telefon und Fax 030-29 78 31 32 DKP in Mecklenburg-Vorpommern Postfach 10 72 40, 18011 Rostock
+
+
+================================================================================
+SUMMARY:
+================================================================================
+Total chunks: 67
+Total characters: 100502
+Total tokens: 22251
+Token stats: min=1, max=434, avg=332
+Pages covered: {11, 14, 21, 24, 28, 2, 17, 8, 13, 15, 5, 22, 20, 25, 26, 9, 27, 18, 16, 10, 23, 12, 1, 7, 19, 6}
+Multi-page chunks: 21
+Total compressed metadata size: 12831 bytes

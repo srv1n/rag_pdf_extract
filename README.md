@@ -1,295 +1,299 @@
 # PDF Extract - Advanced PDF Content Extraction Library
 
-[![Build Status](https://github.com/jrmuizel/pdf-extract/actions/workflows/rust.yml/badge.svg)](https://github.com/jrmuizel/pdf-extract/actions)
-[![crates.io](https://img.shields.io/crates/v/pdf-extract.svg)](https://crates.io/crates/pdf-extract)
-[![Documentation](https://docs.rs/pdf-extract/badge.svg)](https://docs.rs/pdf-extract)
+A Rust library for extracting structured content from PDF files with precise positioning data and intelligent text processing for RAG applications.
 
-A powerful Rust library for extracting structured content from PDF files with precise positioning data and intelligent chunking for RAG (Retrieval-Augmented Generation) applications.
+## Features
 
-## 🚀 Features
+- **Text Extraction with Layout Analysis** - Extracts text with precise positioning, font information, and layout awareness
+- **Form XObject Support** - Handles text embedded in PDF Form XObjects (common in legal documents)
+- **Geometric Heading Detection** - Uses visual/geometric features instead of just font properties
+- **Smart Line Joining** - Joins continuation lines while preserving document structure
+- **Token-Aware Chunking** - Splits content respecting sentence/paragraph boundaries
+- **Location Tracking** - Maintains page numbers, bounding boxes, and character ranges for highlighting
+- **Header/Footer Filtering** - Automatically identifies and filters repetitive content
+- **OCR Integration** - Built-in support for scanned documents
 
-- **Advanced Text Extraction** - Extract text with precise positioning and font information
-- **Intelligent Chunking** - Token-aware splitting optimized for LLM consumption
-- **Header/Footer Detection** - Automatic identification and filtering of repetitive content
-- **Multi-page Support** - Track content spanning multiple pages with detailed fragments
-- **OCR Integration** - Built-in OCR support for scanned documents
-- **Structured Schema** - Modern schema with compressed metadata for efficient storage
-- **Search Highlighting** - Precise bounding boxes and quads for visual highlighting
-- **Production Ready** - Optimized for high-throughput document processing
-
-## 📦 Installation
-
-Add this to your `Cargo.toml`:
+## Installation
 
 ```toml
 [dependencies]
 pdf-extract = "0.7.7"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
 ```
 
-## 🔧 Quick Start
+## Quick Start
 
-### Basic Usage
+### Basic Extraction
 
 ```rust
 use pdf_extract::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Extract content from PDF file
-    let results = parse_pdf("document.pdf", 1, "file", None, None, None, Some(500), None)?;
-    
+    let results = parse_pdf(
+        "document.pdf",
+        1,              // source_id
+        "file",         // source_type
+        None,           // OCR config
+        None,           // OCR cache
+        None,           // resume from
+        Some(500),      // max tokens per chunk
+        None            // LAParams (use default)
+    )?;
+
     for result in results {
         println!("Content: {}", result.content_core.content);
         println!("Tokens: {}", result.content_core.token_count);
-        
-        // Extract PDF-specific location data
-        let pdf_location = extract_pdf_location(&result.content_ext)?;
-        println!("Pages: {} to {}", 
-            pdf_location.page_range.start, 
-            pdf_location.page_range.end);
     }
-    
+
     Ok(())
 }
 ```
 
-### With OCR Support
+### With Layout Analysis
+
+Layout analysis enables better text extraction for complex documents:
 
 ```rust
 use pdf_extract::*;
 
-// Configure OCR with model paths
-let ocr_config = OcrConfig {
-    detection_model: Some("models/text-detection.rten".to_string()),
-    recognition_model: Some("models/text-recognition.rten".to_string()),
-};
-
-let results = parse_pdf(
-    "scanned_document.pdf",
-    1,                    // source_id
-    "file",              // source_type
-    Some(ocr_config),    // OCR configuration
-    None,                // OCR cache (optional)
-    None,                // resume from (optional)
-    Some(1000),          // max tokens per chunk
-    None                 // LAParams (layout analysis params)
-)?;
-```
-
-**Note:** OCR models must be downloaded separately:
-```bash
-# Download official OCRS models (2.5MB + 9.7MB)
-curl -L https://ocrs-models.s3-accelerate.amazonaws.com/text-detection.rten -o models/text-detection.rten
-curl -L https://ocrs-models.s3-accelerate.amazonaws.com/text-recognition.rten -o models/text-recognition.rten
-```
-
-## 📋 Schema Overview
-
-The library returns structured data in two main components:
-
-### ContentCore
-The primary content structure:
-
-```rust
-pub struct ContentCore {
-    pub chunk_id: String,         // blake3 hash of content
-    pub source_id: i64,           // your source identifier
-    pub source_type: String,      // "file" | "web" | "api"
-    pub content: String,          // extracted text
-    pub token_count: i32,         // estimated token count
-    pub headings_json: Option<String>, // hierarchical headings
-    pub status: String,           // extraction status
-    pub schema_version: i32,      // for future compatibility
-    pub created_at: i64,          // unix timestamp
-}
-```
-
-### ContentExt
-Compressed metadata with positioning information:
-
-```rust
-pub struct ContentExt {
-    pub chunk_id: String,
-    pub ext_json: Vec<u8>,        // zstd compressed metadata
-}
-```
-
-The compressed metadata includes:
-- **PDF Location Data** - Page ranges, character positions, bounding boxes
-- **Fragment Information** - Per-page positioning with quads for highlighting
-- **Text Flow** - Reading order and layout type detection
-
-## 🎯 Advanced Features
-
-### Precise Positioning
-
-Extract exact locations for search highlighting:
-
-```rust
-let pdf_location = extract_pdf_location(&result.content_ext)?;
-
-for fragment in pdf_location.fragments {
-    println!("Page {}: chars {}-{}", 
-        fragment.page, 
-        fragment.char_range.start, 
-        fragment.char_range.end);
-    
-    // Use quads for precise highlighting
-    for quad in fragment.quads {
-        println!("Highlight area: ({},{}) to ({},{})", 
-            quad.x1, quad.y1, quad.x3, quad.y3);
-    }
-}
-```
-
-### Token-Aware Chunking
-
-Intelligent splitting respects token limits:
-
-```rust
-// Chunks will be optimally split to stay under 500 tokens
-let results = parse_pdf("large_document.pdf", 1, "file", None, None, None, Some(500), None)?;
-
-for result in results {
-    assert!(result.content_core.token_count <= 500);
-}
-```
-
-### Hierarchical Headings
-
-Access document structure:
-
-```rust
-if let Some(headings_json) = &result.content_core.headings_json {
-    let headings: Vec<String> = serde_json::from_str(headings_json)?;
-    println!("Section: {}", headings.join(" > "));
-}
-```
-
-## 🔍 Metadata Extraction
-
-Decompress and analyze metadata:
-
-```rust
-let metadata = decompress_content_ext(&result.content_ext)?;
-
-if let Some(extraction_meta) = metadata.get("extraction_metadata") {
-    if let Some(bbox) = extraction_meta.get("bbox") {
-        println!("Bounding box: {:?}", bbox);
-    }
-}
-```
-
-## ⚡ Performance Tips
-
-1. **Batch Processing** - Process multiple files in parallel
-2. **Token Limits** - Use appropriate token limits for your use case
-3. **OCR Selective** - Only enable OCR for scanned documents
-4. **Compression** - Metadata is automatically compressed with zstd
-
-## 🛠️ Integration Examples
-
-### Database Storage
-
-```rust
-// Store in your database
-struct DocumentChunk {
-    id: String,
-    source_id: i64,
-    content: String,
-    token_count: i32,
-    metadata: Vec<u8>,  // compressed ContentExt.ext_json
-    created_at: i64,
-}
-
-let chunk = DocumentChunk {
-    id: result.content_core.chunk_id,
-    source_id: result.content_core.source_id,
-    content: result.content_core.content,
-    token_count: result.content_core.token_count,
-    metadata: result.content_ext.ext_json,
-    created_at: result.content_core.created_at,
-};
-```
-
-### Vector Search
-
-```rust
-// Prepare for embedding
-let chunks: Vec<String> = results.iter()
-    .map(|r| r.content_core.content.clone())
-    .collect();
-
-// Generate embeddings and store with chunk_id as reference
-```
-
-## 📚 API Reference
-
-### Main Functions
-
-- `parse_pdf()` - Main extraction function
-- `extract_pdf_location()` - Extract PDF positioning data
-- `decompress_content_ext()` - Decompress metadata
-- `create_content_core()` - Create ContentCore structure
-- `create_content_ext()` - Create ContentExt structure
-
-### Data Structures
-
-- `ExtractionResult` - Combined content and metadata
-- `ContentCore` - Primary content structure
-- `ContentExt` - Compressed metadata
-- `PdfLocation` - PDF-specific positioning
-- `PageFragment` - Per-page position data
-- `FormatLocation` - Multi-format location enum
-
-## 🔧 Configuration
-
-### OCR Settings
-
-The OCR feature includes intelligent noise filtering to remove single characters and gibberish:
-
-```rust
-// OCR with custom settings
-let ocr_config = OcrConfig {
-    detection_model: Some("models/text-detection.rten".to_string()),
-    recognition_model: Some("models/text-recognition.rten".to_string()),
-};
+// Enable layout analysis with Form XObject support
+let mut laparams = LAParams::default();
+laparams.all_texts = true;  // Include text from Form XObjects
 
 let results = parse_pdf(
     "document.pdf",
     1,
     "file",
-    Some(ocr_config),    // OCR configuration
-    None,                // OCR cache
-    None,                // resume from
-    Some(500)            // chunk size
+    None,
+    None,
+    None,
+    Some(500),
+    Some(laparams)
 )?;
 ```
 
-**OCR Features:**
-- Automatic noise filtering (removes gibberish and single characters)
-- Goldilocks sizing (optimal 240-1600px range)
-- Orientation correction for rotated/flipped images
-- Support for multiple image formats in PDFs
+**When to use layout analysis:**
+- Legal documents (text often in Form XObjects)
+- Multi-column layouts
+- Complex document structures
+- When you need precise line grouping
 
-### Chunking Options
+## Architecture
 
-- `Some(500)` - Split at ~500 tokens
-- `Some(1000)` - Split at ~1000 tokens  
-- `None` - Natural paragraph boundaries
+### Text Extraction Pipeline
 
-## 🤝 Contributing
+```
+PDF File
+  ↓
+Layout Analysis (lib.rs process_stream)
+  - Glyph collection from content streams
+  - Form XObject processing (if all_texts=true)
+  - Line grouping by Y-coordinate proximity
+  ↓
+Segment Processing (document/processing.rs)
+  - Line joining (within Form XObjects)
+  - Segment merging (across Form XObjects)
+  - Title block entity merging
+  ↓
+Heading Detection (document/analysis.rs)
+  - Geometric features (height, width ratios)
+  - ALL CAPS detection
+  - Standalone line detection
+  ↓
+Chunking (chunk_accumulator.rs)
+  - Token-limited chunks
+  - Sentence/paragraph boundary awareness
+  - Location metadata tracking
+```
 
-We welcome contributions! Please see our [Integration Guide](INTEGRATION.md) for production deployment examples.
+### Key Components
 
-## 📄 License
+**Layout Analysis (lib.rs)**
+- Extracts glyphs from PDF content streams
+- Groups glyphs into visual lines
+- Processes Form XObjects when `LAParams.all_texts = true`
+- Joins lines within XObjects based on terminal punctuation
 
-MIT License - see [LICENSE](LICENSE) file for details.
+**Segment Processing (document/processing.rs)**
+- `merge_continuation_segments()` - Merges segments on same visual line (Y-proximity)
+- `merge_title_block_entities()` - Joins consecutive short ALL CAPS lines (party names, etc.)
+- Filters headers/footers based on repetition patterns
 
-## 🔗 Related Projects
+**Heading Detection (document/analysis.rs)**
+- `classify_line()` - Uses geometric features:
+  - Height ratio vs body text
+  - Width ratio (short lines)
+  - ALL CAPS detection
+  - Standalone detection (next line at margin)
+- Title block heuristic: 3+ consecutive heading-like lines = metadata block
 
-- [PDFExtract](https://github.com/elacin/PDFExtract/) - Alternative PDF extraction
-- [pdfminer](https://github.com/euske/pdfminer) - Python PDF mining tool
-- [marker](https://github.com/VikParuchuri/marker) - PDF to markdown converter
-- [layout-parser](https://github.com/Layout-Parser/layout-parser) - Document layout analysis
+**Chunking (chunk_accumulator.rs)**
+- Token-limited accumulation with GPT-4 tokenizer
+- Intelligent boundary detection (sentences, paragraphs)
+- Tracks heading hierarchy per chunk
+- Maintains location metadata (pages, bounding boxes, char ranges)
+
+## Data Schema
+
+### ExtractionResult
+
+```rust
+pub struct ExtractionResult {
+    pub content_core: ContentCore,
+    pub content_ext: ContentExt,
+}
+
+pub struct ContentCore {
+    pub chunk_id: String,           // blake3(content)
+    pub source_id: i64,
+    pub source_type: String,        // "file" | "web" | "api"
+    pub content: String,            // extracted text
+    pub token_count: i32,
+    pub headings_json: Option<String>,  // heading hierarchy
+    pub status: String,
+    pub schema_version: i32,
+    pub created_at: i64,
+}
+
+pub struct ContentExt {
+    pub chunk_id: String,
+    pub ext_json: Vec<u8>,          // zstd compressed location data
+}
+```
+
+### Location Tracking
+
+```rust
+pub enum FormatLocation {
+    Pdf(PdfLocation),
+    // Other formats...
+}
+
+pub struct PdfLocation {
+    pub fragments: Vec<PageFragment>,
+}
+
+pub struct PageFragment {
+    pub page: u32,
+    pub char_range: CharRange,      // start, end positions
+    pub bbox: BoundingBox,          // x, y, width, height
+}
+```
+
+## Configuration
+
+### LAParams (Layout Analysis Parameters)
+
+```rust
+pub struct LAParams {
+    pub char_margin: f32,        // Max horizontal gap for word grouping (default: 2.0)
+    pub word_margin: f32,        // Space injection threshold (default: 0.10)
+    pub line_overlap: f32,       // Min vertical overlap for same line (default: 0.5)
+    pub line_margin: f32,        // Max vertical gap for text box grouping (default: 0.5)
+    pub boxes_flow: f32,         // Reading order bias (default: 0.5)
+    pub detect_vertical: bool,   // Detect vertical text (default: false)
+    pub all_texts: bool,         // Include Form XObject text (default: false)
+}
+```
+
+**Important:** Set `all_texts = true` for documents with text in Form XObjects (common in legal PDFs).
+
+## Examples
+
+### Extract with Markdown Formatting
+
+```bash
+cargo run --release --example extract_markdown input.pdf > output.md
+```
+
+This example:
+- Uses layout analysis with `all_texts = true`
+- Converts headings to markdown format (##)
+- Joins continuation lines intelligently
+- Preserves paragraph structure
+
+### Basic Text Extraction
+
+```bash
+cargo run --release --example extract input.pdf 500
+```
+
+Arguments:
+- `input.pdf` - PDF file path
+- `500` - max tokens per chunk
+
+## Document Type Considerations
+
+### Immutable Documents (Court Cases, Published Papers)
+- Use library's built-in chunking
+- Larger chunks acceptable
+- Simpler storage path (no CDC tracking needed)
+
+### Editable Documents (Word docs, collaborative documents)
+- Upstream application handles CDC (Change Data Capture)
+- Fine-grained chunk tracking for citation stability
+- Library provides segments + locations, app re-chunks as needed
+
+**Architecture Decision:** Document type classification and CDC logic belong in the application layer, not the PDF extraction library. This library focuses on quality extraction + location metadata.
+
+## Testing
+
+### Evaluation System
+
+```bash
+# Run evaluation on corpus
+cd eval && python eval.py
+
+# Generate reference extractions (Gemini, MarkItDown)
+python generate_refs.py
+
+# Compare outputs side-by-side
+python compare.py "path/to/file.pdf"
+```
+
+Evaluation corpus includes:
+- Legal documents (Indian court cases)
+- Multi-column layouts
+- Documents with embedded fonts
+- Scanned documents (OCR test cases)
+
+## Known Limitations
+
+### Heading Detection
+- Some edge cases with signature lines (`...J.`) detected as headings
+- Aggressive merging may lose some intended line breaks in title blocks
+- Fine-tuning available via geometric thresholds in `document/analysis.rs`
+
+### Layout Analysis
+- Y-tolerance for line grouping: `body_line_height * 0.25`
+- May need adjustment for documents with unusual line spacing
+
+### Form XObjects
+- Must set `LAParams.all_texts = true` to extract text from Form XObjects
+- This is common in legal documents where text is embedded for layout control
+
+## Performance Considerations
+
+- Layout analysis adds overhead but improves quality for complex documents
+- Token counting uses estimation until 50% of chunk capacity, then switches to exact
+- Header/footer detection requires full document pass
+- OCR (when enabled) is the primary performance bottleneck
+
+## Contributing
+
+The codebase is organized as:
+
+```
+src/
+├── lib.rs                      # Core PDF parsing, layout analysis
+├── chunk_accumulator.rs        # Token-aware chunking
+├── layout_params.rs            # LAParams configuration
+└── document/
+    ├── processing.rs           # Segment processing, merging
+    ├── analysis.rs             # Heading detection
+    ├── stats.rs                # Document statistics, visual lines
+    └── header_footer.rs        # Header/footer filtering
+```
+
+## License
+
+This project is licensed under the MIT License.

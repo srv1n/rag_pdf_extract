@@ -1,0 +1,16 @@
+--> [la_heap] benchmarks/pdfs/documents_stack.pdf
+=== Extracting PDF: benchmarks/pdfs/documents_stack.pdf ===
+Max tokens per chunk: 500
+
+Total chunks extracted: 0
+
+================================================================================
+SUMMARY:
+================================================================================
+Total chunks: 0
+Total characters: 0
+Total tokens: 0
+Token stats: min=0, max=0, avg=0
+Pages covered: {}
+Multi-page chunks: 0
+Total compressed metadata size: 0 bytes

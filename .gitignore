@@ -8,3 +8,5 @@ tests/docs_cache
 /pdfminer
 pdfminer
 pdfminer/*
+AGENTS.md
+.DS_Store

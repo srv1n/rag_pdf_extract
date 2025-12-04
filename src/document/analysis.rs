@@ -1,7 +1,7 @@
-use super::stats::DocumentStats;
-use crate::{TextSegment, NUMBERED_HEADING};
+use super::stats::{DocumentStats, VisualLine};
+use crate::TextSegment;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum TextLevel {
     H1,
     H2,
@@ -13,144 +13,260 @@ pub enum TextLevel {
     SubBody,
 }
 
-pub fn is_heading(segment: &TextSegment, doc_stats: &DocumentStats) -> TextLevel {
-    // let fg_color = segment.fill_color.unwrap_or((0, 0, 0)); // default black
-    // let bg_color = segment.stroke_color.unwrap_or((255, 255, 255)); // default white
+impl TextLevel {
+    pub fn is_heading(&self) -> bool {
+        matches!(
+            self,
+            TextLevel::H1
+                | TextLevel::H2
+                | TextLevel::H3
+                | TextLevel::H4
+                | TextLevel::H5
+                | TextLevel::H6
+        )
+    }
+}
 
-    // // Calculate contrast ratio
-    // let cr = contrast_ratio(fg_color, bg_color);
+/// Context about the next line, used for standalone detection
+#[derive(Debug, Clone)]
+pub struct NextLineContext {
+    pub starts_at_left_margin: bool,
+    pub y_gap: f64,
+    pub exists: bool,
+}
 
-    // // Filter low-contrast text (adjust threshold as needed)
-    // if cr < 1.5 {
-    //     // Catches near-invisible text but allows light gray
-    //     return TextLevel::Body;
-    // }
+impl Default for NextLineContext {
+    fn default() -> Self {
+        Self {
+            starts_at_left_margin: true,
+            y_gap: 0.0,
+            exists: false,
+        }
+    }
+}
 
-    // Additional heading checks
+/// Classify a visual line as heading or body text.
+///
+/// Uses geometric/visual features rather than just font properties:
+/// - Rendered height (bounding box) compared to body text
+/// - Line width compared to typical paragraph width
+/// - Whether the line is standalone (next line starts at left margin)
+/// - Whether the line has consistent styling (not mixed inline formatting)
+/// - Bold/emphasis detection
+pub fn classify_line(
+    line: &VisualLine,
+    next_line: Option<&VisualLine>,
+    doc_stats: &DocumentStats,
+) -> TextLevel {
+    let text = line.text();
+    let trimmed = text.trim();
+    let word_count = line.word_count();
 
-    // if segment.content first char is lower case then it is not a heading
+    // === BASIC GUARDS ===
 
-    let is_short = segment.content.split_whitespace().count() < 10;
-    // let not_short = segment.content.len() > 4;
-    let starts_with_alphanum = segment
-        .content
-        .trim()
+    // Empty content
+    if trimmed.is_empty() {
+        return TextLevel::Body;
+    }
+
+    // Starts with lowercase = continuation, not heading
+    if trimmed
         .chars()
-        .next()
-        .map_or(false, |c| c.is_alphanumeric());
-
-    let is_valid_short_content = |content: &str| {
-        let trimmed = content.trim();
-        if trimmed.len() >= 4 {
-            true
-        } else {
-            // Check if it's a number or Roman numeral
-            trimmed.parse::<u32>().is_ok() || is_roman_numeral(trimmed)
-        }
-    };
-
-    // let is_short = segment.content.split_whitespace().count() < 10 && is_valid_short_content(&segment.content);
-
-    fn is_roman_numeral(s: &str) -> bool {
-        let valid_chars = ['I', 'V', 'X'];
-        !s.is_empty() && s.chars().all(|c| valid_chars.contains(&c))
-    }
-
-    let is_numbered = NUMBERED_HEADING.is_match(&segment.content);
-
-    // Simple robustness guards to avoid garbage text being treated as headings
-    let trimmed = segment.content.trim();
-    let len_chars = trimmed.chars().count();
-    let whitespace_count = trimmed.chars().filter(|c| c.is_whitespace()).count();
-    let max_alpha_run = {
-        let mut max_run = 0usize;
-        let mut cur = 0usize;
-        for ch in trimmed.chars() {
-            if ch.is_alphabetic() { cur += 1; max_run = max_run.max(cur); } else { cur = 0; }
-        }
-        max_run
-    };
-    // Heuristic: very long strings with almost no spaces or huge uninterrupted alpha runs are unlikely to be human headings
-    if (len_chars > 40 && whitespace_count < 2) || max_alpha_run >= 30 {
-        return TextLevel::Body;
-    }
-
-    let is_potential_heading = is_short
-        && (starts_with_alphanum && is_valid_short_content(&segment.content) || is_numbered);
-
-    // Guard against extreme-size artifacts: very large font but overly long text often comes from non-visible layers.
-    // Drop heading classification when it's implausible for a heading.
-    let extreme_guard = {
-        let mult = std::env::var("PDF_EXTRACT_HEADING_SIZE_MULT")
-            .ok()
-            .and_then(|v| v.parse::<f64>().ok())
-            .unwrap_or(4.0);
-        segment.transformed_font_size >= doc_stats.body_transformed_size * mult
-            && segment.content.chars().count() > 80
-    };
-    if extreme_guard {
-        return TextLevel::Body;
-    }
-
-    // Check if the segment matches the body font and size
-    if segment.font_name == doc_stats.body_font
-        && (segment.transformed_font_size - doc_stats.body_transformed_size).abs() < 0.1
+        .find(|c| c.is_alphabetic())
+        .map_or(false, |c| c.is_lowercase())
     {
-        // If it matches body font and size, check if it's bold
-        if segment.is_bold && is_potential_heading {
-            return TextLevel::H6;
-        } else {
-            return TextLevel::Body;
-        }
-    }
-    // If it's smaller than the body text, consider it sub-body
-    else if segment.transformed_font_size < doc_stats.body_transformed_size {
-        return TextLevel::SubBody;
-    } else if (segment.transformed_font_size - doc_stats.body_transformed_size).abs() < 0.1 {
-        if segment.is_bold {
-            if !segment.content.chars().next().unwrap().is_lowercase() && is_potential_heading {
-                return TextLevel::H6;
-            } else {
-                return TextLevel::Body;
-            }
-        } else {
-            return TextLevel::Body;
-        }
-    }
-    // Find the closest heading level
-    else if is_potential_heading {
-        let closest_threshold = match doc_stats.transformed_thresholds.iter().min_by(|&&a, &&b| {
-            (a - segment.transformed_font_size)
-                .abs()
-                .partial_cmp(&(b - segment.transformed_font_size).abs())
-                .unwrap()
-        }) {
-            Some(threshold) => threshold,
-            None => return TextLevel::Body,
-        };
-
-        let index = doc_stats
-            .transformed_thresholds
-            .iter()
-            .position(|&r| r == *closest_threshold)
-            .unwrap();
-
-        return match index {
-            0 => TextLevel::H1,
-            1 => TextLevel::H2,
-            2 => TextLevel::H3,
-            3 => TextLevel::H4,
-            4 => TextLevel::H5,
-            _ => TextLevel::H6,
-        };
-    } else {
-        // If we can't determine a specific level, return Body as fallback
         return TextLevel::Body;
     }
 
-    // if is_numbered {
-    //     return TextLevel::H1;
-    // } else {
-    //     return TextLevel::Body;
-    // }
+    // Too long to be a heading (>12 words)
+    if word_count > 12 {
+        return TextLevel::Body;
+    }
+
+    // Paragraph/list numbers are never headings (e.g., "1.", "2.", "10.")
+    let is_number_only = trimmed
+        .chars()
+        .all(|c| c.is_ascii_digit() || c == '.' || c == ')' || c == '-' || c.is_whitespace());
+    if is_number_only && trimmed.len() <= 5 {
+        return TextLevel::Body;
+    }
+
+    // Text ending with sentence-continuing punctuation
+    if trimmed.ends_with(',') || trimmed.ends_with('-') || trimmed.ends_with(':') {
+        return TextLevel::Body;
+    }
+
+    // === GEOMETRIC CHECKS ===
+
+    // Check for mixed font sizes in line (indicates inline formatting, not heading)
+    // Tolerance of 1.0 point for font size variations
+    if !line.has_consistent_font_size(1.0) {
+        return TextLevel::Body;
+    }
+
+    // Height ratio: compare rendered height to body line height
+    let height_ratio = line.max_height / doc_stats.body_line_height.max(1.0);
+
+    // Width ratio: compare line width to typical paragraph width
+    let width_ratio = line.total_width / doc_stats.body_line_width.max(1.0);
+
+    // Is this line "short" (less than 70% of typical paragraph width)?
+    let is_short = width_ratio < 0.70;
+
+    // Is this line visually taller (rendered larger)?
+    let is_taller = height_ratio > 1.08;
+
+    // Is any segment bold?
+    let is_bold = line.has_bold();
+
+    // Is the line ALL CAPS? (common heading style, especially in legal docs)
+    let alpha_chars: String = trimmed.chars().filter(|c| c.is_alphabetic()).collect();
+    let is_all_caps = !alpha_chars.is_empty() && alpha_chars.chars().all(|c| c.is_uppercase());
+
+    // Margin tolerance for detecting left-aligned text
+    let margin_tolerance = doc_stats.body_line_width * 0.15; // 15% tolerance
+
+    // Is this a standalone line? (next line starts at left margin, below)
+    let is_standalone = match next_line {
+        Some(next) => {
+            let at_margin = (next.min_x - doc_stats.left_margin).abs() < margin_tolerance;
+            let y_gap = (line.y - next.y).abs();
+            // Next line starts at margin = current line is standalone
+            // Also consider larger Y gaps as section breaks
+            at_margin || y_gap > doc_stats.body_line_height * 1.5
+        }
+        None => true, // Last line is considered standalone
+    };
+
+    // === HEADING CLASSIFICATION ===
+
+    // Smaller than body text = not a heading
+    if height_ratio < 0.95 {
+        return TextLevel::SubBody;
+    }
+
+    // Primary signal: visually taller AND short AND standalone
+    if is_taller && is_short && is_standalone {
+        if height_ratio > 1.20 {
+            return TextLevel::H1;
+        } else {
+            return TextLevel::H2;
+        }
+    }
+
+    // Secondary signal: bold AND short AND standalone (even if same height as body)
+    if is_bold && is_short && is_standalone && word_count <= 10 {
+        return TextLevel::H2;
+    }
+
+    // Tertiary signal: ALL CAPS AND short (common in legal docs)
+    // Being short + ALL CAPS is a strong signal even without strict standalone check
+    // because short lines can't be flowing paragraphs
+    if is_all_caps && is_short && word_count <= 10 {
+        return TextLevel::H2;
+    }
+
+    // Quaternary signal: significantly taller even if not perfectly short
+    // (for centered headings that might span more width)
+    if height_ratio > 1.25 && is_standalone && word_count <= 10 {
+        return TextLevel::H1;
+    }
+
+    TextLevel::Body
+}
+
+/// Legacy function for backward compatibility.
+/// Classifies a single segment based on font properties.
+/// For better accuracy, use classify_line() with visual line context.
+pub fn is_heading(segment: &TextSegment, doc_stats: &DocumentStats) -> TextLevel {
+    let trimmed = segment.content.trim();
+    let word_count = trimmed.split_whitespace().count();
+
+    // === BASIC GUARDS ===
+
+    // Empty content
+    if trimmed.is_empty() {
+        return TextLevel::Body;
+    }
+
+    // Starts with lowercase = continuation, not heading
+    if trimmed
+        .chars()
+        .find(|c| c.is_alphabetic())
+        .map_or(false, |c| c.is_lowercase())
+    {
+        return TextLevel::Body;
+    }
+
+    // Too long to be a heading (>12 words)
+    if word_count > 12 {
+        return TextLevel::Body;
+    }
+
+    // Paragraph/list numbers are never headings (e.g., "1.", "2.", "10.")
+    let is_number_only = trimmed
+        .chars()
+        .all(|c| c.is_ascii_digit() || c == '.' || c == ')' || c == '-');
+    if is_number_only && trimmed.len() <= 5 {
+        return TextLevel::Body;
+    }
+
+    // Text ending with hyphen is a word continuation
+    if trimmed.ends_with('-') {
+        return TextLevel::Body;
+    }
+
+    // Text ending with comma is mid-sentence
+    if trimmed.ends_with(',') {
+        return TextLevel::Body;
+    }
+
+    // === GEOMETRIC-BASED DETECTION ===
+
+    // Use bounding box height instead of font size
+    let height_ratio = segment.height / doc_stats.body_line_height.max(1.0);
+
+    // Width ratio for "short" detection
+    let width_ratio = segment.width / doc_stats.body_line_width.max(1.0);
+    let is_short = width_ratio < 0.70;
+
+    // Smaller than body text = not a heading
+    if height_ratio < 0.95 {
+        return TextLevel::SubBody;
+    }
+
+    // Same height as body (within 8%) - only heading if bold AND short
+    if height_ratio < 1.08 {
+        if segment.is_bold && is_short && word_count <= 10 {
+            return TextLevel::H2;
+        }
+        return TextLevel::Body;
+    }
+
+    // Taller than body - potential heading if reasonably short
+    if !is_short && word_count > 8 {
+        return TextLevel::Body;
+    }
+
+    // Two-level heading hierarchy based on height
+    if height_ratio > 1.20 {
+        return TextLevel::H1;
+    } else if height_ratio > 1.08 {
+        return TextLevel::H2;
+    }
+
+    TextLevel::Body
+}
+
+/// Classify all lines in a document and return a mapping from line index to TextLevel
+pub fn classify_all_lines(lines: &[VisualLine], doc_stats: &DocumentStats) -> Vec<TextLevel> {
+    let mut classifications = Vec::with_capacity(lines.len());
+
+    for (i, line) in lines.iter().enumerate() {
+        let next_line = lines.get(i + 1);
+        let level = classify_line(line, next_line, doc_stats);
+        classifications.push(level);
+    }
+
+    classifications
 }

@@ -1,0 +1,5 @@
+--> [la_heap] benchmarks/pdfs/alternate-color-space.pdf
+=== Extracting PDF: benchmarks/pdfs/alternate-color-space.pdf ===
+Max tokens per chunk: 500
+
+Error parsing PDF: couldn't parse input: invalid file header

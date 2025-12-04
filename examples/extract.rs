@@ -22,7 +22,7 @@ fn main() {
     }
 
     // Default file and options
-    let default_file = "1.pdf".to_string();
+    let default_file = "10.pdf".to_string();
     let file = args.get(1).unwrap_or(&default_file);
     let max_tokens = args
         .get(2)

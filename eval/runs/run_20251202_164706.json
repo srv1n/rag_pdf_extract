@@ -1,0 +1,64 @@
+{
+  "timestamp": "20251202_164705",
+  "git_hash": "ddc8d25",
+  "total_files": 1,
+  "passed_files": 1,
+  "failed_files": 0,
+  "by_category": {
+    "legal": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "avg_empty_rate": 0.08163265306122448,
+      "avg_wer": null,
+      "avg_heading_f1": null
+    }
+  },
+  "avg_wer": null,
+  "avg_empty_rate": 0.08163265306122448,
+  "avg_heading_f1": null,
+  "diagnostics": [
+    {
+      "pdf_name": "1.pdf",
+      "category": "legal",
+      "wer": null,
+      "cer": null,
+      "heading_f1": null,
+      "empty_section_rate": 0.08163265306122448,
+      "content_coverage": null,
+      "empty_sections": [
+        {
+          "line": 639,
+          "level": 2,
+          "heading": "level domains (TLD)",
+          "next_heading_line": 640
+        },
+        {
+          "line": 669,
+          "level": 2,
+          "heading": "websites, reserved for the US government.",
+          "next_heading_line": 670
+        },
+        {
+          "line": 694,
+          "level": 2,
+          "heading": "In Figure 2 (right), we show the top",
+          "next_heading_line": 695
+        },
+        {
+          "line": 714,
+          "level": 2,
+          "heading": "3.2 Utterance Date",
+          "next_heading_line": 715
+        }
+      ],
+      "missing_headings": [],
+      "extra_headings": [],
+      "sample_errors": [],
+      "likely_causes": [],
+      "suggested_fixes": [],
+      "passed": true,
+      "failure_reasons": []
+    }
+  ]
+}

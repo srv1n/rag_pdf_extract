@@ -1,5 +1,7 @@
 use super::{
-    analysis::is_heading, stats::calculate_document_stats, HeaderFooterDetector, TextLevel,
+    analysis::{classify_line, is_heading},
+    stats::{calculate_document_stats, group_into_visual_lines},
+    HeaderFooterDetector, TextLevel,
 };
 use crate::chunk_accumulator::{
     contains_sentence_end, count_words as unicode_count_words, split_long_sentence, ChunkAccumulator,
@@ -78,6 +80,154 @@ pub struct PageText {
     pub segments: Vec<TextSegment>,
     pub page_num: u32,
     pub media_box: MediaBox,
+}
+
+/// Merge continuation segments: segments ending with space (continuation marker from layout analysis)
+/// should be joined with the following segment if it doesn't start a new paragraph
+/// AND they are at similar Y positions (same visual line).
+fn merge_continuation_segments(segments: Vec<TextSegment>) -> Vec<TextSegment> {
+    if segments.is_empty() {
+        return segments;
+    }
+
+    let mut result: Vec<TextSegment> = Vec::new();
+    let mut current: Option<TextSegment> = None;
+
+    for seg in segments {
+        match current.take() {
+            None => {
+                current = Some(seg);
+            }
+            Some(mut prev) => {
+                // Check if prev ends with space (continuation marker) and not newline
+                let prev_content = &prev.content;
+                let ends_with_space = prev_content.ends_with(' ')
+                    && !prev_content.trim_end().ends_with('\n');
+
+                // Must be on same page
+                let same_page = prev.page_num == seg.page_num;
+
+                // Check Y proximity - only merge if segments are on the same visual line
+                // Use font size as reference for line height
+                let y_tolerance = prev.font_size.max(seg.font_size).max(12.0) * 0.5;
+                let y_diff = (prev.y - seg.y).abs();
+                let same_line = y_diff < y_tolerance;
+
+                // Also check if the next segment starts a new paragraph
+                let next_starts_para = seg.content.trim_start().chars().next().map_or(false, |c| {
+                    c.is_ascii_digit() || c == '(' || c == '-' || c == '•'
+                }) || seg.content.trim_start().starts_with("A.")
+                    || seg.content.trim_start().starts_with("B.")
+                    || seg.content.trim_start().starts_with("C.");
+
+                let should_merge = ends_with_space && same_page && same_line && !next_starts_para;
+
+                if should_merge {
+                    // Merge: append seg's content to prev
+                    prev.content.push_str(&seg.content);
+                    // Keep prev's position, update end position
+                    prev.char_end = seg.char_end;
+                    current = Some(prev);
+                } else {
+                    // Don't merge, push prev and start fresh with seg
+                    result.push(prev);
+                    current = Some(seg);
+                }
+            }
+        }
+    }
+
+    // Don't forget the last segment
+    if let Some(last) = current {
+        result.push(last);
+    }
+
+    result
+}
+
+/// Merge consecutive short ALL CAPS lines that are likely part of the same entity (e.g., party names).
+/// Common pattern in legal documents: "COMPETITION COMMISSION" + "OF INDIA" should be one entity.
+/// Limit to 2-3 lines max to avoid over-merging.
+fn merge_title_block_entities(segments: Vec<TextSegment>) -> Vec<TextSegment> {
+    if segments.is_empty() {
+        return segments;
+    }
+
+    let mut result: Vec<TextSegment> = Vec::new();
+    let mut current: Option<TextSegment> = None;
+    let mut merge_count = 0;
+
+    for seg in segments {
+        match current.take() {
+            None => {
+                current = Some(seg);
+                merge_count = 0;
+            }
+            Some(mut prev) => {
+                let prev_trimmed = prev.content.trim();
+                let seg_trimmed = seg.content.trim();
+
+                // Check if both are ALL CAPS short lines (likely title block)
+                let prev_all_caps = prev_trimmed.chars().filter(|c| c.is_alphabetic())
+                    .all(|c| c.is_uppercase());
+                let seg_all_caps = seg_trimmed.chars().filter(|c| c.is_alphabetic())
+                    .all(|c| c.is_uppercase());
+
+                // Both must be reasonably short and on the same page
+                let prev_len = prev_trimmed.trim_start_matches('#').trim().len();
+                let seg_len = seg_trimmed.trim_start_matches('#').trim().len();
+                let same_page = prev.page_num == seg.page_num;
+
+                // At least one must be very short (like "OF INDIA", "FEDERATION & ORS.")
+                // This prevents merging long lines together
+                let has_short = prev_len <= 20 || seg_len <= 20;
+                let both_reasonable = prev_len < 40 && seg_len < 40;
+
+                // Check if they're part of a title block pattern
+                // Don't merge if prev ends with sentence punctuation or roles like "(S)"
+                let prev_ends_terminal = prev_trimmed.ends_with('.')
+                    || prev_trimmed.ends_with('!')
+                    || prev_trimmed.ends_with('?')
+                    || prev_trimmed.ends_with(')'); // Don't merge after "APPELLANT (S)"
+
+                // Don't merge section markers (VERSUS, headings with ##)
+                let is_section_marker = seg_trimmed.starts_with("##")
+                    || prev_trimmed.contains("VERSUS")
+                    || seg_trimmed.contains("VERSUS");
+
+                // Limit to 2 merges (3 total lines) to avoid over-merging title blocks
+                let under_limit = merge_count < 2;
+
+                let should_merge = prev_all_caps && seg_all_caps
+                    && both_reasonable && has_short
+                    && same_page
+                    && !prev_ends_terminal
+                    && !is_section_marker
+                    && under_limit;
+
+                if should_merge {
+                    // Merge with a space
+                    if !prev.content.ends_with(' ') {
+                        prev.content.push(' ');
+                    }
+                    prev.content.push_str(&seg.content);
+                    prev.char_end = seg.char_end;
+                    merge_count += 1;
+                    current = Some(prev);
+                } else {
+                    result.push(prev);
+                    current = Some(seg);
+                    merge_count = 0;
+                }
+            }
+        }
+    }
+
+    if let Some(last) = current {
+        result.push(last);
+    }
+
+    result
 }
 
 pub struct PostProcessor {
@@ -601,10 +751,18 @@ pub fn output_doc(
     // Sort by page number and flatten while maintaining order
     let mut page_results_vec: Vec<_> = page_results.into_iter().collect();
     page_results_vec.sort_by_key(|(page_num, _)| *page_num);
+
     let text_segments: Vec<TextSegment> = page_results_vec
         .into_iter()
         .flat_map(|(_, segments)| segments)
         .collect();
+
+    // Merge continuation segments: if a segment ends with space (continuation marker)
+    // and the next segment on the same page doesn't start a new paragraph, join them
+    let text_segments = merge_continuation_segments(text_segments);
+
+    // Merge title block entities: consecutive short ALL CAPS lines (typical in legal docs)
+    let text_segments = merge_title_block_entities(text_segments);
 
     // Create header/footer detector and analyze the document
     let mut header_footer_detector = HeaderFooterDetector::new(pages.len());
@@ -654,11 +812,40 @@ pub fn output_doc(
     let mut accumulator =
         ChunkAccumulator::new(max_tokens.unwrap_or(usize::MAX), tokenizer.clone());
 
-    let doc_stats = calculate_document_stats(&text_segments.clone());
+    let doc_stats = calculate_document_stats(&text_segments);
 
-    // Process segments with ChunkAccumulator
+    // Group segments into visual lines for better heading detection
+    let visual_lines = group_into_visual_lines(&text_segments, doc_stats.line_height_tolerance);
+
+    // Classify all lines and create a mapping from (page_num, y) -> TextLevel
+    // We use a HashMap with rounded Y values for lookup
+    let mut line_classifications: HashMap<(u32, i64), TextLevel> = HashMap::new();
+    for (i, line) in visual_lines.iter().enumerate() {
+        let next_line = visual_lines.get(i + 1);
+        let level = classify_line(line, next_line, &doc_stats);
+        // Round Y to nearest integer for lookup (segments on same line have similar Y)
+        let y_key = (line.y * 10.0).round() as i64; // 0.1 precision
+        line_classifications.insert((line.page_num, y_key), level);
+    }
+
+    debug!(
+        "Classified {} visual lines, {} unique classifications",
+        visual_lines.len(),
+        line_classifications.len()
+    );
+
+    // Track consecutive headings to group them together
+    let mut pending_headings: Vec<(TextLevel, String)> = Vec::new();
+
+    // Process segments
     for segment in text_segments {
-        let level = is_heading(&segment, &doc_stats);
+        // Look up the line classification for this segment
+        let y_key = (segment.y * 10.0).round() as i64;
+        let level = line_classifications
+            .get(&(segment.page_num, y_key))
+            .copied()
+            // Fallback to segment-based classification if not found
+            .unwrap_or_else(|| is_heading(&segment, &doc_stats));
 
         match level {
             TextLevel::H1
@@ -667,19 +854,62 @@ pub fn output_doc(
             | TextLevel::H4
             | TextLevel::H5
             | TextLevel::H6 => {
-                // Heading detected - flush current chunk if it has content
-                if !accumulator.is_empty() {
+                // Heading detected
+                // If we have body content in accumulator, flush before starting new heading sequence
+                if pending_headings.is_empty() && !accumulator.is_empty() {
                     document_structure.push(accumulator.create_output());
                     accumulator.reset();
                 }
 
-                // Update header hierarchy
-                header_hierarchy.push(level, segment.content.trim().to_string());
-                accumulator.set_headings(header_hierarchy.get_headers());
+                // Accumulate this heading (consecutive headings stay together)
+                pending_headings.push((level, segment.content.trim().to_string()));
             }
 
             TextLevel::Body | TextLevel::SubBody => {
-                // Don't flush just because of page boundaries - respect sentence boundaries instead
+                // Skip empty/whitespace-only body segments - don't flush headings yet
+                let content_trimmed = segment.content.trim();
+                if content_trimmed.is_empty() && !pending_headings.is_empty() {
+                    // Just add the whitespace segment, don't process headings yet
+                    accumulator.add_segment(segment);
+                    continue;
+                }
+
+                // Process any pending headings first
+                if !pending_headings.is_empty() {
+                    // Heuristic: 3+ consecutive heading-like lines = title/metadata block
+                    // 1-2 consecutive heading-like lines = actual section headings
+                    let is_title_block = pending_headings.len() >= 3;
+
+                    for (h_level, h_text) in &pending_headings {
+                        let heading_content = if is_title_block {
+                            // Title block: no markdown heading markers, just plain text
+                            format!("{}\n", h_text)
+                        } else {
+                            // Actual heading: add markdown markers
+                            let prefix = match h_level {
+                                TextLevel::H1 => "# ",
+                                TextLevel::H2 => "## ",
+                                TextLevel::H3 => "### ",
+                                TextLevel::H4 => "#### ",
+                                TextLevel::H5 => "##### ",
+                                TextLevel::H6 => "###### ",
+                                _ => "",
+                            };
+                            format!("{}{}\n", prefix, h_text)
+                        };
+                        let mut heading_seg = segment.clone();
+                        heading_seg.content = heading_content;
+                        accumulator.add_segment(heading_seg);
+                    }
+                    // Update hierarchy with last heading (for context tracking)
+                    if !is_title_block {
+                        if let Some((h_level, h_text)) = pending_headings.last() {
+                            header_hierarchy.push(*h_level, h_text.clone());
+                            accumulator.set_headings(header_hierarchy.get_headers());
+                        }
+                    }
+                    pending_headings.clear();
+                }
 
                 // Check if we can add this segment
                 if !accumulator.can_add_segment(&segment) {
@@ -958,7 +1188,51 @@ pub fn output_doc(
                         }
                     }
                 }
+
             }
+        }
+    }
+
+    // Handle any remaining pending headings
+    if !pending_headings.is_empty() {
+        // Add ALL pending headings as markdown-formatted text
+        for (h_level, h_text) in &pending_headings {
+            let prefix = match h_level {
+                TextLevel::H1 => "# ",
+                TextLevel::H2 => "## ",
+                TextLevel::H3 => "### ",
+                TextLevel::H4 => "#### ",
+                TextLevel::H5 => "##### ",
+                TextLevel::H6 => "###### ",
+                _ => "",
+            };
+            let heading_content = format!("{}{}\n", prefix, h_text);
+            // Create a minimal segment for the heading
+            let heading_seg = TextSegment {
+                content: heading_content,
+                page_num: 0,
+                x: 0.0,
+                y: 0.0,
+                width: 0.0,
+                height: 0.0,
+                font_name: String::new(),
+                font_size: 0.0,
+                font_weight: crate::FontWeight::Regular,
+                char_start: 0,
+                char_end: 0,
+                word_count: h_text.split_whitespace().count(),
+                is_bold: false,
+                is_italic: false,
+                transformed_font_size: 0.0,
+                cutat: String::new(),
+                fill_color: None,
+                stroke_color: None,
+            };
+            accumulator.add_segment(heading_seg);
+        }
+        if let Some((h_level, h_text)) = pending_headings.last() {
+            header_hierarchy.push(*h_level, h_text.clone());
+            accumulator.set_headings(header_hierarchy.get_headers());
         }
     }
 

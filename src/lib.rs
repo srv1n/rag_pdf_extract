@@ -193,16 +193,19 @@ impl ExtractionStats {
 }
 
 lazy_static! {
+    // Regex for date patterns to exclude from numbered headings
+    static ref DATE_PATTERN: Regex = Regex::new(r"^\d{1,2}\.\d{1,2}\.\d{4}").unwrap();
+
     static ref NUMBERED_HEADING: Regex = Regex::new(
         r"(?x)
         ^
         (?P<number>
-            (?:\d+\.)+\d+         | # Matches 1.1, 2.3.4, etc.
+            (?:\d{1,2}\.){1,3}\d{1,2} | # Matches 1.1, 2.3.4, etc.
             [IVXLCDM]+\.          | # Matches VII.
             (?:Section|Article|Chapter)\s+[A-Z0-9]+ | # Matches Section 2, Article B, etc.
-            \d+\s+[A-Z][A-Z\s]+      # Matches '1 UNITED STATES DISTRICT COURT SOUTHERN DISTRICT OF NEW YORK'
+            \d{1,3}\.\s+[A-Z]     # Matches '1. A' or '12. Text' (numbered paragraphs)
         )
-       
+
         "
     ).unwrap();
 }
@@ -214,8 +217,8 @@ pub type Transform = Transform2D<f64, Space, Space>;
 const SPACE_THRESHOLD_RATIO: f64 = 0.25; // Typical space is 25% of font size
 const MIN_SPACE_GAP: f64 = 0.1; // Minimum 10% of font size to be considered a gap
 const PARAGRAPH_GAP_RATIO: f64 = 1.5; // Paragraph break if gap is 150% of font size
-const LINE_HEIGHT_RATIO: f64 = 1.2; // Normal line height is ~120% of font size
-const SAME_LINE_THRESHOLD: f64 = 0.5; // Consider same line if Y difference < 50% font size
+const LINE_HEIGHT_RATIO: f64 = 0.8; // Detect new line if Y gap > 80% of font size
+const SAME_LINE_THRESHOLD: f64 = 0.3; // Consider same line if Y difference < 30% font size (more sensitive to line breaks)
 
 // Helper function to determine if there's a space between characters
 fn should_insert_space(current_x: f64, last_end: f64, font_size: f64) -> bool {
@@ -236,11 +239,41 @@ fn is_paragraph_break(current_y: f64, last_y: f64, font_size: f64) -> bool {
     y_gap > font_size * PARAGRAPH_GAP_RATIO
 }
 
+// Helper function to determine if there's a column break (large horizontal gap)
+fn is_column_break(current_x: f64, last_end: f64, font_size: f64) -> bool {
+    let gap = current_x - last_end;
+    // If gap is more than 4x font size, treat as column break
+    // Lowered from 8x to catch more column breaks
+    gap > font_size * 4.0
+}
+
 // Helper function to determine if we've moved to a new line
 fn is_new_line(current_x: f64, last_end: f64, current_y: f64, last_y: f64, font_size: f64) -> bool {
     let y_diff = (current_y - last_y).abs();
+
+    // Case 1: Significant Y movement (more than line height) - always a new line
+    // This catches most line breaks regardless of X position
+    if y_diff > font_size * LINE_HEIGHT_RATIO {
+        return true;
+    }
+
+    // Case 2: Y moved and X reset to left (original logic, but less strict)
     // New line if we've moved down/up significantly and moved back to the left
-    y_diff > font_size * SAME_LINE_THRESHOLD && current_x < last_end
+    if y_diff > font_size * SAME_LINE_THRESHOLD && current_x < last_end {
+        return true;
+    }
+
+    // Case 3: Y moved significantly and there's a gap (not continuous text)
+    // This catches centered text where X doesn't necessarily go back
+    if y_diff > font_size * SAME_LINE_THRESHOLD {
+        let x_gap = (current_x - last_end).abs();
+        // If there's any significant gap, it's probably a new line
+        if x_gap > font_size * 2.0 {
+            return true;
+        }
+    }
+
+    false
 }
 
 #[derive(Debug)]
@@ -2850,8 +2883,10 @@ impl<'a> Processor<'a> {
             y: f64,
             width: f64,
             height: f64,
+            text_obj_id: u32, // Track which BT/ET text object this glyph belongs to
         }
         let mut glyphs: Vec<Glyph> = Vec::new();
+        let mut current_text_obj_id: u32 = 0;
         let mut text = String::new();
         let mut current_line = String::new();
         let current_word = String::new();
@@ -2961,6 +2996,8 @@ impl<'a> Processor<'a> {
                 "BT" => {
                     tlm = Transform2D::identity();
                     gs.ts.tm = tlm;
+                    // New text object - increment ID for tracking text block boundaries
+                    current_text_obj_id += 1;
                 }
                 "ET" => {
                     tlm = Transform2D::identity();
@@ -3219,6 +3256,12 @@ impl<'a> Processor<'a> {
                                                 current_line.push('\n');
                                                 page_char_counter += 1;
                                             }
+                                            // Check for large horizontal gap (column break)
+                                            // This handles two-column layouts where elements are at same Y
+                                            else if is_column_break(x, last_end, transformed_font_size) {
+                                                current_line.push('\n');
+                                                page_char_counter += 1;
+                                            }
                                             // Check for space between words on same line
                                             else if should_insert_space(
                                                 x,
@@ -3244,6 +3287,7 @@ impl<'a> Processor<'a> {
                                                     y,
                                                     width: g_width,
                                                     height: g_height,
+                                                    text_obj_id: current_text_obj_id,
                                                 });
                                             } else {
                                                 current_line.push_str(&char);
@@ -3384,6 +3428,10 @@ impl<'a> Processor<'a> {
                                 {
                                     current_line.push('\n')
                                 }
+                                // Check for large horizontal gap (column break)
+                                else if is_column_break(x, last_end, transformed_font_size) {
+                                    current_line.push('\n')
+                                }
                                 // Check for space between words on same line
                                 else if should_insert_space(x, last_end, transformed_font_size) {
                                     current_line.push(' ')
@@ -3402,6 +3450,7 @@ impl<'a> Processor<'a> {
                                         y,
                                         width: g_width,
                                         height: g_height,
+                                        text_obj_id: current_text_obj_id,
                                     });
                                 } else {
                                     current_line.push_str(&char);
@@ -3541,7 +3590,7 @@ impl<'a> Processor<'a> {
                                 if use_layout {
                                     let g_height = transformed_font_size.max(0.0);
                                     let g_width = (w0 * transformed_font_size).max(0.0);
-                                    glyphs.push(Glyph { ch, x, y, width: g_width, height: g_height });
+                                    glyphs.push(Glyph { ch, x, y, width: g_width, height: g_height, text_obj_id: current_text_obj_id });
                                 } else {
                                     current_line.push_str(&ch);
                                     page_char_counter += ch.chars().count();
@@ -3611,7 +3660,7 @@ impl<'a> Processor<'a> {
                                     if use_layout {
                                         let g_height = transformed_font_size.max(0.0);
                                         let g_width = (w0 * transformed_font_size).max(0.0);
-                                        glyphs.push(Glyph { ch, x, y, width: g_width, height: g_height });
+                                        glyphs.push(Glyph { ch, x, y, width: g_width, height: g_height, text_obj_id: current_text_obj_id });
                                     } else {
                                         current_line.push_str(&ch);
                                         page_char_counter += ch.chars().count();
@@ -3893,48 +3942,121 @@ impl<'a> Processor<'a> {
         // If using layout, group glyphs → lines and emit segments
         if use_layout {
             if let Some(lp) = params {
-                // sort glyphs top-to-bottom (y), then left-to-right (x)
+                // Process glyphs in content stream order to detect newlines from position changes
+                // Key insight: when X resets to the left AND Y changes, that's a new line
+                // This is how PDFs naturally encode line breaks through pen movement
+
+                // Sort glyphs by Y position (top to bottom), then X (left to right)
+                // This ensures we process in visual reading order
                 glyphs.sort_by(|a, b| {
-                    let ycmp = a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal);
-                    if ycmp == std::cmp::Ordering::Equal {
+                    let y_cmp = a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal);
+                    if y_cmp == std::cmp::Ordering::Equal {
                         a.x.partial_cmp(&b.x).unwrap_or(std::cmp::Ordering::Equal)
                     } else {
-                        ycmp
+                        y_cmp
                     }
                 });
 
-                // 1) Group glyphs into lines using vertical overlap
+                // 1) Group glyphs into lines based on vertical overlap (like pdfminer)
                 let glyphs_for_vertical = glyphs.clone();
                 let mut raw_lines: Vec<Vec<Glyph>> = Vec::new();
                 let mut current: Vec<Glyph> = Vec::new();
-                let mut line_top = 0.0;
-                let mut line_bottom = 0.0;
 
-                for g in glyphs.into_iter() {
-                    let g_top = g.y;
-                    let g_bottom = g.y + g.height;
+                // Track previous glyph position for simple Y-based newline detection
+                let mut prev_y: f64 = 0.0;
+                let mut prev_x_end: f64 = 0.0;
+                let mut prev_nonspace_x_end: f64 = 0.0;
+                let mut avg_char_width: f64 = 8.0;
+                let mut avg_char_height: f64 = 12.0;
+
+                for g in glyphs.iter() {
+                    let is_space = g.ch.trim().is_empty();
+
                     if current.is_empty() {
-                        line_top = g_top;
-                        line_bottom = g_bottom;
-                        current.push(g);
+                        prev_y = g.y;
+                        prev_x_end = g.x + g.width;
+                        if !is_space {
+                            prev_nonspace_x_end = g.x + g.width;
+                            avg_char_width = g.width.max(1.0);
+                            avg_char_height = g.height.max(1.0);
+                        }
+                        current.push(g.clone());
                         continue;
                     }
-                    let overlap = (line_bottom.min(g_bottom) - line_top.max(g_top)).max(0.0);
-                    let line_height = (line_bottom - line_top).max(1e-6);
-                    let g_h = g.height.max(1e-6);
-                    let overlap_ratio = overlap / line_height.min(g_h);
-                    if overlap_ratio >= lp.line_overlap as f64 {
-                        // same line
-                        line_top = line_top.min(g_top);
-                        line_bottom = line_bottom.max(g_bottom);
-                        current.push(g);
+
+                    // Update average char dimensions from non-space glyphs
+                    if !is_space && g.width > 0.0 && g.height > 0.0 {
+                        avg_char_width = (avg_char_width + g.width) / 2.0;
+                        avg_char_height = (avg_char_height + g.height) / 2.0;
+                    }
+
+                    // Get the previous glyph for vertical overlap check
+                    let prev_glyph = current.last();
+
+                    // Get the last NON-SPACE glyph for horizontal distance check
+                    // Space glyphs fill gaps and shouldn't be used for distance calculation
+                    let prev_nonspace_glyph = current.iter().rev().find(|g| !g.ch.trim().is_empty());
+
+                    // Check vertical overlap like pdfminer:
+                    // Two glyphs are on the same line if they have significant vertical overlap
+                    let has_vertical_overlap = if let Some(prev) = prev_glyph {
+                        let prev_top = prev.y;
+                        let prev_bottom = prev.y + prev.height;
+                        let g_top = g.y;
+                        let g_bottom = g.y + g.height;
+
+                        // Calculate overlap
+                        let overlap = (prev_bottom.min(g_bottom) - prev_top.max(g_top)).max(0.0);
+                        let min_height = prev.height.min(g.height).max(0.1);
+
+                        // Same line if overlap is more than 50% of smaller height
+                        // This handles most cases - consecutive glyphs on same line have good overlap
+                        overlap > min_height * 0.5
                     } else {
-                        raw_lines.push(current);
-                        let mut new_line = Vec::new();
-                        line_top = g_top;
-                        line_bottom = g_bottom;
-                        new_line.push(g);
-                        current = new_line;
+                        true // First glyph
+                    };
+
+                    // Check horizontal distance against last NON-SPACE glyph
+                    // This prevents space glyphs from artificially reducing the measured gap
+                    let hdist_ok = if !is_space {
+                        if let Some(prev) = prev_nonspace_glyph {
+                            let hdist = if g.x > prev.x + prev.width {
+                                g.x - (prev.x + prev.width)
+                            } else if prev.x > g.x + g.width {
+                                prev.x - (g.x + g.width)
+                            } else {
+                                0.0 // overlapping
+                            };
+                            let max_width = prev.width.max(g.width).max(0.1);
+                            // char_margin = 3.0 allows normal word spacing while catching column gaps
+                            hdist < max_width * 3.0
+                        } else {
+                            true
+                        }
+                    } else {
+                        true // Space glyphs don't trigger hdist check
+                    };
+
+                    // Same line only if: vertical overlap AND horizontal distance OK
+                    // New line if EITHER condition fails
+                    let is_new_line = !has_vertical_overlap || !hdist_ok;
+
+                    if is_new_line {
+                        // Start new line
+                        if !current.is_empty() {
+                            raw_lines.push(std::mem::take(&mut current));
+                        }
+                        current.push(g.clone());
+                    } else {
+                        // Continue current line
+                        current.push(g.clone());
+                    }
+
+                    // Update previous positions
+                    prev_y = g.y;
+                    prev_x_end = g.x + g.width;
+                    if !is_space {
+                        prev_nonspace_x_end = g.x + g.width;
                     }
                 }
                 if !current.is_empty() {
@@ -3963,26 +4085,76 @@ impl<'a> Processor<'a> {
                     let mut prev_right: Option<f64> = None;
                     let mut prev_w: f64 = 0.0;
                     let mut prev_h: f64 = 0.0;
+                    // Track last non-space glyph for large gap detection
+                    let mut last_nonspace_right: Option<f64> = None;
+                    let mut last_nonspace_w: f64 = 0.0;
+                    let mut last_nonspace_h: f64 = 0.0;
                     for g in line.iter() {
+                        let is_space = g.ch.trim().is_empty();
                         min_x = min_x.min(g.x);
                         max_x = max_x.max(g.x + g.width);
                         min_y = min_y.min(g.y);
                         max_y = max_y.max(g.y + g.height);
-                        if let Some(pr) = prev_right {
-                            let gap = g.x - pr;
-                            // P0: pdfminer parity — insert space if gap > word_margin * max(width, height)
-                            // Use the max of current and previous glyph dimensions for robustness.
-                            let dim_prev = prev_w.max(prev_h);
-                            let dim_curr = g.width.max(g.height);
-                            let width_ref = dim_prev.max(dim_curr).max(1e-6);
-                            if gap > (lp.word_margin as f64) * width_ref {
-                                s.push(' ');
+
+                        // For non-space glyphs, check gap from last non-space glyph
+                        // to detect column breaks (large horizontal gaps)
+                        if !is_space {
+                            if let Some(lnr) = last_nonspace_right {
+                                let gap = g.x - lnr;
+                                let dim_prev = last_nonspace_w.max(last_nonspace_h);
+                                let dim_curr = g.width.max(g.height);
+                                let width_ref = dim_prev.max(dim_curr).max(1e-6);
+
+                                // Large gap detection: if gap is larger than 1.5x glyph width,
+                                // treat as separate column and insert newline instead of space
+                                let large_gap_threshold = width_ref * 1.5;
+                                if gap > large_gap_threshold {
+                                    // Trim trailing spaces before newline
+                                    while s.ends_with(' ') {
+                                        s.pop();
+                                    }
+                                    s.push('\n');
+                                } else if let Some(pr) = prev_right {
+                                    // Normal word spacing check
+                                    let small_gap = g.x - pr;
+                                    let dim_prev_small = prev_w.max(prev_h);
+                                    let width_ref_small = dim_prev_small.max(dim_curr).max(1e-6);
+                                    if small_gap > (lp.word_margin as f64) * width_ref_small {
+                                        s.push(' ');
+                                    }
+                                }
+                            } else if let Some(pr) = prev_right {
+                                // First non-space glyph but have prev_right from space glyphs
+                                let gap = g.x - pr;
+                                let dim_prev = prev_w.max(prev_h);
+                                let dim_curr = g.width.max(g.height);
+                                let width_ref = dim_prev.max(dim_curr).max(1e-6);
+                                if gap > (lp.word_margin as f64) * width_ref {
+                                    s.push(' ');
+                                }
+                            }
+                        } else {
+                            // Space glyph - check for word spacing
+                            if let Some(pr) = prev_right {
+                                let gap = g.x - pr;
+                                let dim_prev = prev_w.max(prev_h);
+                                let dim_curr = g.width.max(g.height);
+                                let width_ref = dim_prev.max(dim_curr).max(1e-6);
+                                if gap > (lp.word_margin as f64) * width_ref {
+                                    s.push(' ');
+                                }
                             }
                         }
+
                         s.push_str(&g.ch);
                         prev_right = Some(g.x + g.width);
                         prev_w = g.width;
                         prev_h = g.height;
+                        if !is_space {
+                            last_nonspace_right = Some(g.x + g.width);
+                            last_nonspace_w = g.width;
+                            last_nonspace_h = g.height;
+                        }
                     }
                     let text = Self::preserve_sentence_boundaries(&s);
                     let height = (max_y - min_y).max(0.0);
@@ -4086,10 +4258,93 @@ impl<'a> Processor<'a> {
                         lines.len()
                     );
                     let mut page_char_pos = 0usize;
-                    for ln in lines.into_iter() {
-                        let content_len = ln.text.chars().count();
+                    let mut prev_line_bottom: Option<f64> = None;
+                    let mut avg_line_gap: f64 = 0.0;
+                    let mut line_gap_count: usize = 0;
+
+                    // First pass: calculate average line gap for paragraph detection
+                    let lines_vec: Vec<_> = lines.into_iter().collect();
+                    for i in 1..lines_vec.len() {
+                        let gap = lines_vec[i].min_y - lines_vec[i-1].max_y;
+                        if gap > 0.0 && gap < lines_vec[i].height * 3.0 {
+                            avg_line_gap += gap;
+                            line_gap_count += 1;
+                        }
+                    }
+                    avg_line_gap = if line_gap_count > 0 { avg_line_gap / line_gap_count as f64 } else { 10.0 };
+
+                    // Collect lines for smarter joining
+                    let lines_collected: Vec<_> = lines_vec.into_iter().collect();
+
+                    for (idx, ln) in lines_collected.iter().enumerate() {
+                        // Detect paragraph breaks: gap > 1.3x average line gap
+                        let is_paragraph_break = if let Some(prev_bottom) = prev_line_bottom {
+                            let gap = ln.min_y - prev_bottom;
+                            gap > avg_line_gap * 1.3 && gap > ln.height * 0.5
+                        } else {
+                            false
+                        };
+
+                        let trimmed = ln.text.trim();
+
+                        // Check if this line should be joined with the next (no newline)
+                        // Join when: line doesn't end with terminal punctuation AND next line exists
+                        // AND next line doesn't start with paragraph indicators (numbers, bullets)
+                        // AND next line is not a new logical section
+                        let ends_with_terminal = trimmed.ends_with('.')
+                            || trimmed.ends_with('!')
+                            || trimmed.ends_with('?')
+                            || trimmed.ends_with(':')
+                            || trimmed.ends_with(')') // For things like "APPELLANT (S)"
+                            || trimmed.ends_with('"')
+                            || trimmed.ends_with('\'');
+
+                        // Check if current line looks like a complete phrase that shouldn't be joined
+                        // Common legal document patterns: party names, roles, etc.
+                        let current_is_complete = trimmed.to_uppercase() == trimmed // ALL CAPS often complete
+                            && (trimmed.contains("APPELLANT") || trimmed.contains("RESPONDENT")
+                                || trimmed.contains("VERSUS") || trimmed.contains("PETITIONER")
+                                || trimmed.contains("JUDGMENT") || trimmed.contains("ORDER"));
+
+                        let (next_starts_paragraph, next_is_section_marker) = if let Some(next_ln) = lines_collected.get(idx + 1) {
+                            let next_trimmed = next_ln.text.trim();
+                            // Check if next line starts with paragraph marker
+                            let starts_para = next_trimmed.chars().next().map_or(false, |c| {
+                                c.is_ascii_digit() // Numbered list
+                                || c == '(' // Parenthetical like "(a)"
+                                || c == '-' // Bullet
+                                || c == '•' // Bullet
+                            }) || next_trimmed.starts_with("A.") || next_trimmed.starts_with("B.")
+                               || next_trimmed.starts_with("C.") || next_trimmed.starts_with("D.");
+
+                            // Check if next line is a section marker (ALL CAPS short line)
+                            let is_section = next_trimmed.to_uppercase() == next_trimmed
+                                && next_trimmed.len() < 50
+                                && (next_trimmed.contains("APPELLANT") || next_trimmed.contains("RESPONDENT")
+                                    || next_trimmed.contains("VERSUS") || next_trimmed.contains("PETITIONER"));
+                            (starts_para, is_section)
+                        } else {
+                            // Last line of this XObject - don't automatically treat as paragraph end
+                            // Let terminal punctuation or other signals determine if it should be joined
+                            (false, false)
+                        };
+
+                        // Join lines if: not terminal punctuation AND not followed by paragraph start
+                        // AND no paragraph break detected AND not a complete legal phrase
+                        let should_join = !ends_with_terminal && !next_starts_paragraph && !is_paragraph_break
+                            && !current_is_complete && !next_is_section_marker;
+
+                        // Build line text with appropriate ending
+                        let line_text = if is_paragraph_break {
+                            format!("\n{}\n", trimmed)
+                        } else if should_join {
+                            format!("{} ", trimmed) // Space instead of newline for continuation
+                        } else {
+                            format!("{}\n", trimmed)
+                        };
+                        let content_len = line_text.chars().count();
                         let mut segment = Self::create_text_segment(
-                            ln.text,
+                            line_text,
                             ln.height,
                             ln.height,
                             ln.min_x,
@@ -4108,6 +4363,7 @@ impl<'a> Processor<'a> {
                         segment.width = (ln.max_x - ln.min_x).max(0.0);
                         segment.height = (ln.max_y - ln.min_y).max(0.0);
                         page_char_pos += content_len;
+                        prev_line_bottom = Some(ln.max_y);
                         text_segments.push(segment);
                     }
                     return Ok(());
@@ -4154,131 +4410,191 @@ impl<'a> Processor<'a> {
                 // Alignment and overlap heuristics (from P1)
                 const ALIGN_TOL_FRAC: f64 = 0.25;
                 const HOVERLAP_MIN_FRAC: f64 = 0.2;
-                let mut boxes: Vec<Option<BoxInfo>> = {
-                    let mut v: Vec<Option<BoxInfo>> = Vec::with_capacity(lines.len());
-                    // Sort lines top-to-bottom, then left-to-right for stability
+                // Build initial boxes from lines
+                let mut boxes: Vec<BoxInfo> = {
                     let mut ls = lines;
                     ls.sort_by(|a, b| {
                         let ycmp = a.min_y.partial_cmp(&b.min_y).unwrap_or(std::cmp::Ordering::Equal);
                         if ycmp == std::cmp::Ordering::Equal {
                             a.min_x.partial_cmp(&b.min_x).unwrap_or(std::cmp::Ordering::Equal)
-                        } else {
-                            ycmp
-                        }
+                        } else { ycmp }
                     });
-                    for ln in ls.into_iter() { v.push(Some(make_box(ln))); }
-                    v
+                    ls.into_iter().map(|ln| make_box(ln)).collect()
                 };
 
-                let mut changed = true;
-                while changed {
-                    changed = false;
-                    let n = boxes.len();
-                    let mut best_i: usize = 0;
-                    let mut best_j: usize = 0;
-                    let mut best_dist = f64::INFINITY;
-
-                    for i in 0..n {
-                        if boxes[i].is_none() { continue; }
-                        let bi_ref = boxes[i].as_ref().unwrap();
-                        for j in (i + 1)..n {
-                            if boxes[j].is_none() { continue; }
-                            let bj_ref = boxes[j].as_ref().unwrap();
-
-                            // Compute vertical gap and horizontal overlap
-                            let vgap = bj_ref.min_y - bi_ref.max_y; // assumes bi above bj; allow negative
-                            let h_left = bi_ref.min_x.max(bj_ref.min_x);
-                            let h_right = bi_ref.max_x.min(bj_ref.max_x);
-                            let hoverlap = (h_right - h_left).max(0.0);
-                            let min_w = (bi_ref.max_x - bi_ref.min_x)
-                                .min(bj_ref.max_x - bj_ref.min_x)
-                                .max(1e-6);
-                            let h_frac = hoverlap / min_w;
-
-                            // Alignment checks
-                            let tol_h = ALIGN_TOL_FRAC * bi_ref.avg_h.min(bj_ref.avg_h).max(1e-6);
-                            let left_aligned = (bj_ref.min_x - bi_ref.min_x).abs() <= tol_h;
-                            let right_aligned = (bj_ref.max_x - bi_ref.max_x).abs() <= tol_h;
-                            let bi_cx = (bi_ref.min_x + bi_ref.max_x) * 0.5;
-                            let bj_cx = (bj_ref.min_x + bj_ref.max_x) * 0.5;
-                            let center_aligned = (bj_cx - bi_cx).abs() <= tol_h;
-                            let height_close = (bj_ref.avg_h - bi_ref.avg_h).abs() <= 0.2 * bi_ref.avg_h.max(1e-6);
-                            let aligned = height_close && (left_aligned || right_aligned || center_aligned);
-
-                            // Candidate merge must be vertically close and either horizontally overlapping or aligned
-                            let close_enough = vgap <= (lp.line_margin as f64) * bi_ref.avg_h && (h_frac >= HOVERLAP_MIN_FRAC || aligned);
-                            if !close_enough { continue; }
-
-                            // Blocking: is there any other box whose center lies in the union bbox but outside both A and B?
-                            let (ux0, uy0, ux1, uy1) = bbox_union((bi_ref, i), (bj_ref, j));
-                            let mut blocked = false;
-                            for k in 0..n {
-                                if k == i || k == j { continue; }
-                                if let Some(ref bk) = boxes[k] {
-                                    let kc_x = (bk.min_x + bk.max_x) * 0.5;
-                                    let kc_y = (bk.min_y + bk.max_y) * 0.5;
-                                    let in_union = kc_x >= ux0 && kc_x <= ux1 && kc_y >= uy0 && kc_y <= uy1;
-                                    let in_a = kc_x >= bi_ref.min_x && kc_x <= bi_ref.max_x && kc_y >= bi_ref.min_y && kc_y <= bi_ref.max_y;
-                                    let in_b = kc_x >= bj_ref.min_x && kc_x <= bj_ref.max_x && kc_y >= bj_ref.min_y && kc_y <= bj_ref.max_y;
-                                    if in_union && !(in_a || in_b) { blocked = true; break; }
-                                }
-                            }
-                            if blocked { continue; }
-
-                            // Distance metric: area gap between union and components
-                            let a_area = bbox_area(bi_ref.min_x, bi_ref.min_y, bi_ref.max_x, bi_ref.max_y);
-                            let b_area = bbox_area(bj_ref.min_x, bj_ref.min_y, bj_ref.max_x, bj_ref.max_y);
-                            let u_area = bbox_area(ux0, uy0, ux1, uy1);
-                            let dist = (u_area - a_area - b_area).max(0.0);
-                            if dist < best_dist {
-                                best_dist = dist;
-                                best_i = i;
-                                best_j = j;
-                            }
+                if std::env::var("PDF_EXTRACT_LA_HEAP").is_ok() {
+                    use std::collections::{BinaryHeap, HashMap, HashSet};
+                    use ordered_float::OrderedFloat;
+                    use std::cmp::Reverse;
+                    #[derive(Clone)]
+                    struct Plane { cell: f64, map: HashMap<(i32,i32), Vec<usize>> }
+                    impl Plane {
+                        fn new(cell: f64) -> Self { Self { cell, map: HashMap::new() } }
+                        fn cells_for(&self, x0: f64, y0: f64, x1: f64, y1: f64) -> (i32,i32,i32,i32) {
+                            let cx0 = (x0 / self.cell).floor() as i32;
+                            let cy0 = (y0 / self.cell).floor() as i32;
+                            let cx1 = (x1 / self.cell).floor() as i32;
+                            let cy1 = (y1 / self.cell).floor() as i32;
+                            (cx0.min(cx1), cy0.min(cy1), cx0.max(cx1), cy0.max(cy1))
+                        }
+                        fn insert(&mut self, idx: usize, x0: f64, y0: f64, x1: f64, y1: f64) {
+                            let (cx0,cy0,cx1,cy1) = self.cells_for(x0,y0,x1,y1);
+                            for cx in cx0..=cx1 { for cy in cy0..=cy1 { self.map.entry((cx,cy)).or_default().push(idx); } }
+                        }
+                        fn remove(&mut self, idx: usize, x0: f64, y0: f64, x1: f64, y1: f64) {
+                            let (cx0,cy0,cx1,cy1) = self.cells_for(x0,y0,x1,y1);
+                            for cx in cx0..=cx1 { for cy in cy0..=cy1 { if let Some(v) = self.map.get_mut(&(cx,cy)) { v.retain(|&k| k != idx); } } }
+                        }
+                        fn query(&self, x0: f64, y0: f64, x1: f64, y1: f64) -> Vec<usize> {
+                            let (cx0,cy0,cx1,cy1) = self.cells_for(x0,y0,x1,y1);
+                            let mut out = Vec::new();
+                            for cx in cx0..=cx1 { for cy in cy0..=cy1 { if let Some(v) = self.map.get(&(cx,cy)) { out.extend_from_slice(v); } } }
+                            out
                         }
                     }
 
-                    if best_dist.is_finite() && best_dist < f64::INFINITY {
-                        // Merge best_i and best_j
-                        let mut a = boxes[best_i].take().unwrap();
-                        let b = boxes[best_j].take().unwrap();
-                        // Append lines and re-sort within box by reading order (top-to-bottom then left-to-right)
-                        a.lines.extend(b.lines.into_iter());
-                        a.lines.sort_by(|l1, l2| {
-                            let ycmp = l1.min_y.partial_cmp(&l2.min_y).unwrap_or(std::cmp::Ordering::Equal);
-                            if ycmp == std::cmp::Ordering::Equal {
-                                l1.min_x.partial_cmp(&l2.min_x).unwrap_or(std::cmp::Ordering::Equal)
-                            } else {
-                                ycmp
-                            }
-                        });
-                        a.min_x = a.min_x.min(b.min_x);
-                        a.max_x = a.max_x.max(b.max_x);
-                        a.min_y = a.min_y.min(b.min_y);
-                        a.max_y = a.max_y.max(b.max_y);
-                        // Update average height
-                        let mut sum_h = 0.0; let mut cnt = 0.0;
-                        for ln in a.lines.iter() { sum_h += ln.height; cnt += 1.0; }
-                        a.avg_h = if cnt > 0.0 { sum_h / cnt } else { a.avg_h };
-                        boxes[best_i] = Some(a);
-                        changed = true;
+                    let n0 = boxes.len();
+                    let mut alive = vec![true; n0];
+                    let mut ver: Vec<u64> = vec![0; n0];
+                    let avg_h = boxes.iter().map(|b| b.avg_h).sum::<f64>() / (boxes.len() as f64).max(1.0);
+                    let cell = (avg_h * 2.0).max(8.0);
+                    let mut plane = Plane::new(cell);
+                    for (i,b) in boxes.iter().enumerate() { plane.insert(i, b.min_x, b.min_y, b.max_x, b.max_y); }
+
+                    let align_tol = |a: &BoxInfo, b: &BoxInfo| -> bool {
+                        let tol_x = (lp.line_overlap as f64) * a.avg_h * ALIGN_TOL_FRAC;
+                        let left = (b.min_x - a.min_x).abs() <= tol_x;
+                        let right = (b.max_x - a.max_x).abs() <= tol_x;
+                        let ca = (a.min_x + a.max_x) * 0.5; let cb = (b.min_x + b.max_x) * 0.5;
+                        let center = (cb - ca).abs() <= tol_x;
+                        left || right || center
+                    };
+                    let is_neighbor = |a: &BoxInfo, b: &BoxInfo| -> bool {
+                        let vgap = (b.min_y - a.max_y).max(a.min_y - b.max_y);
+                        let vgap_ok = vgap <= (lp.line_margin as f64) * a.avg_h;
+                        let h_left = a.min_x.max(b.min_x);
+                        let h_right = a.max_x.min(b.max_x);
+                        let h_ov = (h_right - h_left).max(0.0);
+                        let w_a = (a.max_x - a.min_x).max(1e-6);
+                        let w_b = (b.max_x - b.min_x).max(1e-6);
+                        let h_frac = h_ov / w_a.max(w_b);
+                        vgap_ok && (h_frac >= HOVERLAP_MIN_FRAC || align_tol(a,b))
+                    };
+
+                    let mut heap: BinaryHeap<Reverse<(OrderedFloat<f64>, usize, usize, u64, u64)>> = BinaryHeap::new();
+                    let mut seen: HashSet<(usize,usize)> = HashSet::new();
+                    fn enqueue_neighbors_for(
+                        i: usize,
+                        plane: &Plane,
+                        boxes_local: &Vec<BoxInfo>,
+                        alive: &Vec<bool>,
+                        ver: &Vec<u64>,
+                        lp: &crate::LAParams,
+                        is_neighbor: &dyn Fn(&BoxInfo,&BoxInfo)->bool,
+                        seen: &mut HashSet<(usize,usize)>,
+                        heap: &mut BinaryHeap<Reverse<(OrderedFloat<f64>, usize, usize, u64, u64)>>,
+                    ) {
+                        if !alive[i] { return; }
+                        let bi = &boxes_local[i];
+                        let margin = (lp.line_margin as f64) * bi.avg_h;
+                        let qx0 = bi.min_x - margin; let qx1 = bi.max_x + margin;
+                        let qy0 = bi.min_y - margin; let qy1 = bi.max_y + margin;
+                        let cand = plane.query(qx0, qy0, qx1, qy1);
+                        for &j in cand.iter() {
+                            if j == i || !alive[j] { continue; }
+                            let a = i.min(j); let b = i.max(j);
+                            if !seen.insert((a,b)) { continue; }
+                            let bj = &boxes_local[j];
+                            if !is_neighbor(bi, bj) { continue; }
+                            let (ux0,uy0,ux1,uy1) = bbox_union((bi,i), (bj,j));
+                            let a_area = bbox_area(bi.min_x, bi.min_y, bi.max_x, bi.max_y);
+                            let b_area = bbox_area(bj.min_x, bj.min_y, bj.max_x, bj.max_y);
+                            let u_area = bbox_area(ux0, uy0, ux1, uy1);
+                            let dist = (u_area - a_area - b_area).max(0.0);
+                            heap.push(Reverse((OrderedFloat(dist), a, b, ver[a], ver[b])));
+                        }
                     }
+                    for i in 0..boxes.len() { enqueue_neighbors_for(i, &plane, &boxes, &alive, &ver, &lp, &is_neighbor, &mut seen, &mut heap); }
+
+                    while let Some(Reverse((_d, a, b, va, vb))) = heap.pop() {
+                        if !alive[a] || !alive[b] { continue; }
+                        if ver[a] != va || ver[b] != vb { continue; }
+                        let bi = boxes[a].clone(); let bj = boxes[b].clone();
+                        if !is_neighbor(&bi, &bj) { continue; }
+                        let (ux0,uy0,ux1,uy1) = bbox_union((&bi,a), (&bj,b));
+                        let mut blocked = false;
+                        for k in plane.query(ux0,uy0,ux1,uy1) {
+                            if k == a || k == b || !alive[k] { continue; }
+                            let bk = &boxes[k];
+                            let cx = (bk.min_x + bk.max_x) * 0.5; let cy = (bk.min_y + bk.max_y) * 0.5;
+                            let in_union = cx >= ux0 && cx <= ux1 && cy >= uy0 && cy <= uy1;
+                            let in_a = cx >= bi.min_x && cx <= bi.max_x && cy >= bi.min_y && cy <= bi.max_y;
+                            let in_b = cx >= bj.min_x && cx <= bj.max_x && cy >= bj.min_y && cy <= bj.max_y;
+                            if in_union && !(in_a || in_b) { blocked = true; break; }
+                        }
+                        if blocked { continue; }
+
+                        // Merge b into a
+                        let mut na = boxes[a].clone();
+                        let ob = boxes[b].clone();
+                        na.lines.extend(ob.lines.into_iter());
+                        na.lines.sort_by(|l1,l2| {
+                            let ycmp = l1.min_y.partial_cmp(&l2.min_y).unwrap_or(std::cmp::Ordering::Equal);
+                            if ycmp == std::cmp::Ordering::Equal { l1.min_x.partial_cmp(&l2.min_x).unwrap_or(std::cmp::Ordering::Equal) } else { ycmp }
+                        });
+                        na.min_x = na.min_x.min(boxes[b].min_x);
+                        na.max_x = na.max_x.max(boxes[b].max_x);
+                        na.min_y = na.min_y.min(boxes[b].min_y);
+                        na.max_y = na.max_y.max(boxes[b].max_y);
+                        let mut sum_h = 0.0; let mut cnt = 0.0; for ln in na.lines.iter() { sum_h += ln.height; cnt += 1.0; }
+                        na.avg_h = if cnt > 0.0 { sum_h / cnt } else { na.avg_h };
+                        plane.remove(a, boxes[a].min_x, boxes[a].min_y, boxes[a].max_x, boxes[a].max_y);
+                        boxes[a] = na;
+                        plane.insert(a, boxes[a].min_x, boxes[a].min_y, boxes[a].max_x, boxes[a].max_y);
+                        plane.remove(b, boxes[b].min_x, boxes[b].min_y, boxes[b].max_x, boxes[b].max_y);
+                        alive[b] = false;
+                        ver[a] = ver[a].wrapping_add(1);
+                        enqueue_neighbors_for(a, &plane, &boxes, &alive, &ver, &lp, &is_neighbor, &mut seen, &mut heap);
+                    }
+                    // Keep only alive boxes
+                    let mut out: Vec<BoxInfo> = Vec::new();
+                    for (i,b) in boxes.into_iter().enumerate() { if alive[i] { out.push(b); } }
+                    boxes = out;
                 }
 
-                // Collect alive boxes
-                let mut boxes: Vec<BoxInfo> = boxes.into_iter().filter_map(|b| b).collect();
-
-                // 4) Order boxes by boxes_flow (weighted top-to-bottom vs left-to-right), unless flow None requested
+                // Ordering: columns or flow/geometric
+                let use_columns = std::env::var("PDF_EXTRACT_LA_COLUMNS").is_ok();
                 let flow_none = std::env::var("PDF_EXTRACT_LA_BOXES_FLOW_NONE").is_ok();
-                if !flow_none {
-                    let wf = lp.boxes_flow as f64;
-                    let wx = ((wf + 1.0) / 2.0).clamp(0.0, 1.0);
-                    let wy = 1.0 - wx;
-                    boxes.sort_by(|a, b| {
-                        let ka = (wy * a.min_y, wx * a.min_x);
-                        let kb = (wy * b.min_y, wx * b.min_x);
-                        ka.partial_cmp(&kb).unwrap_or(std::cmp::Ordering::Equal)
-                    });
+                if use_columns && boxes.len() > 2 {
+                    #[derive(Default)] struct Col { idxs: Vec<usize>, min_x: f64, max_x: f64 }
+                    let widths: Vec<f64> = boxes.iter().map(|b| (b.max_x - b.min_x).max(1e-6)).collect();
+                    let mut w_sorted = widths.clone();
+                    w_sorted.sort_by(|a,b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                    let median_w = if w_sorted.is_empty() { 1.0 } else { w_sorted[w_sorted.len()/2] };
+                    let mut cols: Vec<Col> = Vec::new();
+                    for (i,b) in boxes.iter().enumerate() {
+                        let cx = (b.min_x + b.max_x) * 0.5; let mut placed = false;
+                        for col in cols.iter_mut() {
+                            let left = col.min_x.max(b.min_x); let right = col.max_x.min(b.max_x);
+                            let ov = (right - left).max(0.0); let frac = ov / median_w.max(1e-6);
+                            let col_cx = (col.min_x + col.max_x) * 0.5; let prox = (cx - col_cx).abs() <= 0.5 * median_w;
+                            if frac >= 0.2 || prox { col.idxs.push(i); col.min_x = col.min_x.min(b.min_x); col.max_x = col.max_x.max(b.max_x); placed = true; break; }
+                        }
+                        if !placed { cols.push(Col{ idxs: vec![i], min_x: b.min_x, max_x: b.max_x }); }
+                    }
+                    cols.sort_by(|a,b| a.min_x.partial_cmp(&b.min_x).unwrap_or(std::cmp::Ordering::Equal));
+                    let mut ordered: Vec<BoxInfo> = Vec::new();
+                    for col in cols.into_iter() {
+                        let mut v: Vec<&BoxInfo> = col.idxs.into_iter().map(|k| &boxes[k]).collect();
+                        v.sort_by(|a,b| a.min_y.partial_cmp(&b.min_y).unwrap_or(std::cmp::Ordering::Equal));
+                        for bx in v { ordered.push(bx.clone()); }
+                    }
+                    boxes = ordered;
+                } else if !flow_none {
+                    let wf = lp.boxes_flow as f64; let wx = ((wf + 1.0) / 2.0).clamp(0.0, 1.0); let wy = 1.0 - wx;
+                    boxes.sort_by(|a, b| { let ka = (wy * a.min_y, wx * a.min_x); let kb = (wy * b.min_y, wx * b.min_x); ka.partial_cmp(&kb).unwrap_or(std::cmp::Ordering::Equal) });
+                } else {
+                    boxes.sort_by(|a,b| { let ycmp = a.min_y.partial_cmp(&b.min_y).unwrap_or(std::cmp::Ordering::Equal); if ycmp == std::cmp::Ordering::Equal { a.min_x.partial_cmp(&b.min_x).unwrap_or(std::cmp::Ordering::Equal) } else { ycmp } });
                 }
 
                 // 5) Emit TextSegments per box
@@ -4702,10 +5018,13 @@ impl<W: ConvertToFmt> OutputDev for PlainTextOutput<W> {
 
             // we've moved to the left and down (new line)
             if is_new_line(x, self.last_end, y, self.last_y, transformed_font_size) {
-                write!(self.writer, " ")?;
+                write!(self.writer, "\n")?;
             }
-
-            if should_insert_space(x, self.last_end, transformed_font_size) {
+            // Check for large horizontal gap (column break)
+            else if is_column_break(x, self.last_end, transformed_font_size) {
+                write!(self.writer, "\n")?;
+            }
+            else if should_insert_space(x, self.last_end, transformed_font_size) {
                 dlog!(
                     "width: {}, space: {}, thresh: {}",
                     width,

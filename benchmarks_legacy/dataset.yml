@@ -1,0 +1,101 @@
+docs:
+- doc_id: pln_unknown_0
+  source: PubLayNet
+  license: PMC OA license per article; PubLayNet annotations research-use
+  pdf_path: ''
+  reference:
+    primary_vendor: PubLayNet
+    has_text: false
+    has_headings: true
+    has_bboxes: true
+    notes: PMCID=unknown; bbox-only
+- doc_id: pln_unknown_1
+  source: PubLayNet
+  license: PMC OA license per article; PubLayNet annotations research-use
+  pdf_path: ''
+  reference:
+    primary_vendor: PubLayNet
+    has_text: false
+    has_headings: true
+    has_bboxes: true
+    notes: PMCID=unknown; bbox-only
+- doc_id: pln_unknown_2
+  source: PubLayNet
+  license: PMC OA license per article; PubLayNet annotations research-use
+  pdf_path: ''
+  reference:
+    primary_vendor: PubLayNet
+    has_text: false
+    has_headings: true
+    has_bboxes: true
+    notes: PMCID=unknown; bbox-only
+- doc_id: pln_unknown_3
+  source: PubLayNet
+  license: PMC OA license per article; PubLayNet annotations research-use
+  pdf_path: ''
+  reference:
+    primary_vendor: PubLayNet
+    has_text: false
+    has_headings: true
+    has_bboxes: true
+    notes: PMCID=unknown; bbox-only
+- doc_id: pln_unknown_4
+  source: PubLayNet
+  license: PMC OA license per article; PubLayNet annotations research-use
+  pdf_path: ''
+  reference:
+    primary_vendor: PubLayNet
+    has_text: false
+    has_headings: true
+    has_bboxes: true
+    notes: PMCID=unknown; bbox-only
+- doc_id: pln_unknown_5
+  source: PubLayNet
+  license: PMC OA license per article; PubLayNet annotations research-use
+  pdf_path: ''
+  reference:
+    primary_vendor: PubLayNet
+    has_text: false
+    has_headings: true
+    has_bboxes: true
+    notes: PMCID=unknown; bbox-only
+- doc_id: pln_unknown_6
+  source: PubLayNet
+  license: PMC OA license per article; PubLayNet annotations research-use
+  pdf_path: ''
+  reference:
+    primary_vendor: PubLayNet
+    has_text: false
+    has_headings: true
+    has_bboxes: true
+    notes: PMCID=unknown; bbox-only
+- doc_id: pln_unknown_7
+  source: PubLayNet
+  license: PMC OA license per article; PubLayNet annotations research-use
+  pdf_path: ''
+  reference:
+    primary_vendor: PubLayNet
+    has_text: false
+    has_headings: true
+    has_bboxes: true
+    notes: PMCID=unknown; bbox-only
+- doc_id: pln_unknown_8
+  source: PubLayNet
+  license: PMC OA license per article; PubLayNet annotations research-use
+  pdf_path: ''
+  reference:
+    primary_vendor: PubLayNet
+    has_text: false
+    has_headings: true
+    has_bboxes: true
+    notes: PMCID=unknown; bbox-only
+- doc_id: pln_unknown_9
+  source: PubLayNet
+  license: PMC OA license per article; PubLayNet annotations research-use
+  pdf_path: ''
+  reference:
+    primary_vendor: PubLayNet
+    has_text: false
+    has_headings: true
+    has_bboxes: true
+    notes: PMCID=unknown; bbox-only
