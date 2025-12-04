@@ -977,6 +977,14 @@ pub fn output_doc(
     // Track consecutive headings to group them together
     let mut pending_headings: Vec<(TextLevel, String)> = Vec::new();
 
+    // Track title block region at the top of the document.
+    // Title blocks often have small non-heading elements interspersed (page numbers, dates),
+    // which breaks the "3+ consecutive headings" heuristic. Instead, we track ALL headings
+    // seen before substantial body content, treating them collectively as title block.
+    let mut past_title_block_region = false;
+    let mut title_block_headings_count: usize = 0;
+    const SUBSTANTIAL_BODY_WORD_THRESHOLD: usize = 5;
+
     // Process segments
     for segment in text_segments {
         // Look up the line classification for this segment
@@ -1014,11 +1022,23 @@ pub fn output_doc(
                     continue;
                 }
 
-                // Process any pending headings first
+                // Check if this is substantial body content (marks end of title block region)
+                let word_count = content_trimmed.split_whitespace().count();
+                let is_substantial_body = word_count >= SUBSTANTIAL_BODY_WORD_THRESHOLD;
+
+                // Process any pending headings first (before updating title block region)
                 if !pending_headings.is_empty() {
-                    // Heuristic: 3+ consecutive heading-like lines = title/metadata block
-                    // 1-2 consecutive heading-like lines = actual section headings
-                    let is_title_block = pending_headings.len() >= 3;
+                    // Track headings seen before title block region ends
+                    let was_in_title_block_region = !past_title_block_region;
+                    if was_in_title_block_region {
+                        title_block_headings_count += pending_headings.len();
+                    }
+
+                    // Determine if this is part of title block:
+                    // - Traditional: 3+ consecutive heading-like lines
+                    // - Enhanced: if in title block region AND have accumulated 3+ headings total
+                    let is_title_block = pending_headings.len() >= 3
+                        || (was_in_title_block_region && title_block_headings_count >= 3);
 
                     for (h_level, h_text) in &pending_headings {
                         let heading_content = if is_title_block {
@@ -1042,6 +1062,7 @@ pub fn output_doc(
                         accumulator.add_segment(heading_seg);
                     }
                     // Update hierarchy with last heading (for context tracking)
+                    // Only for actual headings, not title block elements
                     if !is_title_block {
                         if let Some((h_level, h_text)) = pending_headings.last() {
                             header_hierarchy.push(*h_level, h_text.clone());
@@ -1049,6 +1070,11 @@ pub fn output_doc(
                         }
                     }
                     pending_headings.clear();
+                }
+
+                // Update title block region AFTER processing headings
+                if !past_title_block_region && (is_substantial_body || segment.page_num > 1) {
+                    past_title_block_region = true;
                 }
 
                 // Check if we can add this segment
@@ -1335,18 +1361,31 @@ pub fn output_doc(
 
     // Handle any remaining pending headings
     if !pending_headings.is_empty() {
-        // Add ALL pending headings as markdown-formatted text
+        // Apply same title block logic as in main loop
+        let was_in_title_block_region = !past_title_block_region;
+        if was_in_title_block_region {
+            title_block_headings_count += pending_headings.len();
+        }
+        let is_title_block = pending_headings.len() >= 3
+            || (was_in_title_block_region && title_block_headings_count >= 3);
+
         for (h_level, h_text) in &pending_headings {
-            let prefix = match h_level {
-                TextLevel::H1 => "# ",
-                TextLevel::H2 => "## ",
-                TextLevel::H3 => "### ",
-                TextLevel::H4 => "#### ",
-                TextLevel::H5 => "##### ",
-                TextLevel::H6 => "###### ",
-                _ => "",
+            let heading_content = if is_title_block {
+                // Title block: no markdown heading markers, just plain text
+                format!("{}\n", h_text)
+            } else {
+                // Actual heading: add markdown markers
+                let prefix = match h_level {
+                    TextLevel::H1 => "# ",
+                    TextLevel::H2 => "## ",
+                    TextLevel::H3 => "### ",
+                    TextLevel::H4 => "#### ",
+                    TextLevel::H5 => "##### ",
+                    TextLevel::H6 => "###### ",
+                    _ => "",
+                };
+                format!("{}{}\n", prefix, h_text)
             };
-            let heading_content = format!("{}{}\n", prefix, h_text);
             // Create a minimal segment for the heading
             let heading_seg = TextSegment {
                 content: heading_content,
@@ -1370,9 +1409,12 @@ pub fn output_doc(
             };
             accumulator.add_segment(heading_seg);
         }
-        if let Some((h_level, h_text)) = pending_headings.last() {
-            header_hierarchy.push(*h_level, h_text.clone());
-            accumulator.set_headings(header_hierarchy.get_headers());
+        // Only update hierarchy for actual headings, not title block
+        if !is_title_block {
+            if let Some((h_level, h_text)) = pending_headings.last() {
+                header_hierarchy.push(*h_level, h_text.clone());
+                accumulator.set_headings(header_hierarchy.get_headers());
+            }
         }
     }
 
