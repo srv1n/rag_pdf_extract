@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "mixed_alternate_color_space",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/mixed/alternate-color-space.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

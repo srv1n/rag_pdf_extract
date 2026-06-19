@@ -1,0 +1,15 @@
+{
+  "actor": "codex",
+  "at": "2026-05-29T10:45:33Z",
+  "event_kind": "status_changed",
+  "id": "01KSSNDQPDEEP1AMYMQ1BY0J73",
+  "object": "PDF-T-0007",
+  "object_kind": "task",
+  "payload": {
+    "from": "backlog",
+    "reason": "User requested implementation of artifacts/pdf_parser_next_build_items end-to-end",
+    "to": "ready"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

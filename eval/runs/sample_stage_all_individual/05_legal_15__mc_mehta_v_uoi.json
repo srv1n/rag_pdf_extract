@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "legal_15__mc_mehta_v_uoi",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/15. MC Mehta v UoI.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

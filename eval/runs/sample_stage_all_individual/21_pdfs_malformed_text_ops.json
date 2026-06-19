@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "pdfs_malformed_text_ops",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/malformed_text_ops.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

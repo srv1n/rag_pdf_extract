@@ -1,0 +1,4 @@
+schema: tusker.config/v1
+project_id: rag_pdf_extract
+runtime:
+  mutation_mode: single_user_local

@@ -1,0 +1,15 @@
+{
+  "actor": "codex",
+  "at": "2026-05-29T06:27:36Z",
+  "event_kind": "status_changed",
+  "id": "01KSS6ND1W0DMFC9KJMT4B3BXB",
+  "object": "PDF-T-0006",
+  "object_kind": "task",
+  "payload": {
+    "from": "backlog",
+    "reason": "User asked to address sample-corpus failures now",
+    "to": "ready"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "scientific_6",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/scientific/6.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

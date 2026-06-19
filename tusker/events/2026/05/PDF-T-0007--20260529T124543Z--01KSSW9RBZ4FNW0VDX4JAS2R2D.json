@@ -1,0 +1,31 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-05-29T12:45:43Z",
+  "event_kind": "updated",
+  "id": "01KSSW9RBZ4FNW0VDX4JAS2R2D",
+  "object": "PDF-T-0007",
+  "object_kind": "task",
+  "payload": {
+    "changes": {
+      "next_action": {
+        "from": "Accept, waive, or return rework for proof_required:human_signoff.",
+        "to": "Resolve this gate so blocked work can proceed."
+      },
+      "next_ref": {
+        "from": "proof_required:human_signoff",
+        "to": "PDF-G-0001"
+      },
+      "next_source": {
+        "from": "closeout:PDF-T-0007-C-0002",
+        "to": "gate"
+      },
+      "readiness": {
+        "from": "waiting_on_human",
+        "to": "blocked_by_gate"
+      }
+    },
+    "source": "gate:PDF-G-0001"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

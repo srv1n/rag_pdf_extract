@@ -1,0 +1,70 @@
+{
+  "generated_at_epoch_ms": 1780032829888,
+  "manifest_path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/runs/sample_stage_isolate/09_legal_19__cbse_v_aditya_bandopadyay.json",
+  "fixtures": [
+    {
+      "fixture_id": "legal_19__cbse_v_aditya_bandopadyay",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/19. CBSE v Aditya Bandopadyay.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 85451,
+          "raw_chars": 85478,
+          "chunk_count": 76,
+          "duplicate_line_ratio": 0.007481296758104716,
+          "duration_ms": 3618
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 85364,
+          "raw_chars": 85365,
+          "chunk_count": 68,
+          "duplicate_line_ratio": 0.021922428330522714,
+          "duration_ms": 2104
+        },
+        "ours_chunks": {
+          "normalized_chars": 85364,
+          "raw_chars": 85365,
+          "chunk_count": 68,
+          "duplicate_line_ratio": 0.021922428330522714,
+          "duration_ms": 2104
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 85540,
+          "delta_to_layout_chars": -176,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 68,
+        "max_tokens": 350,
+        "max_chunk_tokens": 303,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 648,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.9278529391075993,
+        "fragment_density": 9.529411764705882,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    }
+  ]
+}

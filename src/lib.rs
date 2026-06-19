@@ -1,3 +1,12 @@
+#![allow(
+    dead_code,
+    unused_assignments,
+    unused_imports,
+    unused_mut,
+    unused_variables,
+    mismatched_lifetime_syntaxes
+)]
+
 use adobe_cmap_parser::{ByteMapping, CIDRange, CodeRange};
 use encoding_rs::UTF_16BE;
 use euclid::*;
@@ -9,6 +18,7 @@ use lopdf::*;
 use std::fmt::{Debug, Formatter};
 
 use euclid::vec2;
+use lazy_static::lazy_static;
 use rayon::prelude::*;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -19,10 +29,9 @@ use std::rc::Rc;
 use std::result::Result;
 use std::slice::Iter;
 use std::str;
-use unicode_normalization::UnicodeNormalization;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
-use lazy_static::lazy_static;
+use unicode_normalization::UnicodeNormalization;
 
 // Import text splitting utilities
 use crate::text_splitting::{
@@ -35,11 +44,13 @@ mod encodings;
 mod chunk_accumulator;
 pub mod document;
 mod form;
+pub mod founder_regression;
 mod glyphnames;
 mod heading_hierarchy;
 mod layout_params;
 mod ocrs;
 mod pdf_image;
+pub mod quality;
 pub mod text_splitting;
 mod zapfglyphnames;
 
@@ -50,25 +61,29 @@ use ocrs::apply_transform_to_image;
 
 // Re-export document processing types and functions
 pub use document::{
-    calculate_document_stats, calculate_heading_thresholds, calculate_mode, is_heading, output_doc,
-    output_doc_new_schema, parse_pdf, DocumentStats, FontStats, HeaderFooterDetector,
-    HeaderFooterPattern, HeaderFooterType, PageOccurrence, PageText, PostProcessor, TextLevel,
+    calculate_heading_thresholds, calculate_mode, output_doc, output_doc_new_schema, parse_pdf,
+    DocumentStats, FontStats, HeaderFooterDetector, HeaderFooterPattern, HeaderFooterType,
+    PageBand, PageOccurrence, TextLevel,
 };
 
 // Re-export LAParams configuration
-pub use layout_params::LAParams;
+pub use layout_params::{LAParams, LayoutFallbackPolicy};
+pub use quality::{assess_parse_quality, ParseQualityMetrics, ParseQualityStatus, RepeatedLine};
 
 use crate::chunk_accumulator::count_words as unicode_count_words;
+use crate::document::visibility::{PageTextLayerStats, TextVisibilityInput, TextVisibilityPolicy};
 use crate::text_splitting::count_words;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use tiktoken_rs::get_bpe_from_model;
 
 // New schema structures for content extraction
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContentCore {
-    pub chunk_id: String,    // blake3(content)
-    pub source_id: i64,      // files.id
-    pub source_type: String, // 'file' | 'web' | 'api'
+    pub chunk_id: String,     // stable source/range/ordinal identity
+    pub content_hash: String, // blake3(content)
+    pub source_id: i64,       // files.id
+    pub source_type: String,  // 'file' | 'web' | 'api'
     pub content: String,
     pub token_count: i32,
     pub headings_json: Option<String>,
@@ -105,11 +120,13 @@ pub struct PdfLocation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PageFragment {
     pub page: u32,
+    /// Character offsets in the emitted chunk text. Source-PDF offsets are stored
+    /// in `ContentExt.output_spans[].source.Pdf`.
     pub char_range: CharRange,
     pub bbox: BoundingBox, // Renamed from bbox_union for clarity
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CharRange {
     pub start: usize,
     pub end: usize,
@@ -170,6 +187,88 @@ pub struct ExtractionStats {
     pub warnings: Vec<String>,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct OcrImageTelemetrySnapshot {
+    pub images_seen: usize,
+    pub images_converted: usize,
+    pub images_skipped: usize,
+    pub images_with_text: usize,
+    pub text_chars_emitted: usize,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct OcrImageTelemetry {
+    images_seen: AtomicUsize,
+    images_converted: AtomicUsize,
+    images_skipped: AtomicUsize,
+    images_with_text: AtomicUsize,
+    text_chars_emitted: AtomicUsize,
+}
+
+impl OcrImageTelemetry {
+    pub(crate) fn image_seen(&self) {
+        self.images_seen.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub(crate) fn image_converted(&self) {
+        self.images_converted.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub(crate) fn image_skipped(&self) {
+        self.images_skipped.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub(crate) fn image_text_emitted(&self, chars: usize) {
+        self.images_with_text.fetch_add(1, Ordering::Relaxed);
+        self.text_chars_emitted.fetch_add(chars, Ordering::Relaxed);
+    }
+
+    pub(crate) fn snapshot(&self) -> OcrImageTelemetrySnapshot {
+        OcrImageTelemetrySnapshot {
+            images_seen: self.images_seen.load(Ordering::Relaxed),
+            images_converted: self.images_converted.load(Ordering::Relaxed),
+            images_skipped: self.images_skipped.load(Ordering::Relaxed),
+            images_with_text: self.images_with_text.load(Ordering::Relaxed),
+            text_chars_emitted: self.text_chars_emitted.load(Ordering::Relaxed),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ProductionTelemetry {
+    pub layout_enabled: bool,
+    pub all_texts_enabled: bool,
+    pub layout_fallback_used: bool,
+    pub layout_normalized_chars: Option<usize>,
+    pub no_layout_normalized_chars: Option<usize>,
+    pub layout_to_no_layout_normalized_char_ratio: Option<f64>,
+    pub chunk_count: usize,
+    pub extracted_chars: usize,
+    pub normalized_chars: usize,
+    pub max_chunk_tokens: usize,
+    pub over_cap_chunks: usize,
+    pub chunks_without_location: usize,
+    pub repeated_line_ratio: f64,
+    pub unique_token_ratio: f64,
+    pub parse_quality_status: String,
+    pub parse_quality_score: f64,
+    pub chars_without_span: usize,
+    pub chars_with_overlapping_spans: usize,
+    pub pdf_backed_nonsynthetic_char_ratio: f64,
+    pub synthetic_char_ratio: f64,
+    pub invalid_bbox_count: usize,
+    pub out_of_page_bbox_count: usize,
+    pub content_ext_max_compressed_bytes: usize,
+    pub content_ext_max_uncompressed_bytes: usize,
+    pub content_ext_total_compressed_bytes: usize,
+    pub content_ext_total_uncompressed_bytes: usize,
+    pub ocr_images_seen: usize,
+    pub ocr_images_converted: usize,
+    pub ocr_images_skipped: usize,
+    pub ocr_images_with_text: usize,
+    pub ocr_text_chars_emitted: usize,
+}
+
 impl ExtractionStats {
     pub fn new() -> Self {
         Self::default()
@@ -208,6 +307,11 @@ lazy_static! {
 
         "
     ).unwrap();
+}
+
+lazy_static! {
+    static ref CONTENT_CORE_TOKENIZER: Option<tiktoken_rs::CoreBPE> =
+        get_bpe_from_model("gpt-4o").ok();
 }
 
 pub struct Space;
@@ -333,17 +437,104 @@ lazy_static! {
 }
 static FONT_LOG_SAMPLES: AtomicUsize = AtomicUsize::new(0);
 
+fn strip_non_printing_text(text: &str) -> String {
+    text.chars()
+        .filter(|c| !c.is_control() || matches!(c, '\n' | '\t'))
+        .collect()
+}
+
+fn populate_core_font_widths(
+    base_name: &str,
+    fallback_name: &str,
+    encoding_table: &mut Option<Vec<u16>>,
+    width_map: &mut HashMap<CharCode, f64>,
+) {
+    for font_metrics in core_fonts::metrics().iter() {
+        if font_metrics.0 != fallback_name {
+            continue;
+        }
+
+        if let Some(ref encoding) = encoding_table {
+            dlog!("has encoding");
+            for w in font_metrics.2 {
+                let c = glyphnames::name_to_unicode(w.2).unwrap();
+                for (i, &codepoint) in encoding.iter().enumerate() {
+                    if codepoint == c {
+                        width_map.insert(i as CharCode, w.1 as f64);
+                    }
+                }
+            }
+        } else {
+            let mut table = vec![0; 256];
+            for w in font_metrics.2 {
+                dlog!("{} {}", w.0, w.2);
+                if w.0 != -1 {
+                    table[w.0 as usize] = if fallback_name == "ZapfDingbats" {
+                        zapfglyphnames::zapfdigbats_names_to_unicode(w.2)
+                            .unwrap_or_else(|| panic!("bad name {:?}", w))
+                    } else {
+                        glyphnames::name_to_unicode(w.2).unwrap()
+                    };
+                }
+            }
+
+            for w in font_metrics.2 {
+                width_map.insert(w.0 as CharCode, w.1 as f64);
+            }
+            *encoding_table = Some(table);
+        }
+
+        if fallback_name != base_name {
+            warn!(
+                "missing Widths for non-core font '{}'; falling back to core metrics '{}'",
+                base_name, fallback_name
+            );
+        }
+
+        return;
+    }
+}
+
+fn looks_like_symbol_glyph_soup(text: &str) -> bool {
+    let trimmed = text.trim();
+    if trimmed.chars().count() < 24 {
+        return false;
+    }
+
+    let total = trimmed.chars().count().max(1);
+    let alpha = trimmed.chars().filter(|c| c.is_alphabetic()).count();
+    let digits = trimmed.chars().filter(|c| c.is_ascii_digit()).count();
+    let whitespace = trimmed.chars().filter(|c| c.is_whitespace()).count();
+    let symbols = trimmed
+        .chars()
+        .filter(|c| !c.is_alphanumeric() && !c.is_whitespace())
+        .count();
+
+    let alpha_ratio = alpha as f64 / total as f64;
+    let digit_ratio = digits as f64 / total as f64;
+    let symbol_ratio = symbols as f64 / total as f64;
+    let whitespace_ratio = whitespace as f64 / total as f64;
+
+    alpha_ratio < 0.08 && digit_ratio < 0.20 && symbol_ratio > 0.55 && whitespace_ratio < 0.20
+}
+
 fn record_font_decode(font_key: &str, decoded_nonempty: bool) {
-    if std::env::var("PDF_EXTRACT_LOG_FONTS").is_err() { return; }
+    if std::env::var("PDF_EXTRACT_LOG_FONTS").is_err() {
+        return;
+    }
     if let Ok(mut map) = FONT_DECODE_COUNTS.lock() {
         let entry = map.entry(font_key.to_string()).or_insert((0, 0));
         entry.0 += 1;
-        if !decoded_nonempty { entry.1 += 1; }
+        if !decoded_nonempty {
+            entry.1 += 1;
+        }
     }
 }
 
 fn log_font_once(prefix: &str, font_key: &str, details: &str) {
-    if std::env::var("PDF_EXTRACT_LOG_FONTS").is_err() { return; }
+    if std::env::var("PDF_EXTRACT_LOG_FONTS").is_err() {
+        return;
+    }
     if let Ok(mut seen) = FONT_SEEN.lock() {
         if !seen.contains(font_key) {
             seen.insert(font_key.to_string());
@@ -356,10 +547,18 @@ fn log_font_once(prefix: &str, font_key: &str, details: &str) {
 }
 
 pub fn dump_font_decode_summary() {
-    if std::env::var("PDF_EXTRACT_LOG_FONTS").is_err() { return; }
+    if std::env::var("PDF_EXTRACT_LOG_FONTS").is_err() {
+        return;
+    }
     if let Ok(map) = FONT_DECODE_COUNTS.lock() {
         for (k, (total, empty)) in map.iter() {
-            log::debug!("fontstats: {} total={} empty={} empty_ratio={:.2}", k, total, empty, (*empty as f64)/(*total as f64 + 1e-9));
+            log::debug!(
+                "fontstats: {} total={} empty={} empty_ratio={:.2}",
+                k,
+                total,
+                empty,
+                (*empty as f64) / (*total as f64 + 1e-9)
+            );
         }
     }
     if let Ok(map) = FONT_APPEND_COUNTS.lock() {
@@ -370,7 +569,9 @@ pub fn dump_font_decode_summary() {
 }
 
 fn record_font_append(font_id: &str) {
-    if std::env::var("PDF_EXTRACT_LOG_FONTS").is_err() { return; }
+    if std::env::var("PDF_EXTRACT_LOG_FONTS").is_err() {
+        return;
+    }
     if let Ok(mut map) = FONT_APPEND_COUNTS.lock() {
         *map.entry(font_id.to_string()).or_insert(0) += 1;
     }
@@ -527,7 +728,7 @@ impl<'a, T: FromObj<'a>> FromOptObj<'a> for T {
     }
 }
 
-// we follow the same conventions as pdfium for when to support indirect objects:
+// Follow common PDF renderer conventions for when to support indirect objects:
 // on arrays, streams and dicts
 impl<'a, T: FromObj<'a>> FromObj<'a> for Vec<T> {
     fn from_obj(doc: &'a Document, obj: &'a Object) -> Option<Self> {
@@ -643,6 +844,15 @@ fn maybe_get_name_string<'a>(
         .map(|n| pdf_to_utf8(n))
 }
 
+fn font_name_component<'a>(
+    doc: &'a Document,
+    dict: &'a Dictionary,
+    key: &[u8],
+    fallback: &str,
+) -> String {
+    maybe_get_name_string(doc, dict, key).unwrap_or_else(|| fallback.to_string())
+}
+
 fn maybe_get_name<'a>(doc: &'a Document, dict: &'a Dictionary, key: &[u8]) -> Option<&'a [u8]> {
     maybe_get_obj(doc, dict, key).and_then(|n| n.as_name().ok())
 }
@@ -746,6 +956,7 @@ impl<'a> PdfSimpleFont<'a> {
         );
         let descriptor: Option<&Dictionary> = get(doc, font, b"FontDescriptor");
         let mut type1_encoding = None;
+        let mut embedded_unicode_map: Option<HashMap<u32, String>> = None;
         if let Some(descriptor) = descriptor {
             dlog!("descriptor {:?}", descriptor);
             if subtype == "Type1" {
@@ -779,6 +990,47 @@ impl<'a> PdfSimpleFont<'a> {
                 Some(&Object::Stream(ref s)) => {
                     let subtype = get_name_string(doc, &s.dict, b"Subtype");
                     dlog!("font file {}, {:?}", subtype, s);
+                    if subtype == "Type1C" {
+                        let bytes = get_contents(s);
+                        match cff_parser::Table::parse(&bytes) {
+                            Some(table) => {
+                                let charset = table.charset.get_table();
+                                let encoding = table.encoding.get_table();
+                                let mut mapping = HashMap::new();
+                                let limit = encoding.len().min(charset.len());
+                                if encoding.len() != charset.len() {
+                                    warn!(
+                                        "Type1C charset/encoding length mismatch for font {}: encoding={} charset={}",
+                                        base_name,
+                                        encoding.len(),
+                                        charset.len()
+                                    );
+                                }
+                                for i in 0..limit {
+                                    let cid = encoding[i];
+                                    let sid = charset[i];
+                                    let Some(name) = cff_parser::string_by_id(&table, sid) else {
+                                        continue;
+                                    };
+                                    let unicode =
+                                        glyphnames::name_to_unicode(&name).or_else(|| {
+                                            zapfglyphnames::zapfdigbats_names_to_unicode(&name)
+                                        });
+                                    if let Some(unicode) = unicode {
+                                        if let Ok(text) = String::from_utf16(&[unicode]) {
+                                            mapping.insert(cid as u32, text);
+                                        }
+                                    }
+                                }
+                                if !mapping.is_empty() {
+                                    embedded_unicode_map = Some(mapping);
+                                }
+                            }
+                            None => {
+                                warn!("failed to parse embedded Type1C font {}", base_name);
+                            }
+                        }
+                    }
                 }
                 None => {}
                 _ => {
@@ -794,7 +1046,15 @@ impl<'a> PdfSimpleFont<'a> {
             //dlog!("charset {:?}", charset);
         }
 
-        let mut unicode_map = get_unicode_map(doc, font);
+        let mut unicode_map: Option<HashMap<u32, String>> =
+            match (embedded_unicode_map, get_unicode_map(doc, font)) {
+                (Some(mut embedded), Some(explicit)) => {
+                    embedded.extend(explicit);
+                    Some(embedded)
+                }
+                (Some(embedded), None) => Some(embedded),
+                (None, explicit) => explicit,
+            };
 
         let mut encoding_table = None;
         match encoding {
@@ -964,57 +1224,9 @@ impl<'a> PdfSimpleFont<'a> {
             }
             assert_eq!(first_char + i - 1, last_char);
         } else if is_core_font(&base_name) {
-            for font_metrics in core_fonts::metrics().iter() {
-                if font_metrics.0 == base_name {
-                    if let Some(ref encoding) = encoding_table {
-                        dlog!("has encoding");
-                        for w in font_metrics.2 {
-                            let c = glyphnames::name_to_unicode(w.2).unwrap();
-                            for i in 0..encoding.len() {
-                                if encoding[i] == c {
-                                    width_map.insert(i as CharCode, w.1 as f64);
-                                }
-                            }
-                        }
-                    } else {
-                        // Instead of using the encoding from the core font we'll just look up all
-                        // of the character names. We should probably verify that this produces the
-                        // same result.
-
-                        let mut table = vec![0; 256];
-                        for w in font_metrics.2 {
-                            dlog!("{} {}", w.0, w.2);
-                            // -1 is "not encoded"
-                            if w.0 != -1 {
-                                table[w.0 as usize] = if base_name == "ZapfDingbats" {
-                                    zapfglyphnames::zapfdigbats_names_to_unicode(w.2)
-                                        .unwrap_or_else(|| panic!("bad name {:?}", w))
-                                } else {
-                                    glyphnames::name_to_unicode(w.2).unwrap()
-                                }
-                            }
-                        }
-
-                        let encoding = &table[..];
-                        for w in font_metrics.2 {
-                            width_map.insert(w.0 as CharCode, w.1 as f64);
-                            // -1 is "not encoded"
-                        }
-                        encoding_table = Some(encoding.to_vec());
-                    }
-                    /* "Ordinarily, a font dictionary that refers to one of the standard fonts
-                    should omit the FirstChar, LastChar, Widths, and FontDescriptor entries.
-                    However, it is permissible to override a standard font by including these
-                    entries and embedding the font program in the PDF file."
-
-                    Note: some PDFs include a descriptor but still don't include these entries */
-                    // assert!(maybe_get_obj(doc, font, b"FirstChar").is_none());
-                    // assert!(maybe_get_obj(doc, font, b"LastChar").is_none());
-                    // assert!(maybe_get_obj(doc, font, b"Widths").is_none());
-                }
-            }
+            populate_core_font_widths(&base_name, &base_name, &mut encoding_table, &mut width_map);
         } else {
-            panic!("no widths");
+            populate_core_font_widths(&base_name, "Helvetica", &mut encoding_table, &mut width_map);
         }
 
         let missing_width = get::<Option<f64>>(doc, font, b"MissingWidth").unwrap_or(0.);
@@ -1151,7 +1363,7 @@ impl<'a> PdfType3Font<'a> {
             font,
             widths: width_map,
             encoding: encoding_table,
-                unicode_map,
+            unicode_map,
         }
     }
 }
@@ -1215,8 +1427,8 @@ impl<'a> PdfFont for PdfSimpleFont<'a> {
         iter.next().map(|x| (*x as CharCode, 1))
     }
     fn decode_char(&self, char: CharCode) -> String {
-        let base_name = get_name_string(self.doc, self.font, b"BaseFont");
-        let subtype = get_name_string(self.doc, self.font, b"Subtype");
+        let base_name = font_name_component(self.doc, self.font, b"BaseFont", "<missing-basefont>");
+        let subtype = font_name_component(self.doc, self.font, b"Subtype", "<missing-subtype>");
         let font_key = format!("{}:{}:Simple", base_name, subtype);
         log_font_once(
             "font-init:",
@@ -1232,9 +1444,10 @@ impl<'a> PdfFont for PdfSimpleFont<'a> {
             let s = unicode_map.get(&char);
             let s = match s {
                 None => {
-                    println!(
-                        "missing char {:?} in unicode map {:?} for {:?}",
-                        char, unicode_map, self.font
+                    log_font_once(
+                        "font-missing:",
+                        &format!("{}:missing-simple:{}", font_key, char),
+                        &format!("char={} font={:?}", char, self.font),
                     );
                     // some pdf's like http://arxiv.org/pdf/2312.00064v1 are missing entries in their unicode map but do have
                     // entries in the encoding.
@@ -1250,7 +1463,7 @@ impl<'a> PdfFont for PdfSimpleFont<'a> {
                 Some(s) => s.clone(),
             };
             record_font_decode(&font_key, !s.is_empty());
-            return s;
+            return strip_non_printing_text(&s);
         }
         let encoding = self
             .encoding
@@ -1260,7 +1473,7 @@ impl<'a> PdfFont for PdfSimpleFont<'a> {
         //dlog!("char_code {:?} {:?}", char, self.encoding);
         let s = to_utf8(encoding, &slice);
         record_font_decode(&font_key, !s.is_empty());
-        s
+        strip_non_printing_text(&s)
     }
 }
 
@@ -1276,7 +1489,11 @@ impl<'a> PdfFont for PdfType3Font<'a> {
         if let Some(width) = width {
             return *width;
         } else {
-            panic!("missing width for {} {:?}", id, self.font);
+            warn!(
+                "missing Type3 width for char {}; falling back to default width",
+                id
+            );
+            1000.0
         }
     }
 
@@ -1284,8 +1501,8 @@ impl<'a> PdfFont for PdfType3Font<'a> {
         iter.next().map(|x| (*x as CharCode, 1))
     }
     fn decode_char(&self, char: CharCode) -> String {
-        let base_name = get_name_string(self.doc, self.font, b"BaseFont");
-        let subtype = get_name_string(self.doc, self.font, b"Subtype");
+        let base_name = font_name_component(self.doc, self.font, b"BaseFont", "<missing-basefont>");
+        let subtype = font_name_component(self.doc, self.font, b"Subtype", "<missing-subtype>");
         let font_key = format!("{}:{}:Type3", base_name, subtype);
         log_font_once(
             "font-init:",
@@ -1301,12 +1518,24 @@ impl<'a> PdfFont for PdfType3Font<'a> {
             let s = unicode_map.get(&char);
             let s = match s {
                 None => {
-                    panic!("missing char {:?} in map {:?}", char, unicode_map)
+                    log_font_once(
+                        "font-missing:",
+                        &format!("{}:missing-type3:{}", font_key, char),
+                        &format!("char={} font={:?}", char, self.font),
+                    );
+                    let encoding = self
+                        .encoding
+                        .as_ref()
+                        .map(|x| &x[..])
+                        .expect("missing unicode map and encoding");
+                    let s = to_utf8(encoding, &slice);
+                    trace!("falling back to type3 encoding {} -> {:?}", char, s);
+                    s
                 }
                 Some(s) => s.clone(),
             };
             record_font_decode(&font_key, !s.is_empty());
-            return s;
+            return strip_non_printing_text(&s);
         }
         let encoding = self
             .encoding
@@ -1316,7 +1545,7 @@ impl<'a> PdfFont for PdfType3Font<'a> {
         //dlog!("char_code {:?} {:?}", char, self.encoding);
         let s = to_utf8(encoding, &slice);
         record_font_decode(&font_key, !s.is_empty());
-        s
+        strip_non_printing_text(&s)
     }
 }
 
@@ -1378,7 +1607,7 @@ fn get_unicode_map<'a>(doc: &'a Document, font: &'a Dictionary) -> Option<HashMa
         None => {}
         Some(&Object::Name(ref name)) => {
             let name = pdf_to_utf8(name);
-            if name != "Identity-H" {
+            if name != "Identity-H" && name != "Identity-V" {
                 todo!("unsupported ToUnicode name: {:?}", name);
             }
         }
@@ -1405,18 +1634,21 @@ impl<'a> PdfCIDFont<'a> {
             &Object::Name(ref name) => {
                 let name = pdf_to_utf8(name);
                 dlog!("encoding {:?}", name);
-                assert!(name == "Identity-H");
-                ByteMapping {
-                    codespace: vec![CodeRange {
-                        width: 2,
-                        start: 0,
-                        end: 0xffff,
-                    }],
-                    cid: vec![CIDRange {
-                        src_code_lo: 0,
-                        src_code_hi: 0xffff,
-                        dst_CID_lo: 0,
-                    }],
+                if name == "Identity-H" || name == "Identity-V" {
+                    ByteMapping {
+                        codespace: vec![CodeRange {
+                            width: 2,
+                            start: 0,
+                            end: 0xffff,
+                        }],
+                        cid: vec![CIDRange {
+                            src_code_lo: 0,
+                            src_code_hi: 0xffff,
+                            dst_CID_lo: 0,
+                        }],
+                    }
+                } else {
+                    panic!("unsupported encoding {}", name);
                 }
             }
             &Object::Stream(ref stream) => {
@@ -1450,24 +1682,39 @@ impl<'a> PdfCIDFont<'a> {
         let mut i = 0;
         if let Some(w) = w {
             while i < w.len() {
-                if let &Object::Array(ref wa) = w[i + 1] {
+                let Some(next) = w.get(i + 1) else {
+                    warn!(
+                        "malformed CID width array for {}: missing entry after index {}",
+                        base_name, i
+                    );
+                    break;
+                };
+
+                if let Object::Array(wa) = *next {
                     let cid = w[i].as_i64().expect("id should be num");
-                    let mut j = 0;
                     dlog!("wa: {:?} -> {:?}", cid, wa);
-                    for w in wa {
-                        widths.insert((cid + j) as CharCode, as_num(w));
-                        j += 1;
+                    for (j, width) in wa.iter().enumerate() {
+                        widths.insert((cid + j as i64) as CharCode, as_num(width));
                     }
                     i += 2;
-                } else {
-                    let c_first = w[i].as_i64().expect("first should be num");
-                    let c_last = w[i].as_i64().expect("last should be num");
-                    let c_width = as_num(&w[i]);
-                    for id in c_first..c_last {
-                        widths.insert(id as CharCode, c_width);
-                    }
-                    i += 3;
+                    continue;
                 }
+
+                let (Some(first), Some(last), Some(width)) = (w.get(i), w.get(i + 1), w.get(i + 2))
+                else {
+                    warn!(
+                        "malformed CID width range for {}: truncated triplet at index {}",
+                        base_name, i
+                    );
+                    break;
+                };
+                let c_first = first.as_i64().expect("first should be num");
+                let c_last = last.as_i64().expect("last should be num");
+                let c_width = as_num(width);
+                for id in c_first..=c_last {
+                    widths.insert(id as CharCode, c_width);
+                }
+                i += 3;
             }
         }
         PdfCIDFont {
@@ -1500,7 +1747,8 @@ impl<'a> PdfFont for PdfCIDFont<'a> {
         } else {
             dlog!(
                 "missing width for char={} (CID={}), falling back to default_width",
-                id, key
+                id,
+                key
             );
             self.default_width.unwrap()
         }
@@ -1534,7 +1782,7 @@ impl<'a> PdfFont for PdfCIDFont<'a> {
     fn decode_char(&self, char: CharCode) -> String {
         // `char` is the original character code from the content stream.
         // Prefer direct ToUnicode mapping using that code.
-        let base_name = get_name_string(self.doc, self.font, b"BaseFont");
+        let base_name = font_name_component(self.doc, self.font, b"BaseFont", "<missing-basefont>");
         let font_key = format!("{}:{}:CID", base_name, "Type0");
         if let Some(map) = self.to_unicode.as_ref() {
             if let Some(s) = map.get(&(char as u32)) {
@@ -1578,7 +1826,7 @@ impl<'a> PdfFont for PdfCIDFont<'a> {
             }
         }
         record_font_decode(&font_key, !out.is_empty());
-        out
+        strip_non_printing_text(&out)
     }
 }
 
@@ -1625,7 +1873,7 @@ fn interpolate(x: f64, x_min: f64, _x_max: f64, y_min: f64, y_max: f64) -> f64 {
         y_min + (x - x_min) * ((y_max - y_min) / divisor)
     } else {
         // (x - x_min) will be 0 which means we want to discard the interpolation
-        // and arbitrarily choose y_min to match pdfium
+        // and arbitrarily choose y_min.
         y_min
     }
 }
@@ -1674,7 +1922,7 @@ impl Function {
                 let contents = get_contents(stream);
                 let size: Vec<i64> = get(doc, dict, b"Size");
                 let bits_per_sample = get(doc, dict, b"BitsPerSample");
-                // We ignore 'Order' like pdfium, poppler and pdf.js
+                // We ignore 'Order' like other PDF renderers do.
 
                 let encode = get::<Option<Vec<f64>>>(doc, dict, b"Encode");
                 // maybe there's some better way to write this.
@@ -1720,6 +1968,72 @@ fn as_num(o: &Object) -> f64 {
             panic!("not a number")
         }
     }
+}
+
+fn median_f64(values: &mut [f64]) -> f64 {
+    if values.is_empty() {
+        return 0.0;
+    }
+    values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let mid = values.len() / 2;
+    if values.len() % 2 == 0 {
+        (values[mid - 1] + values[mid]) / 2.0
+    } else {
+        values[mid]
+    }
+}
+
+fn normalize_display_spaced_text(text: &str) -> String {
+    fn flush_run(out: &mut Vec<String>, run: &mut Vec<String>) {
+        if run.is_empty() {
+            return;
+        }
+
+        let all_upper = run.iter().all(|token| {
+            token
+                .chars()
+                .next()
+                .map(|ch| ch.is_uppercase())
+                .unwrap_or(false)
+        });
+        let join_threshold = if all_upper { 5 } else { 7 };
+
+        if run.len() >= join_threshold {
+            out.push(run.join(""));
+        } else {
+            out.extend(run.drain(..));
+            return;
+        }
+
+        run.clear();
+    }
+
+    text.lines()
+        .map(|line| {
+            let mut out = Vec::new();
+            let mut run = Vec::new();
+
+            for token in line.split_whitespace() {
+                let is_single_alpha = token.chars().count() == 1
+                    && token
+                        .chars()
+                        .next()
+                        .map(|ch| ch.is_alphabetic())
+                        .unwrap_or(false);
+
+                if is_single_alpha {
+                    run.push(token.to_string());
+                } else {
+                    flush_run(&mut out, &mut run);
+                    out.push(token.to_string());
+                }
+            }
+
+            flush_run(&mut out, &mut run);
+            out.join(" ")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 #[derive(Clone)]
@@ -1769,16 +2083,12 @@ fn get_page_rotation(page_dict: &Dictionary, doc: &Document) -> i32 {
         .unwrap_or(0) as i32
 }
 
-/// Build the initial CTM with page rotation and viewer Y-flip
-fn build_initial_ctm(media_box: &[f64], page_rotate: i32) -> Transform {
-    let h_pts = media_box[3]; // page height in PostScript points
-
+/// Build the initial CTM with page rotation only.
+///
+/// Viewer-space Y conversion is applied exactly once at text/bbox emission.
+fn build_initial_ctm(_media_box: &[f64], page_rotate: i32) -> Transform {
     let mut init = Transform::identity();
-    // Layer 2: viewer Y-flip (PDF has bottom-left origin, viewers use top-left)
-    // NOTE: This Y-flip is for coordinate system only, not for image content!
-    init = init.pre_scale(1.0, -1.0).pre_translate(vec2(0.0, h_pts));
 
-    // Layer 1: page /Rotate
     init = match page_rotate {
         90 => init.pre_rotate(euclid::Angle::radians(std::f64::consts::FRAC_PI_2)),
         180 => init.pre_rotate(euclid::Angle::radians(std::f64::consts::PI)),
@@ -1995,6 +2305,7 @@ fn split_ocr_text_to_segments(
                     width: size.0,
                     height: size.1,
                     word_count,
+                    located_text: None,
                 });
                 current_pos += chunk_len;
             }
@@ -2005,9 +2316,10 @@ fn split_ocr_text_to_segments(
                 "OCR text splitter failed: {}. Using fallback single segment.",
                 e
             );
-            let word_count = unicode_count_words(text);
+            let sanitized = strip_non_printing_text(text);
+            let word_count = unicode_count_words(&sanitized);
             segments.push(TextSegment {
-                content: text.to_string(),
+                content: sanitized,
                 font_size: current_font_size,
                 transformed_font_size: current_transformed_font_size,
                 x: position.0,
@@ -2025,6 +2337,7 @@ fn split_ocr_text_to_segments(
                 width: size.0,
                 height: size.1,
                 word_count,
+                located_text: None,
             });
         }
     }
@@ -2036,7 +2349,9 @@ fn split_ocr_text_to_segments(
 fn process_xobject(
     doc: &Document,
     resources: &Dictionary,
+    xobject_name: &[u8],
     ocr_handler: Option<&OcrHandler>,
+    ocr_telemetry: Option<&OcrImageTelemetry>,
     text_segments: &mut Vec<TextSegment>,
     position: (f64, f64),
     size: (f64, f64),
@@ -2050,131 +2365,146 @@ fn process_xobject(
     let xobject = doc.get_dict_in_dict(resources, b"XObject")?;
     debug!("Found XObject dictionary with {} entries", xobject.len());
 
-    for (_, xvalue) in xobject.iter() {
-        let id = xvalue.as_reference()?;
-        let xvalue = doc.get_object(id)?;
-        let xvalue = xvalue.as_stream()?;
-        let dict = &xvalue.dict;
+    let xvalue = xobject.get(xobject_name)?;
+    let id = xvalue.as_reference()?;
+    let xvalue = doc.get_object(id)?;
+    let xvalue = xvalue.as_stream()?;
+    let dict = &xvalue.dict;
 
-        // Only process images
-        let subtype = dict.get(b"Subtype")?.as_name()?;
-        debug!("XObject subtype: {:?}", String::from_utf8_lossy(subtype));
-        if subtype != b"Image" {
-            continue;
+    // Only process the invoked image XObject. Form XObjects are handled by
+    // recursive stream processing in the caller.
+    let subtype = dict.get(b"Subtype")?.as_name()?;
+    debug!("XObject subtype: {:?}", String::from_utf8_lossy(subtype));
+    if subtype != b"Image" {
+        return Ok(());
+    }
+    debug!("Found invoked Image XObject!");
+    if let Some(stats) = ocr_telemetry {
+        stats.image_seen();
+    }
+
+    // Extract image information
+    let width = dict.get(b"Width")?.as_i64()?;
+    let height = dict.get(b"Height")?.as_i64()?;
+    info!("Found image: {}x{} pixels", width, height);
+
+    // Skip extremely large images that might cause issues
+    if width > 10000 || height > 10000 {
+        warn!("Skipping extremely large image: {}x{}", width, height);
+        if let Some(stats) = ocr_telemetry {
+            stats.image_skipped();
         }
-        debug!("Found Image XObject!");
+        return Ok(());
+    }
+    let color_space = match dict.get(b"ColorSpace") {
+        Ok(cs) => match cs {
+            Object::Array(array) => Some(String::from_utf8_lossy(array[0].as_name()?).to_string()),
+            Object::Name(name) => Some(String::from_utf8_lossy(name).to_string()),
+            _ => None,
+        },
+        Err(_) => None,
+    };
 
-        // Extract image information
-        let width = dict.get(b"Width")?.as_i64()?;
-        let height = dict.get(b"Height")?.as_i64()?;
-        info!("Found image: {}x{} pixels", width, height);
+    let bits_per_component = match dict.get(b"BitsPerComponent") {
+        Ok(bpc) => Some(bpc.as_i64()?),
+        Err(_) => None,
+    };
 
-        // Skip extremely large images that might cause issues
-        if width > 10000 || height > 10000 {
-            warn!("Skipping extremely large image: {}x{}", width, height);
-            continue;
-        }
-        let color_space = match dict.get(b"ColorSpace") {
-            Ok(cs) => match cs {
-                Object::Array(array) => {
-                    Some(String::from_utf8_lossy(array[0].as_name()?).to_string())
-                }
-                Object::Name(name) => Some(String::from_utf8_lossy(name).to_string()),
-                _ => None,
-            },
-            Err(_) => None,
-        };
-
-        let bits_per_component = match dict.get(b"BitsPerComponent") {
-            Ok(bpc) => Some(bpc.as_i64()?),
-            Err(_) => None,
-        };
-
-        let mut filters = vec![];
-        if let Ok(filter) = dict.get(b"Filter") {
-            match filter {
-                Object::Array(array) => {
-                    for obj in array.iter() {
-                        let name = obj.as_name()?;
-                        filters.push(String::from_utf8_lossy(name).to_string());
-                    }
-                }
-                Object::Name(name) => {
+    let mut filters = vec![];
+    if let Ok(filter) = dict.get(b"Filter") {
+        match filter {
+            Object::Array(array) => {
+                for obj in array.iter() {
+                    let name = obj.as_name()?;
                     filters.push(String::from_utf8_lossy(name).to_string());
                 }
-                _ => {}
             }
-        };
+            Object::Name(name) => {
+                filters.push(String::from_utf8_lossy(name).to_string());
+            }
+            _ => {}
+        }
+    };
 
-        // Parse components from color space
-        let components = match &color_space {
-            Some(cs) => match cs.as_str() {
-                "DeviceGray" => Some(1),
-                "DeviceRGB" => Some(3),
-                "DeviceCMYK" => Some(4),
-                _ => None,
-            },
-            None => None,
-        };
+    // Parse components from color space
+    let components = match &color_space {
+        Some(cs) => match cs.as_str() {
+            "DeviceGray" => Some(1),
+            "DeviceRGB" => Some(3),
+            "DeviceCMYK" => Some(4),
+            _ => None,
+        },
+        None => None,
+    };
 
-        // Parse decode parameters
-        let decode_predictor = dict
-            .get(b"DecodeParms")
-            .ok()
-            .and_then(|obj| obj.as_dict().ok())
-            .and_then(|dict| dict.get(b"Predictor").ok())
-            .and_then(|p| p.as_i64().ok())
-            .map(|p| p as i32);
+    // Parse decode parameters
+    let decode_predictor = dict
+        .get(b"DecodeParms")
+        .ok()
+        .and_then(|obj| obj.as_dict().ok())
+        .and_then(|dict| dict.get(b"Predictor").ok())
+        .and_then(|p| p.as_i64().ok())
+        .map(|p| p as i32);
 
-        let pdf_image = PdfImage {
-            id,
-            width,
-            height,
-            color_space,
-            bits_per_component,
-            filters: Some(filters),
-            content: &xvalue.content,
-            origin_dict: &xvalue.dict,
-            components,
-            decode_predictor,
-        };
+    let pdf_image = PdfImage {
+        id,
+        width,
+        height,
+        color_space,
+        bits_per_component,
+        filters: Some(filters),
+        content: &xvalue.content,
+        origin_dict: &xvalue.dict,
+        components,
+        decode_predictor,
+    };
 
-        debug!("OCR handler check before");
-        // Only attempt OCR if we have a handler
-        if let Some(handler) = ocr_handler {
-            debug!("OCR handler check after");
-            debug!(
-                "Attempting image conversion: {}x{} filters={:?}",
-                pdf_image.width, pdf_image.height, pdf_image.filters
-            );
-            // Pass the current transform to properly orient the image
-            let det = current_transform.m11 * current_transform.m22
-                - current_transform.m12 * current_transform.m21;
-            debug!(
-                "Image transform CTM: [{:.3} {:.3} {:.3} {:.3} {:.1} {:.1}] det={:.3}",
-                current_transform.m11,
-                current_transform.m12,
-                current_transform.m21,
-                current_transform.m22,
-                current_transform.m31,
-                current_transform.m32,
-                det
-            );
-            match pdf_image.to_rgb_image(Some(current_transform)) {
-                Ok(img) => {
-                    debug!(
-                        "Successful image conversion {}x{}",
-                        img.dimensions().0,
-                        img.dimensions().1
-                    );
-                    if let Ok(ocr_text) = handler.process_image(&img) {
-                        if !ocr_text.is_empty() {
+    debug!("OCR handler check before");
+    // Only attempt OCR if we have a handler
+    if let Some(handler) = ocr_handler {
+        debug!("OCR handler check after");
+        debug!(
+            "Attempting image conversion: {}x{} filters={:?}",
+            pdf_image.width, pdf_image.height, pdf_image.filters
+        );
+        // Pass the current transform to properly orient the image
+        let det = current_transform.m11 * current_transform.m22
+            - current_transform.m12 * current_transform.m21;
+        debug!(
+            "Image transform CTM: [{:.3} {:.3} {:.3} {:.3} {:.1} {:.1}] det={:.3}",
+            current_transform.m11,
+            current_transform.m12,
+            current_transform.m21,
+            current_transform.m22,
+            current_transform.m31,
+            current_transform.m32,
+            det
+        );
+        match pdf_image.to_rgb_image(Some(current_transform)) {
+            Ok(img) => {
+                if let Some(stats) = ocr_telemetry {
+                    stats.image_converted();
+                }
+                debug!(
+                    "Successful image conversion {}x{}",
+                    img.dimensions().0,
+                    img.dimensions().1
+                );
+                match handler.process_image(&img) {
+                    Ok(ocr_text) => {
+                        if ocr_text.is_empty() {
+                            debug!(
+                                "OCR: No text detected in image at page {} position ({:.1},{:.1})",
+                                page_num, position.0, position.1
+                            );
+                        } else {
+                            let ocr_chars = ocr_text.chars().count();
+                            if let Some(stats) = ocr_telemetry {
+                                stats.image_text_emitted(ocr_chars);
+                            }
                             info!(
                                 "OCR extracted {} chars from image (Page {}, Position {:.1},{:.1})",
-                                ocr_text.chars().count(),
-                                page_num,
-                                position.0,
-                                position.1
+                                ocr_chars, page_num, position.0, position.1
                             );
 
                             // Split OCR text into smaller segments respecting token limits
@@ -2200,44 +2530,40 @@ fn process_xobject(
                                 *page_char_counter += seg_len;
                             }
                         }
-                    } else {
-                        match handler.process_image(&img) {
-                            Ok(text) if text.is_empty() => {
-                                debug!("OCR: No text detected in image at page {} position ({:.1},{:.1})", 
-                                    page_num, position.0, position.1);
-                            }
-                            Err(e) => {
-                                error!(
-                                    "OCR error at page {} position ({:.1},{:.1}): {}",
-                                    page_num, position.0, position.1, e
-                                );
-                            }
-                            _ => {
-                                // This shouldn't happen since we handled the Ok case above
-                            }
+                    }
+                    Err(e) => {
+                        if let Some(stats) = ocr_telemetry {
+                            stats.image_skipped();
                         }
+                        error!(
+                            "OCR error at page {} position ({:.1},{:.1}): {}",
+                            page_num, position.0, position.1, e
+                        );
                     }
                 }
-                Err(e) => {
-                    // Check if it's a CCITT format issue
-                    if pdf_image
-                        .filters
-                        .as_ref()
-                        .and_then(|f| f.first())
-                        .map(|s| s == "CCITTFaxDecode")
-                        .unwrap_or(false)
-                    {
-                        debug!(
-                            "Skipping CCITTFaxDecode image ({}x{}) - format not fully supported",
-                            pdf_image.width, pdf_image.height
-                        );
-                    } else {
-                        // Image conversion failed - this only affects OCR, not text extraction
-                        debug!(
+            }
+            Err(e) => {
+                if let Some(stats) = ocr_telemetry {
+                    stats.image_skipped();
+                }
+                // Check if it's a CCITT format issue
+                if pdf_image
+                    .filters
+                    .as_ref()
+                    .and_then(|f| f.first())
+                    .map(|s| s == "CCITTFaxDecode")
+                    .unwrap_or(false)
+                {
+                    debug!(
+                        "Skipping CCITTFaxDecode image ({}x{}) - format not fully supported",
+                        pdf_image.width, pdf_image.height
+                    );
+                } else {
+                    // Image conversion failed - this only affects OCR, not text extraction
+                    debug!(
                             "Image conversion skipped (OCR unavailable for this image): {}x{} filters={:?}, reason: {}",
                             pdf_image.width, pdf_image.height, pdf_image.filters, e
                         );
-                    }
                 }
             }
         }
@@ -2435,6 +2761,7 @@ pub enum ColorSpace {
     DeviceGray,
     DeviceRGB,
     DeviceCMYK,
+    DeviceN,
     Pattern,
     CalRGB(CalRGB),
     CalGray(CalGray),
@@ -2552,6 +2879,7 @@ fn make_colorspace<'a>(doc: &'a Document, name: &[u8], resources: &'a Dictionary
                     "DeviceGray" => ColorSpace::DeviceGray,
                     "DeviceRGB" => ColorSpace::DeviceRGB,
                     "DeviceCMYK" => ColorSpace::DeviceCMYK,
+                    "DeviceN" => ColorSpace::DeviceN,
                     _ => {
                         panic!("color_space {:?} {:?} {:?}", name, cs_name, cs)
                     }
@@ -2560,6 +2888,7 @@ fn make_colorspace<'a>(doc: &'a Document, name: &[u8], resources: &'a Dictionary
                 match pdf_to_utf8(cs).as_ref() {
                     "DeviceRGB" => ColorSpace::DeviceRGB,
                     "DeviceGray" => ColorSpace::DeviceGray,
+                    "DeviceN" => ColorSpace::DeviceN,
                     _ => panic!(),
                 }
             } else {
@@ -2590,14 +2919,75 @@ pub(crate) struct TextSegment {
     pub width: f64,
     pub height: f64,
     pub word_count: usize,
+    pub located_text: Option<crate::document::LocatedText>,
 }
 struct Processor<'a> {
+    font_table: HashMap<Vec<u8>, Rc<dyn PdfFont + 'a>>,
     _none: PhantomData<&'a ()>,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum StreamSourceKind {
+    Page,
+    FormXObject,
+}
+
+fn add_visibility_count(stats: &mut PageTextLayerStats, rendering_mode: i32, bytes: &[u8]) {
+    let useful_chars = bytes
+        .iter()
+        .filter(|b| !b.is_ascii_whitespace() && **b != 0)
+        .count();
+    if useful_chars == 0 {
+        return;
+    }
+
+    match rendering_mode {
+        3 => stats.invisible_useful_chars += useful_chars,
+        0 | 1 | 2 | 4 | 5 | 6 => stats.visible_useful_chars += useful_chars,
+        _ => {}
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct StreamContext {
+    depth: usize,
+    source_kind: StreamSourceKind,
+    xobject_name: Option<String>,
+    xobject_stack: Vec<String>,
+}
+
+impl StreamContext {
+    pub(crate) fn page() -> Self {
+        Self {
+            depth: 0,
+            source_kind: StreamSourceKind::Page,
+            xobject_name: None,
+            xobject_stack: Vec::new(),
+        }
+    }
+
+    fn form_child(&self, name: String) -> Self {
+        let mut xobject_stack = self.xobject_stack.clone();
+        xobject_stack.push(name.clone());
+        Self {
+            depth: self.depth + 1,
+            source_kind: StreamSourceKind::FormXObject,
+            xobject_name: Some(name),
+            xobject_stack,
+        }
+    }
+
+    fn has_xobject_in_stack(&self, name: &str) -> bool {
+        self.xobject_stack.iter().any(|existing| existing == name)
+    }
 }
 
 impl<'a> Processor<'a> {
     fn new() -> Processor<'a> {
-        Processor { _none: PhantomData }
+        Processor {
+            font_table: HashMap::new(),
+            _none: PhantomData,
+        }
     }
 
     // Helper: previously added a trailing space; now only trims to avoid double spaces
@@ -2637,7 +3027,7 @@ impl<'a> Processor<'a> {
 
         if estimated_tokens <= max_segment_tokens {
             // Content is small enough, return single segment
-            return vec![Self::create_text_segment(
+            return Self::create_text_segment(
                 content,
                 font_size,
                 transformed_font_size,
@@ -2653,7 +3043,9 @@ impl<'a> Processor<'a> {
                 stroke_color_u8,
                 char_start,
                 char_end,
-            )];
+            )
+            .into_iter()
+            .collect();
         }
 
         // Content is too large, need to split it
@@ -2673,7 +3065,7 @@ impl<'a> Processor<'a> {
                     let chunk_str = chunk.to_string();
                     let chunk_len = chunk_str.chars().count();
 
-                    segments.push(Self::create_text_segment(
+                    if let Some(segment) = Self::create_text_segment(
                         chunk_str,
                         font_size,
                         transformed_font_size,
@@ -2689,7 +3081,9 @@ impl<'a> Processor<'a> {
                         stroke_color_u8,
                         current_char_pos,
                         current_char_pos + chunk_len,
-                    ));
+                    ) {
+                        segments.push(segment);
+                    }
                     current_char_pos += chunk_len;
                 }
 
@@ -2712,7 +3106,7 @@ impl<'a> Processor<'a> {
                     if new_estimated > max_segment_tokens && !current_chunk.is_empty() {
                         // Push current chunk
                         let chunk_len = current_chunk.chars().count();
-                        segments.push(Self::create_text_segment(
+                        if let Some(segment) = Self::create_text_segment(
                             current_chunk.clone(),
                             font_size,
                             transformed_font_size,
@@ -2728,7 +3122,9 @@ impl<'a> Processor<'a> {
                             stroke_color_u8,
                             current_char_pos,
                             current_char_pos + chunk_len,
-                        ));
+                        ) {
+                            segments.push(segment);
+                        }
                         current_char_pos += chunk_len;
                         current_chunk.clear();
                         current_words = 0;
@@ -2745,7 +3141,7 @@ impl<'a> Processor<'a> {
                 // Push remaining
                 if !current_chunk.is_empty() {
                     let chunk_len = current_chunk.chars().count();
-                    segments.push(Self::create_text_segment(
+                    if let Some(segment) = Self::create_text_segment(
                         current_chunk,
                         font_size,
                         transformed_font_size,
@@ -2761,7 +3157,9 @@ impl<'a> Processor<'a> {
                         stroke_color_u8,
                         current_char_pos,
                         current_char_pos + chunk_len,
-                    ));
+                    ) {
+                        segments.push(segment);
+                    }
                 }
             }
         }
@@ -2785,7 +3183,11 @@ impl<'a> Processor<'a> {
         stroke_color: Option<(u8, u8, u8)>,
         char_start: usize,
         char_end: usize,
-    ) -> TextSegment {
+    ) -> Option<TextSegment> {
+        let content = strip_non_printing_text(&content);
+        if content.trim().is_empty() || looks_like_symbol_glyph_soup(&content) {
+            return None;
+        }
         let char_count = content.chars().count();
         let word_count = unicode_count_words(&content);
         // Calculate approximate width based on average character width
@@ -2799,7 +3201,7 @@ impl<'a> Processor<'a> {
             // For single line, use actual character count
             char_count as f64 * font_size * 0.6
         };
-        TextSegment {
+        Some(TextSegment {
             content,
             font_size,
             transformed_font_size,
@@ -2818,7 +3220,8 @@ impl<'a> Processor<'a> {
             width: approx_width,
             height: font_size,
             word_count,
-        }
+            located_text: None,
+        })
     }
 
     fn is_visible_text(
@@ -2828,43 +3231,91 @@ impl<'a> Processor<'a> {
         color: &(f64, f64, f64),
         media_box: &MediaBox,
         rendering_mode: i32,
+        page_stats: Option<PageTextLayerStats>,
     ) -> bool {
-        // Default: allow text unless explicitly invisible (Tr=3).
-        // Many PDFs use transforms that make simple bounds checks unreliable.
-        if rendering_mode == 3 {
+        TextVisibilityPolicy::default()
+            .decide(TextVisibilityInput {
+                transform,
+                font_size,
+                color: *color,
+                media_box,
+                rendering_mode,
+                generated: None,
+                unicode: None,
+                page_stats,
+            })
+            .keep()
+    }
+
+    fn content_text_layer_stats(content: &Content) -> PageTextLayerStats {
+        let mut stats = PageTextLayerStats::default();
+        let mut rendering_mode = 0i32;
+
+        for operation in &content.operations {
+            match operation.operator.as_ref() {
+                "Tr" => {
+                    if let Some(value) = operation.operands.get(0) {
+                        rendering_mode = as_num(value) as i32;
+                    }
+                }
+                "Tj" | "'" => {
+                    if let Some(Object::String(bytes, _)) = operation.operands.get(0) {
+                        add_visibility_count(&mut stats, rendering_mode, bytes);
+                    }
+                }
+                "\"" => {
+                    if let Some(Object::String(bytes, _)) = operation.operands.get(2) {
+                        add_visibility_count(&mut stats, rendering_mode, bytes);
+                    }
+                }
+                "TJ" => {
+                    if let Some(Object::Array(items)) = operation.operands.get(0) {
+                        for item in items {
+                            if let Object::String(bytes, _) = item {
+                                add_visibility_count(&mut stats, rendering_mode, bytes);
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        stats
+    }
+
+    fn visible_for_layout(
+        &self,
+        transform: &Transform,
+        font_size: f64,
+        color: &(f64, f64, f64),
+        media_box: &MediaBox,
+        rendering_mode: i32,
+        page_stats: Option<PageTextLayerStats>,
+    ) -> bool {
+        if !self.is_visible_text(
+            transform,
+            font_size,
+            color,
+            media_box,
+            rendering_mode,
+            page_stats,
+        ) {
             return false;
         }
-
-        // Strict visibility checks are opt-in via PDF_EXTRACT_ENFORCE_VISIBILITY
-        if std::env::var("PDF_EXTRACT_ENFORCE_VISIBILITY").is_ok() {
-            const MIN_COLOR_DIFF: f64 = 0.1;
-            // Bounds check (using the provided transform origin)
-            let point = transform.transform_point(Point2D::new(0.0, 0.0));
-            if point.x < media_box.llx
-                || point.x > media_box.urx
-                || point.y < media_box.lly
-                || point.y > media_box.ury
-            {
-                return false;
-            }
-            // Optional: drop near-white text on assumed white background
-            if std::env::var("PDF_EXTRACT_DROP_NEAR_WHITE").is_ok() {
-                if color.0 > 1.0 - MIN_COLOR_DIFF
-                    && color.1 > 1.0 - MIN_COLOR_DIFF
-                    && color.2 > 1.0 - MIN_COLOR_DIFF
-                {
-                    return false;
-                }
-            }
-        }
-
-        true
+        let page_h = media_box.ury - media_box.lly;
+        let max_frac: f64 = std::env::var("PDF_EXTRACT_MAX_FONT_FRAC")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0.35);
+        font_size <= page_h * max_frac
     }
 
     fn process_stream(
         &mut self,
         doc: &'a Document,
         ocr_handler: Option<&OcrHandler>,
+        ocr_telemetry: Option<&OcrImageTelemetry>,
         content: Vec<u8>,
         resources: &'a Dictionary,
         media_box: &MediaBox,
@@ -2872,7 +3323,16 @@ impl<'a> Processor<'a> {
         text_segments: &mut Vec<TextSegment>,
         page_rotate: i32,
         laparams: Option<&crate::LAParams>,
+        initial_ctm_override: Option<Transform>,
+        stream_context: StreamContext,
     ) -> Result<(), OutputError> {
+        if stream_context.depth > 8 {
+            warn!(
+                "Skipping nested PDF stream on page {} at depth {} ({:?})",
+                page_num, stream_context.depth, stream_context.xobject_name
+            );
+            return Ok(());
+        }
         let use_layout = laparams.is_some();
         let params = laparams.cloned();
         #[derive(Clone, Debug)]
@@ -2882,7 +3342,18 @@ impl<'a> Processor<'a> {
             y: f64,
             width: f64,
             height: f64,
-            text_obj_id: u32, // Track which BT/ET text object this glyph belongs to
+            page_char_start: usize,
+            page_char_end: usize,
+            source_text_object_id: u32,
+            font_name: String,
+            font_size: f64,
+            transformed_font_size: f64,
+            font_weight: FontWeight,
+            is_italic: bool,
+            fill_color: Option<(u8, u8, u8)>,
+            render_mode: i32,
+            source_kind: StreamSourceKind,
+            xobject_name: Option<String>,
         }
         let mut glyphs: Vec<Glyph> = Vec::new();
         let mut current_text_obj_id: u32 = 0;
@@ -2918,10 +3389,12 @@ impl<'a> Processor<'a> {
                 return Ok(());
             }
         };
+        let page_text_stats = Self::content_text_layer_stats(&content);
 
         // Build initial CTM with page rotation and viewer Y-flip
         let media_box_array = [media_box.llx, media_box.lly, media_box.urx, media_box.ury];
-        let initial_ctm = build_initial_ctm(&media_box_array, page_rotate);
+        let initial_ctm = initial_ctm_override
+            .unwrap_or_else(|| build_initial_ctm(&media_box_array, page_rotate));
 
         // Store page rotation for image processing (images don't need Y-flip)
         let page_rotation_only = build_image_ctm(page_rotate);
@@ -3003,7 +3476,14 @@ impl<'a> Processor<'a> {
                     gs.ts.tm = tlm;
                 }
                 "cm" => {
-                    assert!(operation.operands.len() == 6);
+                    if operation.operands.len() != 6 {
+                        warn!(
+                            "Skipping malformed cm operator on page {}: expected 6 operands, got {}",
+                            page_num,
+                            operation.operands.len()
+                        );
+                        continue;
+                    }
                     let m = Transform2D::row_major(
                         as_num(&operation.operands[0]),
                         as_num(&operation.operands[1]),
@@ -3016,12 +3496,26 @@ impl<'a> Processor<'a> {
                     dlog!("matrix {:?}", gs.ctm);
                 }
                 "CS" => {
-                    let name = operation.operands[0].as_name().unwrap();
-                    gs.stroke_colorspace = make_colorspace(doc, name, resources);
+                    if let Some(name) = operation
+                        .operands
+                        .first()
+                        .and_then(|obj| obj.as_name().ok())
+                    {
+                        gs.stroke_colorspace = make_colorspace(doc, name, resources);
+                    } else {
+                        warn!("Skipping malformed CS operator on page {}", page_num);
+                    }
                 }
                 "cs" => {
-                    let name = operation.operands[0].as_name().unwrap();
-                    gs.fill_colorspace = make_colorspace(doc, name, resources);
+                    if let Some(name) = operation
+                        .operands
+                        .first()
+                        .and_then(|obj| obj.as_name().ok())
+                    {
+                        gs.fill_colorspace = make_colorspace(doc, name, resources);
+                    } else {
+                        warn!("Skipping malformed cs operator on page {}", page_num);
+                    }
                 }
                 "SC" | "SCN" => {
                     gs.stroke_color = match gs.stroke_colorspace {
@@ -3057,9 +3551,26 @@ impl<'a> Processor<'a> {
                     dlog!("unhandled color operation {:?}", operation);
                 }
                 "Tf" => {
+                    if operation.operands.len() < 2 {
+                        warn!(
+                            "Skipping malformed Tf operator on page {}: expected font and size",
+                            page_num
+                        );
+                        continue;
+                    }
                     let fonts: &Dictionary = get(&doc, resources, b"Font");
-                    let name = operation.operands[0].as_name().unwrap();
-                    let font = make_font(doc, get::<&Dictionary>(doc, fonts, name));
+                    let Some(name) = operation.operands[0].as_name().ok() else {
+                        warn!(
+                            "Skipping Tf operator with non-name font on page {}",
+                            page_num
+                        );
+                        continue;
+                    };
+                    let font = self
+                        .font_table
+                        .entry(name.to_owned())
+                        .or_insert_with(|| make_font(doc, get::<&Dictionary>(doc, fonts, name)))
+                        .clone();
 
                     let new_font_size =
                         (as_num(&operation.operands[1]) * 100.0_f64).round() / 100.0;
@@ -3156,13 +3667,16 @@ impl<'a> Processor<'a> {
                         operation
                     );
                 }
-                "TJ" => match operation.operands[0] {
-                    Object::Array(ref array) => {
+                "TJ" => match operation.operands.get(0) {
+                    Some(Object::Array(ref array)) => {
+                        let Some(font) = gs.ts.font.clone() else {
+                            warn!("Skipping TJ text on page {} before any Tf font", page_num);
+                            continue;
+                        };
                         // current_line.push_str("*");
                         for e in array {
                             match e {
                                 &Object::String(ref s, _) => {
-                                    let font: &Rc<dyn PdfFont> = gs.ts.font.as_ref().unwrap();
                                     first_char = true;
 
                                     for (c, length) in font.char_codes(s) {
@@ -3175,24 +3689,30 @@ impl<'a> Processor<'a> {
 
                                         let char = font.decode_char(c);
 
-                                        let position = gs.ts.tm.post_transform(&flip_ctm);
-                                        let (x, y) = (position.m31, position.m32);
-                                        let transformed_font_size_vec = gs.ts.tm.transform_vector(
+                                        let text_trm = gs.ctm.post_transform(&gs.ts.tm);
+                                        let device_trm = text_trm.post_transform(&flip_ctm);
+                                        let (x, y) = (device_trm.m31, device_trm.m32);
+                                        let transformed_font_size_vec = text_trm.transform_vector(
                                             vec2(gs.ts.font_size, gs.ts.font_size),
                                         );
-                                        let transformed_font_size = ((transformed_font_size_vec.x
-                                            * transformed_font_size_vec.y)
+                                        let transformed_font_size =
+                                            ((transformed_font_size_vec.x.abs()
+                                                * transformed_font_size_vec.y.abs())
                                             .sqrt()
-                                            * 100.0)
-                                            .round()
-                                            / 100.0;
-                                        // Use full device-space transform: CTM × Tm × viewer Y-flip
-                                        let trm_vis = gs
-                                            .ctm
-                                            .post_transform(&gs.ts.tm)
-                                            .post_transform(&flip_ctm);
+                                                * 100.0)
+                                                .round()
+                                                / 100.0;
+                                        // Use full device-space transform: CTM x Tm x viewer Y-flip
+                                        let trm_vis = device_trm;
                                         let is_add = if use_layout {
-                                            true
+                                            self.visible_for_layout(
+                                                &trm_vis,
+                                                transformed_font_size,
+                                                &current_color,
+                                                media_box,
+                                                gs.ts.rendering_mode,
+                                                Some(page_text_stats),
+                                            )
                                         } else {
                                             self.is_visible_text(
                                                 &trm_vis,
@@ -3200,6 +3720,7 @@ impl<'a> Processor<'a> {
                                                 &current_color,
                                                 media_box,
                                                 gs.ts.rendering_mode,
+                                                Some(page_text_stats),
                                             )
                                         };
 
@@ -3208,27 +3729,29 @@ impl<'a> Processor<'a> {
                                             && !current_transformed_font_size.is_nan()
                                         {
                                             if !current_line.trim().is_empty() {
-                                                let content_str = Self::preserve_sentence_boundaries(
-                                                    &current_line,
-                                                );
-                                                let segments = Self::create_text_segments_with_limit(
-                                                    content_str,
-                                                    current_font_size,
-                                                    current_transformed_font_size,
-                                                    current_x,
-                                                    current_y,
-                                                    current_is_bold,
-                                                    current_font.clone(),
-                                                    current_font_weight.clone(),
-                                                    current_is_italic,
-                                                    page_num,
-                                                    "Tj".to_string(),
-                                                    Some(current_font_color),
-                                                    None,
-                                                    current_segment_start,
-                                                    page_char_counter,
-                                                    5000, // Avoid pre-splitting here; let the chunker split
-                                                );
+                                                let content_str =
+                                                    Self::preserve_sentence_boundaries(
+                                                        &current_line,
+                                                    );
+                                                let segments =
+                                                    Self::create_text_segments_with_limit(
+                                                        content_str,
+                                                        current_font_size,
+                                                        current_transformed_font_size,
+                                                        current_x,
+                                                        current_y,
+                                                        current_is_bold,
+                                                        current_font.clone(),
+                                                        current_font_weight.clone(),
+                                                        current_is_italic,
+                                                        page_num,
+                                                        "Tj".to_string(),
+                                                        Some(current_font_color),
+                                                        None,
+                                                        current_segment_start,
+                                                        page_char_counter,
+                                                        5000, // Avoid pre-splitting here; let the chunker split
+                                                    );
                                                 text_segments.extend(segments);
                                                 current_segment_start = page_char_counter;
                                                 current_line.clear();
@@ -3257,7 +3780,11 @@ impl<'a> Processor<'a> {
                                             }
                                             // Check for large horizontal gap (column break)
                                             // This handles two-column layouts where elements are at same Y
-                                            else if is_column_break(x, last_end, transformed_font_size) {
+                                            else if is_column_break(
+                                                x,
+                                                last_end,
+                                                transformed_font_size,
+                                            ) {
                                                 current_line.push('\n');
                                                 page_char_counter += 1;
                                             }
@@ -3275,6 +3802,8 @@ impl<'a> Processor<'a> {
                                             current_y = (y * 100.00).round() / 100.0;
                                         }
 
+                                        let glyph_char_start = page_char_counter;
+                                        let glyph_char_len = char.chars().count();
                                         if is_add {
                                             if use_layout {
                                                 // Collect glyphs for layout grouping
@@ -3286,8 +3815,31 @@ impl<'a> Processor<'a> {
                                                     y,
                                                     width: g_width,
                                                     height: g_height,
-                                                    text_obj_id: current_text_obj_id,
+                                                    page_char_start: glyph_char_start,
+                                                    page_char_end: glyph_char_start
+                                                        + glyph_char_len,
+                                                    source_text_object_id: current_text_obj_id,
+                                                    font_name: current_font.clone(),
+                                                    font_size: current_font_size,
+                                                    transformed_font_size,
+                                                    font_weight: current_font_weight.clone(),
+                                                    is_italic: current_is_italic,
+                                                    fill_color: Some((
+                                                        (current_color.0 * 255.0).clamp(0.0, 255.0)
+                                                            as u8,
+                                                        (current_color.1 * 255.0).clamp(0.0, 255.0)
+                                                            as u8,
+                                                        (current_color.2 * 255.0).clamp(0.0, 255.0)
+                                                            as u8,
+                                                    )),
+                                                    render_mode: gs.ts.rendering_mode,
+                                                    source_kind: stream_context.source_kind.clone(),
+                                                    xobject_name: stream_context
+                                                        .xobject_name
+                                                        .clone(),
                                                 });
+                                                page_char_counter += glyph_char_len;
+                                                record_font_append(&current_font);
                                             } else {
                                                 current_line.push_str(&char);
                                                 page_char_counter += char.chars().count();
@@ -3338,10 +3890,13 @@ impl<'a> Processor<'a> {
                     }
                     _ => {}
                 },
-                "Tj" => match operation.operands[0] {
-                    Object::String(ref s, _) => {
+                "Tj" => match operation.operands.get(0) {
+                    Some(Object::String(ref s, _)) => {
+                        let Some(font) = gs.ts.font.clone() else {
+                            warn!("Skipping Tj text on page {} before any Tf font", page_num);
+                            continue;
+                        };
                         let ts = &mut gs.ts;
-                        let font: &Rc<dyn PdfFont> = gs.ts.font.as_ref().unwrap();
                         first_char = true;
 
                         for (c, length) in font.char_codes(s) {
@@ -3354,27 +3909,29 @@ impl<'a> Processor<'a> {
 
                             let char = font.decode_char(c);
 
-                            let position = gs.ts.tm.post_transform(&flip_ctm);
-                            let (x, y) = (position.m31, position.m32);
-                            let transformed_font_size_vec = gs
-                                .ts
-                                .tm
-                                .transform_vector(vec2(gs.ts.font_size, gs.ts.font_size));
-                            let transformed_font_size = ((transformed_font_size_vec.x
-                                * transformed_font_size_vec.y)
-                                .sqrt()
+                            let text_trm = gs.ctm.post_transform(&gs.ts.tm);
+                            let device_trm = text_trm.post_transform(&flip_ctm);
+                            let (x, y) = (device_trm.m31, device_trm.m32);
+                            let transformed_font_size_vec =
+                                text_trm.transform_vector(vec2(gs.ts.font_size, gs.ts.font_size));
+                            let transformed_font_size = ((transformed_font_size_vec.x.abs()
+                                * transformed_font_size_vec.y.abs())
+                            .sqrt()
                                 * 100.0)
                                 .round()
                                 / 100.0;
 
-                            // Use full device-space transform: CTM × Tm × viewer Y-flip
-                            let trm_vis = gs
-                                .ctm
-                                .post_transform(&gs.ts.tm)
-                                .post_transform(&flip_ctm);
+                            // Use full device-space transform: CTM x Tm x viewer Y-flip
+                            let trm_vis = device_trm;
                             let is_add = if use_layout {
-                                // In layout mode, still ignore invisible/clip-only text
-                                matches!(gs.ts.rendering_mode, 0 | 1 | 2)
+                                self.visible_for_layout(
+                                    &trm_vis,
+                                    transformed_font_size,
+                                    &current_color,
+                                    media_box,
+                                    gs.ts.rendering_mode,
+                                    Some(page_text_stats),
+                                )
                             } else {
                                 self.is_visible_text(
                                     &trm_vis,
@@ -3382,6 +3939,7 @@ impl<'a> Processor<'a> {
                                     &current_color,
                                     media_box,
                                     gs.ts.rendering_mode,
+                                    Some(page_text_stats),
                                 )
                             };
                             if transformed_font_size != current_transformed_font_size
@@ -3420,25 +3978,31 @@ impl<'a> Processor<'a> {
                             if first_char {
                                 // Check for paragraph break (large vertical gap)
                                 if is_paragraph_break(y, last_y, transformed_font_size) {
-                                    current_line.push('\n')
+                                    current_line.push('\n');
+                                    page_char_counter += 1;
                                 }
                                 // Check for new line (moved down and back to left)
                                 else if is_new_line(x, last_end, y, last_y, transformed_font_size)
                                 {
-                                    current_line.push('\n')
+                                    current_line.push('\n');
+                                    page_char_counter += 1;
                                 }
                                 // Check for large horizontal gap (column break)
                                 else if is_column_break(x, last_end, transformed_font_size) {
-                                    current_line.push('\n')
+                                    current_line.push('\n');
+                                    page_char_counter += 1;
                                 }
                                 // Check for space between words on same line
                                 else if should_insert_space(x, last_end, transformed_font_size) {
-                                    current_line.push(' ')
+                                    current_line.push(' ');
+                                    page_char_counter += 1;
                                 }
 
                                 current_x = x;
                                 current_y = y;
                             }
+                            let glyph_char_start = page_char_counter;
+                            let glyph_char_len = char.chars().count();
                             if is_add {
                                 if use_layout {
                                     let g_height = transformed_font_size.max(0.0);
@@ -3449,10 +4013,28 @@ impl<'a> Processor<'a> {
                                         y,
                                         width: g_width,
                                         height: g_height,
-                                        text_obj_id: current_text_obj_id,
+                                        page_char_start: glyph_char_start,
+                                        page_char_end: glyph_char_start + glyph_char_len,
+                                        source_text_object_id: current_text_obj_id,
+                                        font_name: current_font.clone(),
+                                        font_size: current_font_size,
+                                        transformed_font_size,
+                                        font_weight: current_font_weight.clone(),
+                                        is_italic: current_is_italic,
+                                        fill_color: Some((
+                                            (current_color.0 * 255.0).clamp(0.0, 255.0) as u8,
+                                            (current_color.1 * 255.0).clamp(0.0, 255.0) as u8,
+                                            (current_color.2 * 255.0).clamp(0.0, 255.0) as u8,
+                                        )),
+                                        render_mode: gs.ts.rendering_mode,
+                                        source_kind: stream_context.source_kind.clone(),
+                                        xobject_name: stream_context.xobject_name.clone(),
                                     });
+                                    page_char_counter += glyph_char_len;
+                                    record_font_append(&current_font);
                                 } else {
                                     current_line.push_str(&char);
+                                    page_char_counter += char.chars().count();
                                     record_font_append(&current_font);
                                 }
                             }
@@ -3470,7 +4052,10 @@ impl<'a> Processor<'a> {
                         }
                     }
                     _ => {
-                        panic!("unexpected Tj operand {:?}", operation)
+                        warn!(
+                            "Skipping malformed Tj operator on page {}: {:?}",
+                            page_num, operation
+                        );
                     }
                 },
                 "Tc" => {
@@ -3497,7 +4082,14 @@ impl<'a> Processor<'a> {
                     }
                 }
                 "Tm" => {
-                    assert!(operation.operands.len() == 6);
+                    if operation.operands.len() != 6 {
+                        warn!(
+                            "Skipping malformed Tm operator on page {}: expected 6 operands, got {}",
+                            page_num,
+                            operation.operands.len()
+                        );
+                        continue;
+                    }
                     tlm = Transform2D::row_major(
                         as_num(&operation.operands[0]),
                         as_num(&operation.operands[1]),
@@ -3510,7 +4102,14 @@ impl<'a> Processor<'a> {
                     dlog!("Tm: matrix {:?}", gs.ts.tm);
                 }
                 "Td" => {
-                    assert!(operation.operands.len() == 2);
+                    if operation.operands.len() != 2 {
+                        warn!(
+                            "Skipping malformed Td operator on page {}: expected 2 operands, got {}",
+                            page_num,
+                            operation.operands.len()
+                        );
+                        continue;
+                    }
                     let tx = as_num(&operation.operands[0]);
                     let ty = as_num(&operation.operands[1]);
                     dlog!("translation: {} {}", tx, ty);
@@ -3520,7 +4119,14 @@ impl<'a> Processor<'a> {
                     dlog!("Td matrix {:?}", gs.ts.tm);
                 }
                 "TD" => {
-                    assert!(operation.operands.len() == 2);
+                    if operation.operands.len() != 2 {
+                        warn!(
+                            "Skipping malformed TD operator on page {}: expected 2 operands, got {}",
+                            page_num,
+                            operation.operands.len()
+                        );
+                        continue;
+                    }
                     let tx = as_num(&operation.operands[0]);
                     let ty = as_num(&operation.operands[1]);
                     dlog!("translation: {} {}", tx, ty);
@@ -3547,49 +4153,86 @@ impl<'a> Processor<'a> {
                     dlog!("' => T* then Tj; matrix {:?}", gs.ts.tm);
 
                     if let Some(Object::String(ref s, _)) = operation.operands.get(0) {
+                        let Some(font) = gs.ts.font.clone() else {
+                            warn!("Skipping ' text on page {} before any Tf font", page_num);
+                            continue;
+                        };
                         let ts = &mut gs.ts;
-                        let font: &Rc<dyn PdfFont> = ts.font.as_ref().unwrap();
                         first_char = true;
 
                         for (c, length) in font.char_codes(s) {
                             let w0 = font.get_width(c) / 1000.;
                             let mut spacing = ts.character_spacing;
                             let is_space = c == 32 && length == 1;
-                            if is_space { spacing += ts.word_spacing; }
+                            if is_space {
+                                spacing += ts.word_spacing;
+                            }
 
                             let ch = font.decode_char(c);
 
-                            let position = ts.tm.post_transform(&flip_ctm);
-                            let (x, y) = (position.m31, position.m32);
-                            let transformed_font_size_vec = ts.tm.transform_vector(vec2(ts.font_size, ts.font_size));
-                            let transformed_font_size = ((transformed_font_size_vec.x * transformed_font_size_vec.y).sqrt() * 100.0).round() / 100.0;
+                            let text_trm = gs.ctm.post_transform(&ts.tm);
+                            let device_trm = text_trm.post_transform(&flip_ctm);
+                            let (x, y) = (device_trm.m31, device_trm.m32);
+                            let transformed_font_size_vec =
+                                text_trm.transform_vector(vec2(ts.font_size, ts.font_size));
+                            let transformed_font_size = ((transformed_font_size_vec.x.abs()
+                                * transformed_font_size_vec.y.abs())
+                            .sqrt()
+                                * 100.0)
+                                .round()
+                                / 100.0;
 
-                            let trm_vis = gs.ctm.post_transform(&ts.tm).post_transform(&flip_ctm);
+                            let trm_vis = device_trm;
                             let is_add = if use_layout {
-                                // LA-path: be stricter when requested; also drop absurd scales
-                                let mut ok = matches!(ts.rendering_mode, 0 | 1 | 2);
-                                if ok && std::env::var("PDF_EXTRACT_ENFORCE_VISIBILITY").is_ok() {
-                                    ok = self.is_visible_text(&trm_vis, transformed_font_size, &current_color, media_box, ts.rendering_mode);
-                                }
-                                if ok {
-                                    let page_h = media_box.ury - media_box.lly;
-                                    let max_frac: f64 = std::env::var("PDF_EXTRACT_MAX_FONT_FRAC")
-                                        .ok()
-                                        .and_then(|v| v.parse().ok())
-                                        .unwrap_or(0.35);
-                                    if transformed_font_size > page_h * max_frac {
-                                        ok = false;
-                                    }
-                                }
-                                ok
+                                self.visible_for_layout(
+                                    &trm_vis,
+                                    transformed_font_size,
+                                    &current_color,
+                                    media_box,
+                                    ts.rendering_mode,
+                                    Some(page_text_stats),
+                                )
                             } else {
-                                self.is_visible_text(&trm_vis, transformed_font_size, &current_color, media_box, ts.rendering_mode)
+                                self.is_visible_text(
+                                    &trm_vis,
+                                    transformed_font_size,
+                                    &current_color,
+                                    media_box,
+                                    ts.rendering_mode,
+                                    Some(page_text_stats),
+                                )
                             };
+                            let glyph_char_start = page_char_counter;
+                            let glyph_char_len = ch.chars().count();
                             if is_add {
                                 if use_layout {
                                     let g_height = transformed_font_size.max(0.0);
                                     let g_width = (w0 * transformed_font_size).max(0.0);
-                                    glyphs.push(Glyph { ch, x, y, width: g_width, height: g_height, text_obj_id: current_text_obj_id });
+                                    glyphs.push(Glyph {
+                                        ch: ch.clone(),
+                                        x,
+                                        y,
+                                        width: g_width,
+                                        height: g_height,
+                                        page_char_start: glyph_char_start,
+                                        page_char_end: glyph_char_start + glyph_char_len,
+                                        source_text_object_id: current_text_obj_id,
+                                        font_name: current_font.clone(),
+                                        font_size: current_font_size,
+                                        transformed_font_size,
+                                        font_weight: current_font_weight.clone(),
+                                        is_italic: current_is_italic,
+                                        fill_color: Some((
+                                            (current_color.0 * 255.0).clamp(0.0, 255.0) as u8,
+                                            (current_color.1 * 255.0).clamp(0.0, 255.0) as u8,
+                                            (current_color.2 * 255.0).clamp(0.0, 255.0) as u8,
+                                        )),
+                                        render_mode: ts.rendering_mode,
+                                        source_kind: stream_context.source_kind.clone(),
+                                        xobject_name: stream_context.xobject_name.clone(),
+                                    });
+                                    page_char_counter += glyph_char_len;
+                                    record_font_append(&current_font);
                                 } else {
                                     current_line.push_str(&ch);
                                     page_char_counter += ch.chars().count();
@@ -3599,8 +4242,11 @@ impl<'a> Processor<'a> {
                             first_char = false;
                             last_end = x + w0 * transformed_font_size;
                             last_y = y;
-                            let tx = ts.horizontal_scaling * ((w0 - 0. / 1000.) * ts.font_size + spacing);
-                            ts.tm = ts.tm.pre_transform(&Transform2D::create_translation(tx, 0.));
+                            let tx = ts.horizontal_scaling
+                                * ((w0 - 0. / 1000.) * ts.font_size + spacing);
+                            ts.tm = ts
+                                .tm
+                                .pre_transform(&Transform2D::create_translation(tx, 0.));
                         }
                     }
                 }
@@ -3618,48 +4264,86 @@ impl<'a> Processor<'a> {
                         dlog!("\" => set Tw/Tc then T*; matrix {:?}", gs.ts.tm);
 
                         if let Object::String(ref s, _) = operation.operands[2] {
+                            let Some(font) = gs.ts.font.clone() else {
+                                warn!("Skipping \" text on page {} before any Tf font", page_num);
+                                continue;
+                            };
                             let ts = &mut gs.ts;
-                            let font: &Rc<dyn PdfFont> = ts.font.as_ref().unwrap();
                             first_char = true;
 
                             for (c, length) in font.char_codes(s) {
                                 let w0 = font.get_width(c) / 1000.;
                                 let mut spacing = ts.character_spacing;
                                 let is_space = c == 32 && length == 1;
-                                if is_space { spacing += ts.word_spacing; }
+                                if is_space {
+                                    spacing += ts.word_spacing;
+                                }
 
                                 let ch = font.decode_char(c);
 
-                                let position = ts.tm.post_transform(&flip_ctm);
-                                let (x, y) = (position.m31, position.m32);
-                                let transformed_font_size_vec = ts.tm.transform_vector(vec2(ts.font_size, ts.font_size));
-                                let transformed_font_size = ((transformed_font_size_vec.x * transformed_font_size_vec.y).sqrt() * 100.0).round() / 100.0;
+                                let text_trm = gs.ctm.post_transform(&ts.tm);
+                                let device_trm = text_trm.post_transform(&flip_ctm);
+                                let (x, y) = (device_trm.m31, device_trm.m32);
+                                let transformed_font_size_vec =
+                                    text_trm.transform_vector(vec2(ts.font_size, ts.font_size));
+                                let transformed_font_size = ((transformed_font_size_vec.x.abs()
+                                    * transformed_font_size_vec.y.abs())
+                                .sqrt()
+                                    * 100.0)
+                                    .round()
+                                    / 100.0;
 
-                                let trm_vis = gs.ctm.post_transform(&ts.tm).post_transform(&flip_ctm);
+                                let trm_vis = device_trm;
                                 let is_add = if use_layout {
-                                    let mut ok = matches!(ts.rendering_mode, 0 | 1 | 2);
-                                    if ok && std::env::var("PDF_EXTRACT_ENFORCE_VISIBILITY").is_ok() {
-                                        ok = self.is_visible_text(&trm_vis, transformed_font_size, &current_color, media_box, ts.rendering_mode);
-                                    }
-                                    if ok {
-                                        let page_h = media_box.ury - media_box.lly;
-                                        let max_frac: f64 = std::env::var("PDF_EXTRACT_MAX_FONT_FRAC")
-                                            .ok()
-                                            .and_then(|v| v.parse().ok())
-                                            .unwrap_or(0.35);
-                                        if transformed_font_size > page_h * max_frac {
-                                            ok = false;
-                                        }
-                                    }
-                                    ok
+                                    self.visible_for_layout(
+                                        &trm_vis,
+                                        transformed_font_size,
+                                        &current_color,
+                                        media_box,
+                                        ts.rendering_mode,
+                                        Some(page_text_stats),
+                                    )
                                 } else {
-                                    self.is_visible_text(&trm_vis, transformed_font_size, &current_color, media_box, ts.rendering_mode)
+                                    self.is_visible_text(
+                                        &trm_vis,
+                                        transformed_font_size,
+                                        &current_color,
+                                        media_box,
+                                        ts.rendering_mode,
+                                        Some(page_text_stats),
+                                    )
                                 };
+                                let glyph_char_start = page_char_counter;
+                                let glyph_char_len = ch.chars().count();
                                 if is_add {
                                     if use_layout {
                                         let g_height = transformed_font_size.max(0.0);
                                         let g_width = (w0 * transformed_font_size).max(0.0);
-                                        glyphs.push(Glyph { ch, x, y, width: g_width, height: g_height, text_obj_id: current_text_obj_id });
+                                        glyphs.push(Glyph {
+                                            ch: ch.clone(),
+                                            x,
+                                            y,
+                                            width: g_width,
+                                            height: g_height,
+                                            page_char_start: glyph_char_start,
+                                            page_char_end: glyph_char_start + glyph_char_len,
+                                            source_text_object_id: current_text_obj_id,
+                                            font_name: current_font.clone(),
+                                            font_size: current_font_size,
+                                            transformed_font_size,
+                                            font_weight: current_font_weight.clone(),
+                                            is_italic: current_is_italic,
+                                            fill_color: Some((
+                                                (current_color.0 * 255.0).clamp(0.0, 255.0) as u8,
+                                                (current_color.1 * 255.0).clamp(0.0, 255.0) as u8,
+                                                (current_color.2 * 255.0).clamp(0.0, 255.0) as u8,
+                                            )),
+                                            render_mode: ts.rendering_mode,
+                                            source_kind: stream_context.source_kind.clone(),
+                                            xobject_name: stream_context.xobject_name.clone(),
+                                        });
+                                        page_char_counter += glyph_char_len;
+                                        record_font_append(&current_font);
                                     } else {
                                         current_line.push_str(&ch);
                                         page_char_counter += ch.chars().count();
@@ -3669,8 +4353,11 @@ impl<'a> Processor<'a> {
                                 first_char = false;
                                 last_end = x + w0 * transformed_font_size;
                                 last_y = y;
-                                let tx = ts.horizontal_scaling * ((w0 - 0. / 1000.) * ts.font_size + spacing);
-                                ts.tm = ts.tm.pre_transform(&Transform2D::create_translation(tx, 0.));
+                                let tx = ts.horizontal_scaling
+                                    * ((w0 - 0. / 1000.) * ts.font_size + spacing);
+                                ts.tm = ts
+                                    .tm
+                                    .pre_transform(&Transform2D::create_translation(tx, 0.));
                             }
                         }
                     }
@@ -3688,7 +4375,14 @@ impl<'a> Processor<'a> {
                 }
                 "gs" => {
                     let ext_gstate: &Dictionary = get(doc, resources, b"ExtGState");
-                    let name = operation.operands[0].as_name().unwrap();
+                    let Some(name) = operation
+                        .operands
+                        .first()
+                        .and_then(|obj| obj.as_name().ok())
+                    else {
+                        warn!("Skipping malformed gs operator on page {}", page_num);
+                        continue;
+                    };
                     let state: &Dictionary = get(doc, ext_gstate, name);
                     apply_state(doc, &mut gs, state);
                 }
@@ -3770,13 +4464,20 @@ impl<'a> Processor<'a> {
                 }
                 "Do" => {
                     let xobject: &Dictionary = get(&doc, resources, b"XObject");
-                    let name = operation.operands[0].as_name().unwrap();
+                    let Some(name) = operation
+                        .operands
+                        .first()
+                        .and_then(|obj| obj.as_name().ok())
+                    else {
+                        warn!("Skipping malformed Do operator on page {}", page_num);
+                        continue;
+                    };
                     let xf: &Stream = get(&doc, xobject, name);
 
                     // Only process XObject if OCR handler is available
                     if let Some(handler) = ocr_handler {
-                        let position = gs.ts.tm.post_transform(&flip_ctm);
-                        let (x, y) = (position.m31, position.m32);
+                        let device_trm = gs.ctm.post_transform(&gs.ts.tm).post_transform(&flip_ctm);
+                        let (x, y) = (device_trm.m31, device_trm.m32);
 
                         // Extract dimensions if this is an image
                         let size = if let Ok(subtype) = xf.dict.get(b"Subtype") {
@@ -3814,7 +4515,9 @@ impl<'a> Processor<'a> {
                         if let Err(e) = process_xobject(
                             &doc,
                             resources,
+                            name,
                             Some(handler),
+                            ocr_telemetry,
                             text_segments,
                             (x, y),
                             size,
@@ -3835,7 +4538,9 @@ impl<'a> Processor<'a> {
                             if subtype_name == b"Form" {
                                 // In layout-analysis mode, respect LAParams.all_texts
                                 let allow_form_text = match laparams {
-                                    Some(lp) => lp.all_texts,
+                                    Some(lp) => {
+                                        lp.all_texts || page_text_stats.visible_useful_chars < 32
+                                    }
                                     None => true,
                                 };
                                 if !allow_form_text {
@@ -3865,9 +4570,23 @@ impl<'a> Processor<'a> {
                                     Transform::identity()
                                 };
 
-                                // Push the combined CTM (current CTM × form matrix)
-                                let saved_ctm = gs.ctm;
-                                gs.ctm = gs.ctm.pre_transform(&form_matrix);
+                                let child_name = xobject
+                                    .get(name)
+                                    .ok()
+                                    .and_then(|obj| match obj {
+                                        Object::Reference(id) => Some(format!("{id:?}")),
+                                        _ => None,
+                                    })
+                                    .unwrap_or_else(|| String::from_utf8_lossy(name).into_owned());
+                                if stream_context.has_xobject_in_stack(&child_name) {
+                                    warn!(
+                                        "Skipping recursive Form XObject {} on page {}",
+                                        child_name, page_num
+                                    );
+                                    continue;
+                                }
+                                let child_initial_ctm = gs.ctm.pre_transform(&form_matrix);
+                                let child_context = stream_context.form_child(child_name);
 
                                 // Process the Form's content stream
                                 let form_resources = maybe_get_obj(&doc, &xf.dict, b"Resources")
@@ -3877,6 +4596,7 @@ impl<'a> Processor<'a> {
                                 self.process_stream(
                                     &doc,
                                     ocr_handler,
+                                    ocr_telemetry,
                                     contents,
                                     form_resources,
                                     &media_box,
@@ -3884,10 +4604,9 @@ impl<'a> Processor<'a> {
                                     text_segments,
                                     0, // Form XObjects don't have their own rotation
                                     laparams,
+                                    Some(child_initial_ctm),
+                                    child_context,
                                 )?;
-
-                                // Restore the CTM
-                                gs.ctm = saved_ctm;
                             }
                         }
                     }
@@ -3994,7 +4713,8 @@ impl<'a> Processor<'a> {
 
                     // Get the last NON-SPACE glyph for horizontal distance check
                     // Space glyphs fill gaps and shouldn't be used for distance calculation
-                    let prev_nonspace_glyph = current.iter().rev().find(|g| !g.ch.trim().is_empty());
+                    let prev_nonspace_glyph =
+                        current.iter().rev().find(|g| !g.ch.trim().is_empty());
 
                     // Check vertical overlap like pdfminer:
                     // Two glyphs are on the same line if they have significant vertical overlap
@@ -4072,10 +4792,43 @@ impl<'a> Processor<'a> {
                     min_y: f64,
                     max_y: f64,
                     height: f64,
+                    char_start: usize,
+                    char_end: usize,
+                    font_name: String,
+                    font_size: f64,
+                    transformed_font_size: f64,
+                    font_weight: FontWeight,
+                    is_italic: bool,
+                    fill_color: Option<(u8, u8, u8)>,
+                    render_mode: i32,
+                    source_kind: StreamSourceKind,
+                    xobject_name: Option<String>,
                 }
                 let mut lines: Vec<LineInfo> = Vec::new();
                 for mut line in raw_lines.into_iter() {
                     line.sort_by(|a, b| a.x.partial_cmp(&b.x).unwrap_or(std::cmp::Ordering::Equal));
+                    let mut positive_nonspace_gaps = Vec::new();
+                    let mut prev_nonspace_right_for_stats: Option<f64> = None;
+                    for g in line.iter().filter(|g| !g.ch.trim().is_empty()) {
+                        if let Some(prev_right) = prev_nonspace_right_for_stats {
+                            let gap = g.x - prev_right;
+                            if gap > 0.0 {
+                                positive_nonspace_gaps.push(gap);
+                            }
+                        }
+                        prev_nonspace_right_for_stats = Some(g.x + g.width);
+                    }
+                    let median_nonspace_gap = median_f64(&mut positive_nonspace_gaps);
+                    let adaptive_word_gap = if median_nonspace_gap > 0.0 {
+                        median_nonspace_gap * 2.5
+                    } else {
+                        0.0
+                    };
+                    let adaptive_large_gap = if median_nonspace_gap > 0.0 {
+                        median_nonspace_gap * 6.0
+                    } else {
+                        0.0
+                    };
                     let mut s = String::new();
                     let mut min_x = f64::INFINITY;
                     let mut max_x = f64::NEG_INFINITY;
@@ -4106,7 +4859,7 @@ impl<'a> Processor<'a> {
 
                                 // Large gap detection: if gap is larger than 1.5x glyph width,
                                 // treat as separate column and insert newline instead of space
-                                let large_gap_threshold = width_ref * 1.5;
+                                let large_gap_threshold = (width_ref * 1.5).max(adaptive_large_gap);
                                 if gap > large_gap_threshold {
                                     // Trim trailing spaces before newline
                                     while s.ends_with(' ') {
@@ -4118,7 +4871,10 @@ impl<'a> Processor<'a> {
                                     let small_gap = g.x - pr;
                                     let dim_prev_small = prev_w.max(prev_h);
                                     let width_ref_small = dim_prev_small.max(dim_curr).max(1e-6);
-                                    if small_gap > (lp.word_margin as f64) * width_ref_small {
+                                    let word_gap_threshold = ((lp.word_margin as f64)
+                                        * width_ref_small)
+                                        .max(adaptive_word_gap);
+                                    if small_gap > word_gap_threshold {
                                         s.push(' ');
                                     }
                                 }
@@ -4128,7 +4884,9 @@ impl<'a> Processor<'a> {
                                 let dim_prev = prev_w.max(prev_h);
                                 let dim_curr = g.width.max(g.height);
                                 let width_ref = dim_prev.max(dim_curr).max(1e-6);
-                                if gap > (lp.word_margin as f64) * width_ref {
+                                let word_gap_threshold =
+                                    ((lp.word_margin as f64) * width_ref).max(adaptive_word_gap);
+                                if gap > word_gap_threshold {
                                     s.push(' ');
                                 }
                             }
@@ -4139,7 +4897,9 @@ impl<'a> Processor<'a> {
                                 let dim_prev = prev_w.max(prev_h);
                                 let dim_curr = g.width.max(g.height);
                                 let width_ref = dim_prev.max(dim_curr).max(1e-6);
-                                if gap > (lp.word_margin as f64) * width_ref {
+                                let word_gap_threshold =
+                                    ((lp.word_margin as f64) * width_ref).max(adaptive_word_gap);
+                                if gap > word_gap_threshold {
                                     s.push(' ');
                                 }
                             }
@@ -4155,18 +4915,105 @@ impl<'a> Processor<'a> {
                             last_nonspace_h = g.height;
                         }
                     }
-                    let text = Self::preserve_sentence_boundaries(&s);
+                    let text =
+                        normalize_display_spaced_text(&Self::preserve_sentence_boundaries(&s));
                     let height = (max_y - min_y).max(0.0);
-                    lines.push(LineInfo { text, min_x, max_x, min_y, max_y, height });
+                    let char_start = line.iter().map(|g| g.page_char_start).min().unwrap_or(0);
+                    let char_end = line
+                        .iter()
+                        .map(|g| g.page_char_end)
+                        .max()
+                        .unwrap_or(char_start);
+                    let mut font_counts: HashMap<String, usize> = HashMap::new();
+                    for g in &line {
+                        *font_counts.entry(g.font_name.clone()).or_default() += 1;
+                    }
+                    let font_name = font_counts
+                        .into_iter()
+                        .max_by_key(|(_, count)| *count)
+                        .map(|(font, _)| font)
+                        .unwrap_or_default();
+                    let font_size = line
+                        .iter()
+                        .map(|g| g.font_size)
+                        .fold(0.0, f64::max)
+                        .max(height);
+                    let transformed_font_size = line
+                        .iter()
+                        .map(|g| g.transformed_font_size)
+                        .fold(0.0, f64::max)
+                        .max(height);
+                    let bold_count = line.iter().filter(|g| g.font_weight.is_bold()).count();
+                    let font_weight = if bold_count * 2 >= line.len().max(1) {
+                        FontWeight::Bold
+                    } else {
+                        FontWeight::Regular
+                    };
+                    let italic_count = line.iter().filter(|g| g.is_italic).count();
+                    let fill_color = line.iter().find_map(|g| g.fill_color);
+                    let render_mode = line.first().map(|g| g.render_mode).unwrap_or(0);
+                    let source_kind = if line
+                        .iter()
+                        .any(|g| matches!(g.source_kind, StreamSourceKind::FormXObject))
+                    {
+                        StreamSourceKind::FormXObject
+                    } else {
+                        StreamSourceKind::Page
+                    };
+                    let xobject_name = line.iter().find_map(|g| g.xobject_name.clone());
+                    lines.push(LineInfo {
+                        text,
+                        min_x,
+                        max_x,
+                        min_y,
+                        max_y,
+                        height,
+                        char_start,
+                        char_end,
+                        font_name,
+                        font_size,
+                        transformed_font_size,
+                        font_weight,
+                        is_italic: italic_count * 2 >= line.len().max(1),
+                        fill_color,
+                        render_mode,
+                        source_kind,
+                        xobject_name,
+                    });
                 }
 
                 // Optional: detect vertical text lines (minimal support)
                 if lp.detect_vertical {
-                    // Use only glyphs that look vertically oriented to reduce duplicates
-                    let mut vg: Vec<Glyph> = glyphs_for_vertical
-                        .into_iter()
-                        .filter(|g| g.height > 1.5 * g.width)
-                        .collect();
+                    let nonspace_glyph_count = glyphs_for_vertical
+                        .iter()
+                        .filter(|g| !g.ch.trim().is_empty())
+                        .count()
+                        .max(1);
+                    let candidate_count = glyphs_for_vertical
+                        .iter()
+                        .filter(|g| {
+                            !g.ch.trim().is_empty() && g.width > 0.0 && g.height > 1.5 * g.width
+                        })
+                        .count();
+                    let vertical_candidate_ratio =
+                        candidate_count as f64 / nonspace_glyph_count as f64;
+
+                    // Bbox aspect ratio alone misclassifies normal Latin text. Treat "almost
+                    // every glyph is tall" as a Latin false-positive signal unless there is
+                    // stronger angle/writing-mode evidence, which the lopdf path lacks.
+                    let has_vertical_signal =
+                        candidate_count >= 3 && vertical_candidate_ratio < 0.40;
+
+                    let mut vg: Vec<Glyph> = if has_vertical_signal {
+                        glyphs_for_vertical
+                            .into_iter()
+                            .filter(|g| {
+                                !g.ch.trim().is_empty() && g.width > 0.0 && g.height > 1.5 * g.width
+                            })
+                            .collect()
+                    } else {
+                        Vec::new()
+                    };
                     // Group into vertical lines by horizontal overlap
                     vg.sort_by(|a, b| {
                         let xcmp = a.x.partial_cmp(&b.x).unwrap_or(std::cmp::Ordering::Equal);
@@ -4206,12 +5053,18 @@ impl<'a> Processor<'a> {
                             v_maxx = cur[0].x + cur[0].width;
                         }
                     }
-                    if !cur.is_empty() { v_lines.push(cur); }
+                    if !cur.is_empty() {
+                        v_lines.push(cur);
+                    }
 
                     // Build LineInfo for vertical lines, inserting spaces on large vertical gaps
                     for mut vline in v_lines.into_iter() {
-                        if vline.len() < 2 { continue; }
-                        vline.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal));
+                        if vline.len() < 3 {
+                            continue;
+                        }
+                        vline.sort_by(|a, b| {
+                            a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal)
+                        });
                         let mut s = String::new();
                         let mut min_x = f64::INFINITY;
                         let mut max_x = f64::NEG_INFINITY;
@@ -4239,9 +5092,56 @@ impl<'a> Processor<'a> {
                             prev_w = g.width;
                             prev_h = g.height;
                         }
-                    let text = Self::preserve_sentence_boundaries(&s);
+                        let text =
+                            normalize_display_spaced_text(&Self::preserve_sentence_boundaries(&s));
+                        let norm_vertical = normalize_for_duplicate_detection(&text);
                         let height = (max_y - min_y).max(0.0);
-                        lines.push(LineInfo { text, min_x, max_x, min_y, max_y, height });
+                        let duplicate_horizontal = lines.iter().any(|line| {
+                            normalize_for_duplicate_detection(&line.text) == norm_vertical
+                                && bbox_overlap_ratio(
+                                    min_x, min_y, max_x, max_y, line.min_x, line.min_y, line.max_x,
+                                    line.max_y,
+                                ) > 0.20
+                        });
+                        if duplicate_horizontal {
+                            continue;
+                        }
+                        lines.push(LineInfo {
+                            text,
+                            min_x,
+                            max_x,
+                            min_y,
+                            max_y,
+                            height,
+                            char_start: vline.iter().map(|g| g.page_char_start).min().unwrap_or(0),
+                            char_end: vline.iter().map(|g| g.page_char_end).max().unwrap_or(0),
+                            font_name: vline
+                                .first()
+                                .map(|g| g.font_name.clone())
+                                .unwrap_or_default(),
+                            font_size: vline.iter().map(|g| g.font_size).fold(0.0, f64::max),
+                            transformed_font_size: vline
+                                .iter()
+                                .map(|g| g.transformed_font_size)
+                                .fold(0.0, f64::max),
+                            font_weight: if vline.iter().any(|g| g.font_weight.is_bold()) {
+                                FontWeight::Bold
+                            } else {
+                                FontWeight::Regular
+                            },
+                            is_italic: vline.iter().any(|g| g.is_italic),
+                            fill_color: vline.iter().find_map(|g| g.fill_color),
+                            render_mode: vline.first().map(|g| g.render_mode).unwrap_or(0),
+                            source_kind: if vline
+                                .iter()
+                                .any(|g| matches!(g.source_kind, StreamSourceKind::FormXObject))
+                            {
+                                StreamSourceKind::FormXObject
+                            } else {
+                                StreamSourceKind::Page
+                            },
+                            xobject_name: vline.iter().find_map(|g| g.xobject_name.clone()),
+                        });
                     }
                 }
 
@@ -4264,13 +5164,17 @@ impl<'a> Processor<'a> {
                     // First pass: calculate average line gap for paragraph detection
                     let lines_vec: Vec<_> = lines.into_iter().collect();
                     for i in 1..lines_vec.len() {
-                        let gap = lines_vec[i].min_y - lines_vec[i-1].max_y;
+                        let gap = lines_vec[i].min_y - lines_vec[i - 1].max_y;
                         if gap > 0.0 && gap < lines_vec[i].height * 3.0 {
                             avg_line_gap += gap;
                             line_gap_count += 1;
                         }
                     }
-                    avg_line_gap = if line_gap_count > 0 { avg_line_gap / line_gap_count as f64 } else { 10.0 };
+                    avg_line_gap = if line_gap_count > 0 {
+                        avg_line_gap / line_gap_count as f64
+                    } else {
+                        10.0
+                    };
 
                     // Collect lines for smarter joining
                     let lines_collected: Vec<_> = lines_vec.into_iter().collect();
@@ -4305,33 +5209,41 @@ impl<'a> Processor<'a> {
                                 || trimmed.contains("VERSUS") || trimmed.contains("PETITIONER")
                                 || trimmed.contains("JUDGMENT") || trimmed.contains("ORDER"));
 
-                        let (next_starts_paragraph, next_is_section_marker) = if let Some(next_ln) = lines_collected.get(idx + 1) {
-                            let next_trimmed = next_ln.text.trim();
-                            // Check if next line starts with paragraph marker
-                            let starts_para = next_trimmed.chars().next().map_or(false, |c| {
-                                c.is_ascii_digit() // Numbered list
+                        let (next_starts_paragraph, next_is_section_marker) =
+                            if let Some(next_ln) = lines_collected.get(idx + 1) {
+                                let next_trimmed = next_ln.text.trim();
+                                // Check if next line starts with paragraph marker
+                                let starts_para = next_trimmed.chars().next().map_or(false, |c| {
+                                    c.is_ascii_digit() // Numbered list
                                 || c == '(' // Parenthetical like "(a)"
                                 || c == '-' // Bullet
                                 || c == '•' // Bullet
-                            }) || next_trimmed.starts_with("A.") || next_trimmed.starts_with("B.")
-                               || next_trimmed.starts_with("C.") || next_trimmed.starts_with("D.");
+                                }) || next_trimmed.starts_with("A.")
+                                    || next_trimmed.starts_with("B.")
+                                    || next_trimmed.starts_with("C.")
+                                    || next_trimmed.starts_with("D.");
 
-                            // Check if next line is a section marker (ALL CAPS short line)
-                            let is_section = next_trimmed.to_uppercase() == next_trimmed
-                                && next_trimmed.len() < 50
-                                && (next_trimmed.contains("APPELLANT") || next_trimmed.contains("RESPONDENT")
-                                    || next_trimmed.contains("VERSUS") || next_trimmed.contains("PETITIONER"));
-                            (starts_para, is_section)
-                        } else {
-                            // Last line of this XObject - don't automatically treat as paragraph end
-                            // Let terminal punctuation or other signals determine if it should be joined
-                            (false, false)
-                        };
+                                // Check if next line is a section marker (ALL CAPS short line)
+                                let is_section = next_trimmed.to_uppercase() == next_trimmed
+                                    && next_trimmed.len() < 50
+                                    && (next_trimmed.contains("APPELLANT")
+                                        || next_trimmed.contains("RESPONDENT")
+                                        || next_trimmed.contains("VERSUS")
+                                        || next_trimmed.contains("PETITIONER"));
+                                (starts_para, is_section)
+                            } else {
+                                // Last line of this XObject - don't automatically treat as paragraph end
+                                // Let terminal punctuation or other signals determine if it should be joined
+                                (false, false)
+                            };
 
                         // Join lines if: not terminal punctuation AND not followed by paragraph start
                         // AND no paragraph break detected AND not a complete legal phrase
-                        let should_join = !ends_with_terminal && !next_starts_paragraph && !is_paragraph_break
-                            && !current_is_complete && !next_is_section_marker;
+                        let should_join = !ends_with_terminal
+                            && !next_starts_paragraph
+                            && !is_paragraph_break
+                            && !current_is_complete
+                            && !next_is_section_marker;
 
                         // Build line text with appropriate ending
                         let line_text = if is_paragraph_break {
@@ -4342,28 +5254,36 @@ impl<'a> Processor<'a> {
                             format!("{}\n", trimmed)
                         };
                         let content_len = line_text.chars().count();
-                        let mut segment = Self::create_text_segment(
+                        if let Some(mut segment) = Self::create_text_segment(
                             line_text,
-                            ln.height,
-                            ln.height,
+                            ln.font_size.max(ln.height),
+                            ln.transformed_font_size.max(ln.height),
                             ln.min_x,
                             ln.min_y,
-                            false,
-                            String::new(),
-                            FontWeight::Regular,
-                            false,
+                            ln.font_weight.is_bold(),
+                            ln.font_name.clone(),
+                            ln.font_weight.clone(),
+                            ln.is_italic,
                             page_num,
-                            "LA-Line".to_string(),
+                            match ln.source_kind {
+                                StreamSourceKind::FormXObject => ln
+                                    .xobject_name
+                                    .as_ref()
+                                    .map(|name| format!("LA-Line:Form:{name}"))
+                                    .unwrap_or_else(|| "LA-Line:Form".to_string()),
+                                StreamSourceKind::Page => "LA-Line".to_string(),
+                            },
+                            ln.fill_color,
                             None,
-                            None,
-                            page_char_pos,
-                            page_char_pos + content_len,
-                        );
-                        segment.width = (ln.max_x - ln.min_x).max(0.0);
-                        segment.height = (ln.max_y - ln.min_y).max(0.0);
+                            ln.char_start,
+                            ln.char_end.max(ln.char_start + content_len),
+                        ) {
+                            segment.width = (ln.max_x - ln.min_x).max(0.0);
+                            segment.height = (ln.max_y - ln.min_y).max(0.0);
+                            text_segments.push(segment);
+                        }
                         page_char_pos += content_len;
                         prev_line_bottom = Some(ln.max_y);
-                        text_segments.push(segment);
                     }
                     return Ok(());
                 }
@@ -4413,23 +5333,44 @@ impl<'a> Processor<'a> {
                 let mut boxes: Vec<BoxInfo> = {
                     let mut ls = lines;
                     ls.sort_by(|a, b| {
-                        let ycmp = a.min_y.partial_cmp(&b.min_y).unwrap_or(std::cmp::Ordering::Equal);
+                        let ycmp = a
+                            .min_y
+                            .partial_cmp(&b.min_y)
+                            .unwrap_or(std::cmp::Ordering::Equal);
                         if ycmp == std::cmp::Ordering::Equal {
-                            a.min_x.partial_cmp(&b.min_x).unwrap_or(std::cmp::Ordering::Equal)
-                        } else { ycmp }
+                            a.min_x
+                                .partial_cmp(&b.min_x)
+                                .unwrap_or(std::cmp::Ordering::Equal)
+                        } else {
+                            ycmp
+                        }
                     });
                     ls.into_iter().map(|ln| make_box(ln)).collect()
                 };
 
                 if std::env::var("PDF_EXTRACT_LA_HEAP").is_ok() {
-                    use std::collections::{BinaryHeap, HashMap, HashSet};
                     use ordered_float::OrderedFloat;
                     use std::cmp::Reverse;
+                    use std::collections::{BinaryHeap, HashMap, HashSet};
                     #[derive(Clone)]
-                    struct Plane { cell: f64, map: HashMap<(i32,i32), Vec<usize>> }
+                    struct Plane {
+                        cell: f64,
+                        map: HashMap<(i32, i32), Vec<usize>>,
+                    }
                     impl Plane {
-                        fn new(cell: f64) -> Self { Self { cell, map: HashMap::new() } }
-                        fn cells_for(&self, x0: f64, y0: f64, x1: f64, y1: f64) -> (i32,i32,i32,i32) {
+                        fn new(cell: f64) -> Self {
+                            Self {
+                                cell,
+                                map: HashMap::new(),
+                            }
+                        }
+                        fn cells_for(
+                            &self,
+                            x0: f64,
+                            y0: f64,
+                            x1: f64,
+                            y1: f64,
+                        ) -> (i32, i32, i32, i32) {
                             let cx0 = (x0 / self.cell).floor() as i32;
                             let cy0 = (y0 / self.cell).floor() as i32;
                             let cx1 = (x1 / self.cell).floor() as i32;
@@ -4437,17 +5378,33 @@ impl<'a> Processor<'a> {
                             (cx0.min(cx1), cy0.min(cy1), cx0.max(cx1), cy0.max(cy1))
                         }
                         fn insert(&mut self, idx: usize, x0: f64, y0: f64, x1: f64, y1: f64) {
-                            let (cx0,cy0,cx1,cy1) = self.cells_for(x0,y0,x1,y1);
-                            for cx in cx0..=cx1 { for cy in cy0..=cy1 { self.map.entry((cx,cy)).or_default().push(idx); } }
+                            let (cx0, cy0, cx1, cy1) = self.cells_for(x0, y0, x1, y1);
+                            for cx in cx0..=cx1 {
+                                for cy in cy0..=cy1 {
+                                    self.map.entry((cx, cy)).or_default().push(idx);
+                                }
+                            }
                         }
                         fn remove(&mut self, idx: usize, x0: f64, y0: f64, x1: f64, y1: f64) {
-                            let (cx0,cy0,cx1,cy1) = self.cells_for(x0,y0,x1,y1);
-                            for cx in cx0..=cx1 { for cy in cy0..=cy1 { if let Some(v) = self.map.get_mut(&(cx,cy)) { v.retain(|&k| k != idx); } } }
+                            let (cx0, cy0, cx1, cy1) = self.cells_for(x0, y0, x1, y1);
+                            for cx in cx0..=cx1 {
+                                for cy in cy0..=cy1 {
+                                    if let Some(v) = self.map.get_mut(&(cx, cy)) {
+                                        v.retain(|&k| k != idx);
+                                    }
+                                }
+                            }
                         }
                         fn query(&self, x0: f64, y0: f64, x1: f64, y1: f64) -> Vec<usize> {
-                            let (cx0,cy0,cx1,cy1) = self.cells_for(x0,y0,x1,y1);
+                            let (cx0, cy0, cx1, cy1) = self.cells_for(x0, y0, x1, y1);
                             let mut out = Vec::new();
-                            for cx in cx0..=cx1 { for cy in cy0..=cy1 { if let Some(v) = self.map.get(&(cx,cy)) { out.extend_from_slice(v); } } }
+                            for cx in cx0..=cx1 {
+                                for cy in cy0..=cy1 {
+                                    if let Some(v) = self.map.get(&(cx, cy)) {
+                                        out.extend_from_slice(v);
+                                    }
+                                }
+                            }
                             out
                         }
                     }
@@ -4455,16 +5412,20 @@ impl<'a> Processor<'a> {
                     let n0 = boxes.len();
                     let mut alive = vec![true; n0];
                     let mut ver: Vec<u64> = vec![0; n0];
-                    let avg_h = boxes.iter().map(|b| b.avg_h).sum::<f64>() / (boxes.len() as f64).max(1.0);
+                    let avg_h =
+                        boxes.iter().map(|b| b.avg_h).sum::<f64>() / (boxes.len() as f64).max(1.0);
                     let cell = (avg_h * 2.0).max(8.0);
                     let mut plane = Plane::new(cell);
-                    for (i,b) in boxes.iter().enumerate() { plane.insert(i, b.min_x, b.min_y, b.max_x, b.max_y); }
+                    for (i, b) in boxes.iter().enumerate() {
+                        plane.insert(i, b.min_x, b.min_y, b.max_x, b.max_y);
+                    }
 
                     let align_tol = |a: &BoxInfo, b: &BoxInfo| -> bool {
                         let tol_x = (lp.line_overlap as f64) * a.avg_h * ALIGN_TOL_FRAC;
                         let left = (b.min_x - a.min_x).abs() <= tol_x;
                         let right = (b.max_x - a.max_x).abs() <= tol_x;
-                        let ca = (a.min_x + a.max_x) * 0.5; let cb = (b.min_x + b.max_x) * 0.5;
+                        let ca = (a.min_x + a.max_x) * 0.5;
+                        let cb = (b.min_x + b.max_x) * 0.5;
                         let center = (cb - ca).abs() <= tol_x;
                         left || right || center
                     };
@@ -4477,11 +5438,12 @@ impl<'a> Processor<'a> {
                         let w_a = (a.max_x - a.min_x).max(1e-6);
                         let w_b = (b.max_x - b.min_x).max(1e-6);
                         let h_frac = h_ov / w_a.max(w_b);
-                        vgap_ok && (h_frac >= HOVERLAP_MIN_FRAC || align_tol(a,b))
+                        vgap_ok && (h_frac >= HOVERLAP_MIN_FRAC || align_tol(a, b))
                     };
 
-                    let mut heap: BinaryHeap<Reverse<(OrderedFloat<f64>, usize, usize, u64, u64)>> = BinaryHeap::new();
-                    let mut seen: HashSet<(usize,usize)> = HashSet::new();
+                    let mut heap: BinaryHeap<Reverse<(OrderedFloat<f64>, usize, usize, u64, u64)>> =
+                        BinaryHeap::new();
+                    let mut seen: HashSet<(usize, usize)> = HashSet::new();
                     fn enqueue_neighbors_for(
                         i: usize,
                         plane: &Plane,
@@ -4489,23 +5451,34 @@ impl<'a> Processor<'a> {
                         alive: &Vec<bool>,
                         ver: &Vec<u64>,
                         lp: &crate::LAParams,
-                        is_neighbor: &dyn Fn(&BoxInfo,&BoxInfo)->bool,
-                        seen: &mut HashSet<(usize,usize)>,
+                        is_neighbor: &dyn Fn(&BoxInfo, &BoxInfo) -> bool,
+                        seen: &mut HashSet<(usize, usize)>,
                         heap: &mut BinaryHeap<Reverse<(OrderedFloat<f64>, usize, usize, u64, u64)>>,
                     ) {
-                        if !alive[i] { return; }
+                        if !alive[i] {
+                            return;
+                        }
                         let bi = &boxes_local[i];
                         let margin = (lp.line_margin as f64) * bi.avg_h;
-                        let qx0 = bi.min_x - margin; let qx1 = bi.max_x + margin;
-                        let qy0 = bi.min_y - margin; let qy1 = bi.max_y + margin;
+                        let qx0 = bi.min_x - margin;
+                        let qx1 = bi.max_x + margin;
+                        let qy0 = bi.min_y - margin;
+                        let qy1 = bi.max_y + margin;
                         let cand = plane.query(qx0, qy0, qx1, qy1);
                         for &j in cand.iter() {
-                            if j == i || !alive[j] { continue; }
-                            let a = i.min(j); let b = i.max(j);
-                            if !seen.insert((a,b)) { continue; }
+                            if j == i || !alive[j] {
+                                continue;
+                            }
+                            let a = i.min(j);
+                            let b = i.max(j);
+                            if !seen.insert((a, b)) {
+                                continue;
+                            }
                             let bj = &boxes_local[j];
-                            if !is_neighbor(bi, bj) { continue; }
-                            let (ux0,uy0,ux1,uy1) = bbox_union((bi,i), (bj,j));
+                            if !is_neighbor(bi, bj) {
+                                continue;
+                            }
+                            let (ux0, uy0, ux1, uy1) = bbox_union((bi, i), (bj, j));
                             let a_area = bbox_area(bi.min_x, bi.min_y, bi.max_x, bi.max_y);
                             let b_area = bbox_area(bj.min_x, bj.min_y, bj.max_x, bj.max_y);
                             let u_area = bbox_area(ux0, uy0, ux1, uy1);
@@ -4513,51 +5486,130 @@ impl<'a> Processor<'a> {
                             heap.push(Reverse((OrderedFloat(dist), a, b, ver[a], ver[b])));
                         }
                     }
-                    for i in 0..boxes.len() { enqueue_neighbors_for(i, &plane, &boxes, &alive, &ver, &lp, &is_neighbor, &mut seen, &mut heap); }
+                    for i in 0..boxes.len() {
+                        enqueue_neighbors_for(
+                            i,
+                            &plane,
+                            &boxes,
+                            &alive,
+                            &ver,
+                            &lp,
+                            &is_neighbor,
+                            &mut seen,
+                            &mut heap,
+                        );
+                    }
 
                     while let Some(Reverse((_d, a, b, va, vb))) = heap.pop() {
-                        if !alive[a] || !alive[b] { continue; }
-                        if ver[a] != va || ver[b] != vb { continue; }
-                        let bi = boxes[a].clone(); let bj = boxes[b].clone();
-                        if !is_neighbor(&bi, &bj) { continue; }
-                        let (ux0,uy0,ux1,uy1) = bbox_union((&bi,a), (&bj,b));
-                        let mut blocked = false;
-                        for k in plane.query(ux0,uy0,ux1,uy1) {
-                            if k == a || k == b || !alive[k] { continue; }
-                            let bk = &boxes[k];
-                            let cx = (bk.min_x + bk.max_x) * 0.5; let cy = (bk.min_y + bk.max_y) * 0.5;
-                            let in_union = cx >= ux0 && cx <= ux1 && cy >= uy0 && cy <= uy1;
-                            let in_a = cx >= bi.min_x && cx <= bi.max_x && cy >= bi.min_y && cy <= bi.max_y;
-                            let in_b = cx >= bj.min_x && cx <= bj.max_x && cy >= bj.min_y && cy <= bj.max_y;
-                            if in_union && !(in_a || in_b) { blocked = true; break; }
+                        if !alive[a] || !alive[b] {
+                            continue;
                         }
-                        if blocked { continue; }
+                        if ver[a] != va || ver[b] != vb {
+                            continue;
+                        }
+                        let bi = boxes[a].clone();
+                        let bj = boxes[b].clone();
+                        if !is_neighbor(&bi, &bj) {
+                            continue;
+                        }
+                        let (ux0, uy0, ux1, uy1) = bbox_union((&bi, a), (&bj, b));
+                        let mut blocked = false;
+                        for k in plane.query(ux0, uy0, ux1, uy1) {
+                            if k == a || k == b || !alive[k] {
+                                continue;
+                            }
+                            let bk = &boxes[k];
+                            let cx = (bk.min_x + bk.max_x) * 0.5;
+                            let cy = (bk.min_y + bk.max_y) * 0.5;
+                            let in_union = cx >= ux0 && cx <= ux1 && cy >= uy0 && cy <= uy1;
+                            let in_a = cx >= bi.min_x
+                                && cx <= bi.max_x
+                                && cy >= bi.min_y
+                                && cy <= bi.max_y;
+                            let in_b = cx >= bj.min_x
+                                && cx <= bj.max_x
+                                && cy >= bj.min_y
+                                && cy <= bj.max_y;
+                            if in_union && !(in_a || in_b) {
+                                blocked = true;
+                                break;
+                            }
+                        }
+                        if blocked {
+                            continue;
+                        }
 
                         // Merge b into a
                         let mut na = boxes[a].clone();
                         let ob = boxes[b].clone();
                         na.lines.extend(ob.lines.into_iter());
-                        na.lines.sort_by(|l1,l2| {
-                            let ycmp = l1.min_y.partial_cmp(&l2.min_y).unwrap_or(std::cmp::Ordering::Equal);
-                            if ycmp == std::cmp::Ordering::Equal { l1.min_x.partial_cmp(&l2.min_x).unwrap_or(std::cmp::Ordering::Equal) } else { ycmp }
+                        na.lines.sort_by(|l1, l2| {
+                            let ycmp = l1
+                                .min_y
+                                .partial_cmp(&l2.min_y)
+                                .unwrap_or(std::cmp::Ordering::Equal);
+                            if ycmp == std::cmp::Ordering::Equal {
+                                l1.min_x
+                                    .partial_cmp(&l2.min_x)
+                                    .unwrap_or(std::cmp::Ordering::Equal)
+                            } else {
+                                ycmp
+                            }
                         });
                         na.min_x = na.min_x.min(boxes[b].min_x);
                         na.max_x = na.max_x.max(boxes[b].max_x);
                         na.min_y = na.min_y.min(boxes[b].min_y);
                         na.max_y = na.max_y.max(boxes[b].max_y);
-                        let mut sum_h = 0.0; let mut cnt = 0.0; for ln in na.lines.iter() { sum_h += ln.height; cnt += 1.0; }
+                        let mut sum_h = 0.0;
+                        let mut cnt = 0.0;
+                        for ln in na.lines.iter() {
+                            sum_h += ln.height;
+                            cnt += 1.0;
+                        }
                         na.avg_h = if cnt > 0.0 { sum_h / cnt } else { na.avg_h };
-                        plane.remove(a, boxes[a].min_x, boxes[a].min_y, boxes[a].max_x, boxes[a].max_y);
+                        plane.remove(
+                            a,
+                            boxes[a].min_x,
+                            boxes[a].min_y,
+                            boxes[a].max_x,
+                            boxes[a].max_y,
+                        );
                         boxes[a] = na;
-                        plane.insert(a, boxes[a].min_x, boxes[a].min_y, boxes[a].max_x, boxes[a].max_y);
-                        plane.remove(b, boxes[b].min_x, boxes[b].min_y, boxes[b].max_x, boxes[b].max_y);
+                        plane.insert(
+                            a,
+                            boxes[a].min_x,
+                            boxes[a].min_y,
+                            boxes[a].max_x,
+                            boxes[a].max_y,
+                        );
+                        plane.remove(
+                            b,
+                            boxes[b].min_x,
+                            boxes[b].min_y,
+                            boxes[b].max_x,
+                            boxes[b].max_y,
+                        );
                         alive[b] = false;
                         ver[a] = ver[a].wrapping_add(1);
-                        enqueue_neighbors_for(a, &plane, &boxes, &alive, &ver, &lp, &is_neighbor, &mut seen, &mut heap);
+                        enqueue_neighbors_for(
+                            a,
+                            &plane,
+                            &boxes,
+                            &alive,
+                            &ver,
+                            &lp,
+                            &is_neighbor,
+                            &mut seen,
+                            &mut heap,
+                        );
                     }
                     // Keep only alive boxes
                     let mut out: Vec<BoxInfo> = Vec::new();
-                    for (i,b) in boxes.into_iter().enumerate() { if alive[i] { out.push(b); } }
+                    for (i, b) in boxes.into_iter().enumerate() {
+                        if alive[i] {
+                            out.push(b);
+                        }
+                    }
                     boxes = out;
                 }
 
@@ -4565,35 +5617,92 @@ impl<'a> Processor<'a> {
                 let use_columns = std::env::var("PDF_EXTRACT_LA_COLUMNS").is_ok();
                 let flow_none = std::env::var("PDF_EXTRACT_LA_BOXES_FLOW_NONE").is_ok();
                 if use_columns && boxes.len() > 2 {
-                    #[derive(Default)] struct Col { idxs: Vec<usize>, min_x: f64, max_x: f64 }
-                    let widths: Vec<f64> = boxes.iter().map(|b| (b.max_x - b.min_x).max(1e-6)).collect();
-                    let mut w_sorted = widths.clone();
-                    w_sorted.sort_by(|a,b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-                    let median_w = if w_sorted.is_empty() { 1.0 } else { w_sorted[w_sorted.len()/2] };
-                    let mut cols: Vec<Col> = Vec::new();
-                    for (i,b) in boxes.iter().enumerate() {
-                        let cx = (b.min_x + b.max_x) * 0.5; let mut placed = false;
-                        for col in cols.iter_mut() {
-                            let left = col.min_x.max(b.min_x); let right = col.max_x.min(b.max_x);
-                            let ov = (right - left).max(0.0); let frac = ov / median_w.max(1e-6);
-                            let col_cx = (col.min_x + col.max_x) * 0.5; let prox = (cx - col_cx).abs() <= 0.5 * median_w;
-                            if frac >= 0.2 || prox { col.idxs.push(i); col.min_x = col.min_x.min(b.min_x); col.max_x = col.max_x.max(b.max_x); placed = true; break; }
-                        }
-                        if !placed { cols.push(Col{ idxs: vec![i], min_x: b.min_x, max_x: b.max_x }); }
+                    #[derive(Default)]
+                    struct Col {
+                        idxs: Vec<usize>,
+                        min_x: f64,
+                        max_x: f64,
                     }
-                    cols.sort_by(|a,b| a.min_x.partial_cmp(&b.min_x).unwrap_or(std::cmp::Ordering::Equal));
+                    let widths: Vec<f64> = boxes
+                        .iter()
+                        .map(|b| (b.max_x - b.min_x).max(1e-6))
+                        .collect();
+                    let mut w_sorted = widths.clone();
+                    w_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                    let median_w = if w_sorted.is_empty() {
+                        1.0
+                    } else {
+                        w_sorted[w_sorted.len() / 2]
+                    };
+                    let mut cols: Vec<Col> = Vec::new();
+                    for (i, b) in boxes.iter().enumerate() {
+                        let cx = (b.min_x + b.max_x) * 0.5;
+                        let mut placed = false;
+                        for col in cols.iter_mut() {
+                            let left = col.min_x.max(b.min_x);
+                            let right = col.max_x.min(b.max_x);
+                            let ov = (right - left).max(0.0);
+                            let frac = ov / median_w.max(1e-6);
+                            let col_cx = (col.min_x + col.max_x) * 0.5;
+                            let prox = (cx - col_cx).abs() <= 0.5 * median_w;
+                            if frac >= 0.2 || prox {
+                                col.idxs.push(i);
+                                col.min_x = col.min_x.min(b.min_x);
+                                col.max_x = col.max_x.max(b.max_x);
+                                placed = true;
+                                break;
+                            }
+                        }
+                        if !placed {
+                            cols.push(Col {
+                                idxs: vec![i],
+                                min_x: b.min_x,
+                                max_x: b.max_x,
+                            });
+                        }
+                    }
+                    cols.sort_by(|a, b| {
+                        a.min_x
+                            .partial_cmp(&b.min_x)
+                            .unwrap_or(std::cmp::Ordering::Equal)
+                    });
                     let mut ordered: Vec<BoxInfo> = Vec::new();
                     for col in cols.into_iter() {
-                        let mut v: Vec<&BoxInfo> = col.idxs.into_iter().map(|k| &boxes[k]).collect();
-                        v.sort_by(|a,b| a.min_y.partial_cmp(&b.min_y).unwrap_or(std::cmp::Ordering::Equal));
-                        for bx in v { ordered.push(bx.clone()); }
+                        let mut v: Vec<&BoxInfo> =
+                            col.idxs.into_iter().map(|k| &boxes[k]).collect();
+                        v.sort_by(|a, b| {
+                            a.min_y
+                                .partial_cmp(&b.min_y)
+                                .unwrap_or(std::cmp::Ordering::Equal)
+                        });
+                        for bx in v {
+                            ordered.push(bx.clone());
+                        }
                     }
                     boxes = ordered;
                 } else if !flow_none {
-                    let wf = lp.boxes_flow as f64; let wx = ((wf + 1.0) / 2.0).clamp(0.0, 1.0); let wy = 1.0 - wx;
-                    boxes.sort_by(|a, b| { let ka = (wy * a.min_y, wx * a.min_x); let kb = (wy * b.min_y, wx * b.min_x); ka.partial_cmp(&kb).unwrap_or(std::cmp::Ordering::Equal) });
+                    let wf = lp.boxes_flow as f64;
+                    let wx = ((wf + 1.0) / 2.0).clamp(0.0, 1.0);
+                    let wy = 1.0 - wx;
+                    boxes.sort_by(|a, b| {
+                        let ka = (wy * a.min_y, wx * a.min_x);
+                        let kb = (wy * b.min_y, wx * b.min_x);
+                        ka.partial_cmp(&kb).unwrap_or(std::cmp::Ordering::Equal)
+                    });
                 } else {
-                    boxes.sort_by(|a,b| { let ycmp = a.min_y.partial_cmp(&b.min_y).unwrap_or(std::cmp::Ordering::Equal); if ycmp == std::cmp::Ordering::Equal { a.min_x.partial_cmp(&b.min_x).unwrap_or(std::cmp::Ordering::Equal) } else { ycmp } });
+                    boxes.sort_by(|a, b| {
+                        let ycmp = a
+                            .min_y
+                            .partial_cmp(&b.min_y)
+                            .unwrap_or(std::cmp::Ordering::Equal);
+                        if ycmp == std::cmp::Ordering::Equal {
+                            a.min_x
+                                .partial_cmp(&b.min_x)
+                                .unwrap_or(std::cmp::Ordering::Equal)
+                        } else {
+                            ycmp
+                        }
+                    });
                 }
 
                 // 5) Emit TextSegments per box
@@ -4601,11 +5710,13 @@ impl<'a> Processor<'a> {
                 for bx in boxes.into_iter() {
                     let mut content = String::new();
                     for (i, ln) in bx.lines.iter().enumerate() {
-                        if i > 0 { content.push('\n'); }
+                        if i > 0 {
+                            content.push('\n');
+                        }
                         content.push_str(&ln.text);
                     }
                     let content_len = content.chars().count();
-                    let mut segment = Self::create_text_segment(
+                    if let Some(mut segment) = Self::create_text_segment(
                         content,
                         bx.avg_h,
                         bx.avg_h,
@@ -4621,11 +5732,12 @@ impl<'a> Processor<'a> {
                         None,
                         page_char_pos,
                         page_char_pos + content_len,
-                    );
-                    segment.width = (bx.max_x - bx.min_x).max(0.0);
-                    segment.height = (bx.max_y - bx.min_y).max(0.0);
+                    ) {
+                        segment.width = (bx.max_x - bx.min_x).max(0.0);
+                        segment.height = (bx.max_y - bx.min_y).max(0.0);
+                        text_segments.push(segment);
+                    }
                     page_char_pos += content_len;
-                    text_segments.push(segment);
                 }
             }
         }
@@ -4810,6 +5922,236 @@ pub struct SVGOutput<'a> {
 impl<'a> SVGOutput<'a> {
     pub fn new(file: &mut dyn std::io::Write) -> SVGOutput {
         SVGOutput { file }
+    }
+}
+
+#[cfg(test)]
+mod reconstruction_tests {
+    use super::{
+        create_content_core_with_identity, create_content_ext_with_spans,
+        create_pdf_location_from_output_spans, decompress_content_ext,
+        looks_like_symbol_glyph_soup, normalize_display_spaced_text,
+        production_telemetry_for_results, BoundingBox, CharRange, ExtractionResult, FormatLocation,
+        OcrImageTelemetrySnapshot, PageFragment, PdfLocation,
+    };
+    use crate::document::{LocatedText, OutputSpan, SpanSource};
+    use std::collections::HashMap;
+
+    #[test]
+    fn rejoins_display_letter_spaced_words() {
+        assert_eq!(normalize_display_spaced_text("J U D G M E N T"), "JUDGMENT");
+        assert_eq!(
+            normalize_display_spaced_text("i n f o r m a t i o n a l privacy"),
+            "informational privacy"
+        );
+    }
+
+    #[test]
+    fn preserves_short_initial_runs() {
+        assert_eq!(normalize_display_spaced_text("M P Sharma"), "M P Sharma");
+        assert_eq!(
+            normalize_display_spaced_text("D Y Chandrachud"),
+            "D Y Chandrachud"
+        );
+    }
+
+    #[test]
+    fn detects_symbol_glyph_soup() {
+        assert!(looks_like_symbol_glyph_soup(
+            r#"!% &!*#/!'#$+''%'#*!$)&%'%&./'.-#!#$%+-'#''"#
+        ));
+    }
+
+    #[test]
+    fn keeps_legal_numeric_text() {
+        assert!(!looks_like_symbol_glyph_soup(
+            "Article 21, Section 14(2), W.P.(C) No. 372/2017"
+        ));
+        assert!(!looks_like_symbol_glyph_soup(
+            "2024-01 2024-02 2024-03 2024-04"
+        ));
+    }
+
+    #[test]
+    fn content_ext_serializes_output_spans_when_present() {
+        let bbox = BoundingBox {
+            x: 1.0,
+            y: 2.0,
+            width: 3.0,
+            height: 4.0,
+        };
+        let location = FormatLocation::Pdf(PdfLocation {
+            fragments: vec![PageFragment {
+                page: 1,
+                char_range: CharRange { start: 10, end: 14 },
+                bbox: bbox.clone(),
+            }],
+        });
+        let located = LocatedText {
+            text: "test".to_string(),
+            spans: vec![OutputSpan {
+                output_start: 0,
+                output_end: 4,
+                source: SpanSource::Pdf {
+                    page: 1,
+                    char_start: 10,
+                    char_end: 14,
+                    bbox,
+                },
+            }],
+        };
+
+        let ext = create_content_ext_with_spans(
+            "chunk",
+            &location,
+            Some(10),
+            Some(14),
+            None,
+            Some(&located),
+        )
+        .expect("content ext");
+        let value = decompress_content_ext(&ext).expect("decompress");
+
+        assert_eq!(value["output_text_len"], 4);
+        assert_eq!(value["output_spans"].as_array().unwrap().len(), 1);
+        assert_eq!(
+            value["location_model"]["source_span_granularity"],
+            "output_span"
+        );
+    }
+
+    #[test]
+    fn pdf_location_fragments_follow_output_span_bboxes() {
+        let first_bbox = BoundingBox {
+            x: 10.0,
+            y: 20.0,
+            width: 40.0,
+            height: 10.0,
+        };
+        let second_bbox = BoundingBox {
+            x: 10.0,
+            y: 50.0,
+            width: 40.0,
+            height: 10.0,
+        };
+        let located = LocatedText {
+            text: "alpha\nbeta".to_string(),
+            spans: vec![
+                OutputSpan {
+                    output_start: 0,
+                    output_end: 5,
+                    source: SpanSource::Pdf {
+                        page: 1,
+                        char_start: 100,
+                        char_end: 105,
+                        bbox: first_bbox,
+                    },
+                },
+                OutputSpan {
+                    output_start: 5,
+                    output_end: 6,
+                    source: SpanSource::Synthetic {
+                        kind: crate::document::SyntheticKind::InsertedWhitespace,
+                        parent_refs: Vec::new(),
+                    },
+                },
+                OutputSpan {
+                    output_start: 6,
+                    output_end: 10,
+                    source: SpanSource::Pdf {
+                        page: 1,
+                        char_start: 106,
+                        char_end: 110,
+                        bbox: second_bbox,
+                    },
+                },
+            ],
+        };
+
+        let FormatLocation::Pdf(location) = create_pdf_location_from_output_spans(&located, &[])
+        else {
+            panic!("expected pdf location");
+        };
+
+        assert_eq!(location.fragments.len(), 2);
+        assert_eq!(
+            location.fragments[0].char_range,
+            CharRange { start: 0, end: 5 }
+        );
+        assert_eq!(
+            location.fragments[1].char_range,
+            CharRange { start: 6, end: 10 }
+        );
+        assert_eq!(location.fragments[0].bbox.y, 20.0);
+        assert_eq!(location.fragments[1].bbox.y, 50.0);
+    }
+
+    #[test]
+    fn production_telemetry_reports_content_ext_and_span_quality() {
+        let bbox = BoundingBox {
+            x: 1.0,
+            y: 2.0,
+            width: 3.0,
+            height: 4.0,
+        };
+        let located = LocatedText {
+            text: "abc ".to_string(),
+            spans: vec![
+                OutputSpan {
+                    output_start: 0,
+                    output_end: 3,
+                    source: SpanSource::Pdf {
+                        page: 1,
+                        char_start: 10,
+                        char_end: 13,
+                        bbox,
+                    },
+                },
+                OutputSpan {
+                    output_start: 3,
+                    output_end: 4,
+                    source: SpanSource::Synthetic {
+                        kind: crate::document::SyntheticKind::InsertedWhitespace,
+                        parent_refs: Vec::new(),
+                    },
+                },
+            ],
+        };
+        let location = create_pdf_location_from_output_spans(&located, &[]);
+        let content_core =
+            create_content_core_with_identity(&located.text, &[], 1, "file", Some(1), Some(10), 0);
+        let content_ext = create_content_ext_with_spans(
+            &content_core.chunk_id,
+            &location,
+            Some(10),
+            Some(14),
+            None,
+            Some(&located),
+        )
+        .expect("content ext");
+        let result = ExtractionResult {
+            content_core,
+            content_ext,
+        };
+
+        let telemetry = production_telemetry_for_results(
+            &[result],
+            Some(500),
+            true,
+            false,
+            false,
+            Some(4),
+            Some(4),
+            &HashMap::new(),
+            &OcrImageTelemetrySnapshot::default(),
+        );
+
+        assert_eq!(telemetry.chunk_count, 1);
+        assert!(telemetry.content_ext_max_compressed_bytes > 0);
+        assert!(telemetry.content_ext_max_uncompressed_bytes > 0);
+        assert_eq!(telemetry.chars_without_span, 0);
+        assert_eq!(telemetry.synthetic_char_ratio, 0.25);
+        assert_eq!(telemetry.pdf_backed_nonsynthetic_char_ratio, 1.0);
     }
 }
 
@@ -5022,8 +6364,7 @@ impl<W: ConvertToFmt> OutputDev for PlainTextOutput<W> {
             // Check for large horizontal gap (column break)
             else if is_column_break(x, self.last_end, transformed_font_size) {
                 write!(self.writer, "\n")?;
-            }
-            else if should_insert_space(x, self.last_end, transformed_font_size) {
+            } else if should_insert_space(x, self.last_end, transformed_font_size) {
                 dlog!(
                     "width: {}, space: {}, thresh: {}",
                     width,
@@ -5090,8 +6431,8 @@ pub fn extract_text<P: std::convert::AsRef<std::path::Path>>(
 ) -> Result<String, OutputError> {
     let mut doc = Document::load(path)?;
     maybe_decrypt(&mut doc)?;
-    let content_outputs = output_doc(&doc, ocr_handler, None, None)
-        .map_err(|e| OutputError::Other(e.to_string()))?;
+    let content_outputs =
+        output_doc(&doc, ocr_handler, None, None).map_err(|e| OutputError::Other(e.to_string()))?;
 
     // Concatenate all content from the ContentOutput structs
     let mut result = String::new();
@@ -5142,8 +6483,8 @@ pub fn extract_text_from_mem(
 ) -> Result<String, OutputError> {
     let mut doc = Document::load_mem(buffer)?;
     maybe_decrypt(&mut doc)?;
-    let content_outputs = output_doc(&doc, ocr_handler, None, None)
-        .map_err(|e| OutputError::Other(e.to_string()))?;
+    let content_outputs =
+        output_doc(&doc, ocr_handler, None, None).map_err(|e| OutputError::Other(e.to_string()))?;
 
     // Concatenate all content from the ContentOutput structs
     let mut result = String::new();
@@ -5347,6 +6688,35 @@ pub struct LayoutAnalyzer {
     page_height: f64,
 }
 
+fn normalize_for_duplicate_detection(text: &str) -> String {
+    text.split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase()
+}
+
+fn bbox_overlap_ratio(
+    ax0: f64,
+    ay0: f64,
+    ax1: f64,
+    ay1: f64,
+    bx0: f64,
+    by0: f64,
+    bx1: f64,
+    by1: f64,
+) -> f64 {
+    let inter_w = (ax1.min(bx1) - ax0.max(bx0)).max(0.0);
+    let inter_h = (ay1.min(by1) - ay0.max(by0)).max(0.0);
+    let inter = inter_w * inter_h;
+    if inter <= 0.0 {
+        return 0.0;
+    }
+    let area_a = ((ax1 - ax0).max(0.0)) * ((ay1 - ay0).max(0.0));
+    let area_b = ((bx1 - bx0).max(0.0)) * ((by1 - by0).max(0.0));
+    let denom = area_a.min(area_b).max(1e-6);
+    inter / denom
+}
+
 impl LayoutAnalyzer {
     pub fn new(page_height: f64) -> Self {
         Self {
@@ -5376,12 +6746,37 @@ pub fn create_content_core(
     source_id: i64,
     source_type: &str,
 ) -> ContentCore {
+    create_content_core_with_identity(content, headings, source_id, source_type, None, None, 0)
+}
+
+pub fn create_content_core_with_identity(
+    content: &str,
+    headings: &[String],
+    source_id: i64,
+    source_type: &str,
+    page_start: Option<u32>,
+    char_start: Option<usize>,
+    ordinal: usize,
+) -> ContentCore {
     use blake3::Hasher;
 
-    // Generate chunk_id using blake3 hash of content
-    let mut hasher = Hasher::new();
-    hasher.update(content.as_bytes());
-    let chunk_id = hasher.finalize().to_hex().to_string();
+    let mut content_hasher = Hasher::new();
+    content_hasher.update(content.as_bytes());
+    let content_hash = content_hasher.finalize().to_hex().to_string();
+
+    let mut id_hasher = Hasher::new();
+    id_hasher.update(source_type.as_bytes());
+    id_hasher.update(b":");
+    id_hasher.update(source_id.to_string().as_bytes());
+    id_hasher.update(b":");
+    id_hasher.update(page_start.unwrap_or(0).to_string().as_bytes());
+    id_hasher.update(b":");
+    id_hasher.update(char_start.unwrap_or(0).to_string().as_bytes());
+    id_hasher.update(b":");
+    id_hasher.update(ordinal.to_string().as_bytes());
+    id_hasher.update(b":");
+    id_hasher.update(content_hash.as_bytes());
+    let chunk_id = id_hasher.finalize().to_hex().to_string();
 
     // Serialize headings to JSON
     let headings_json = if !headings.is_empty() {
@@ -5390,19 +6785,24 @@ pub fn create_content_core(
         None
     };
 
-    // Estimate token count using existing word counting logic
-    let word_count = count_words(content);
-    let token_count = estimate_tokens_from_words(word_count, 1.5) as i32;
+    let token_count = CONTENT_CORE_TOKENIZER
+        .as_ref()
+        .map(|tokenizer| tokenizer.encode_ordinary(content).len() as i32)
+        .unwrap_or_else(|| {
+            let word_count = count_words(content);
+            estimate_tokens_from_words(word_count, 1.5) as i32
+        });
 
     ContentCore {
         chunk_id,
+        content_hash,
         source_id,
         source_type: source_type.to_string(),
         content: content.to_string(),
         token_count,
         headings_json,
         status: "extracted".to_string(),
-        schema_version: 1,
+        schema_version: 2,
         created_at: std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -5417,9 +6817,36 @@ pub fn create_content_ext(
     page_char_end: Option<usize>,
     bbox: Option<&BoundingBox>,
 ) -> Result<ContentExt, Box<dyn std::error::Error>> {
-    // Only store the format location - it has all the position data we need
+    create_content_ext_with_spans(
+        chunk_id,
+        format_location,
+        page_char_start,
+        page_char_end,
+        bbox,
+        None,
+    )
+}
+
+pub fn create_content_ext_with_spans(
+    chunk_id: &str,
+    format_location: &FormatLocation,
+    page_char_start: Option<usize>,
+    page_char_end: Option<usize>,
+    bbox: Option<&BoundingBox>,
+    located_text: Option<&crate::document::LocatedText>,
+) -> Result<ContentExt, Box<dyn std::error::Error>> {
     let ext_data = serde_json::json!({
-        "format_location": format_location
+        "format_location": format_location,
+        "page_char_start": page_char_start,
+        "page_char_end": page_char_end,
+        "bbox": bbox,
+        "output_spans": located_text.map(|located| &located.spans),
+        "output_text_len": located_text.map(|located| located.text.chars().count()),
+        "location_model": {
+            "source_span_granularity": if located_text.is_some() { "output_span" } else { "segment" },
+            "synthetic_spans": if located_text.is_some() { "typed" } else { "coarse" },
+            "notes": "location spans preserve PDF-backed fragments plus typed synthetic spans"
+        }
     });
 
     // Serialize to JSON and compress with zstd
@@ -5442,26 +6869,360 @@ pub fn create_pdf_location_from_positions(
     // Convert page positions to fragments
     let fragments: Vec<PageFragment> = page_positions
         .iter()
-        .map(|pos| PageFragment {
-            page: pos.page,
-            char_range: CharRange {
-                start: pos.char_start,
-                end: pos.char_end,
-            },
-            bbox: pos.bbox.clone(),
+        .filter_map(|pos| {
+            if !pos.bbox.x.is_finite()
+                || !pos.bbox.y.is_finite()
+                || !pos.bbox.width.is_finite()
+                || !pos.bbox.height.is_finite()
+            {
+                return None;
+            }
+            Some(PageFragment {
+                page: pos.page,
+                char_range: CharRange {
+                    start: pos.char_start,
+                    end: pos.char_end,
+                },
+                bbox: BoundingBox {
+                    x: pos.bbox.x,
+                    y: pos.bbox.y,
+                    width: pos.bbox.width.max(0.01),
+                    height: pos.bbox.height.max(0.01),
+                },
+            })
         })
         .collect();
 
     FormatLocation::Pdf(PdfLocation { fragments })
 }
 
-/// Helper function to decompress and deserialize ContentExt data
+pub fn create_pdf_location_from_output_spans(
+    located: &crate::document::LocatedText,
+    fallback_positions: &[PagePosition],
+) -> FormatLocation {
+    let mut spans = located.spans.clone();
+    spans.sort_by_key(|span| (span_pdf_page(span).unwrap_or(u32::MAX), span.output_start));
+
+    let mut fragments: Vec<PageFragment> = Vec::new();
+    for span in spans {
+        let crate::document::SpanSource::Pdf { page, bbox, .. } = span.source else {
+            continue;
+        };
+        if !valid_bbox(&bbox) || span.output_start >= span.output_end {
+            continue;
+        }
+
+        if let Some(last) = fragments.last_mut() {
+            if last.page == page
+                && last.char_range.end == span.output_start
+                && spatially_compatible_for_fragment_merge(&last.bbox, &bbox)
+            {
+                last.char_range.end = span.output_end;
+                last.bbox = bbox_union(&last.bbox, &bbox);
+                continue;
+            }
+        }
+
+        fragments.push(PageFragment {
+            page,
+            char_range: CharRange {
+                start: span.output_start,
+                end: span.output_end,
+            },
+            bbox: BoundingBox {
+                x: bbox.x,
+                y: bbox.y,
+                width: bbox.width.max(0.01),
+                height: bbox.height.max(0.01),
+            },
+        });
+    }
+
+    if fragments.is_empty() {
+        return create_pdf_location_from_positions(
+            0,
+            None,
+            fallback_positions,
+            located.text.chars().count(),
+        );
+    }
+
+    FormatLocation::Pdf(PdfLocation { fragments })
+}
+
+fn span_pdf_page(span: &crate::document::OutputSpan) -> Option<u32> {
+    match &span.source {
+        crate::document::SpanSource::Pdf { page, .. } => Some(*page),
+        crate::document::SpanSource::Synthetic { .. } => None,
+    }
+}
+
+fn valid_bbox(bbox: &BoundingBox) -> bool {
+    bbox.x.is_finite()
+        && bbox.y.is_finite()
+        && bbox.width.is_finite()
+        && bbox.height.is_finite()
+        && bbox.width >= 0.0
+        && bbox.height >= 0.0
+}
+
+fn spatially_compatible_for_fragment_merge(a: &BoundingBox, b: &BoundingBox) -> bool {
+    if !valid_bbox(a) || !valid_bbox(b) {
+        return false;
+    }
+    let tolerance = a.height.max(b.height).max(1.0) * 0.05;
+    (a.x - b.x).abs() <= tolerance
+        && (a.y - b.y).abs() <= tolerance
+        && (a.width - b.width).abs() <= tolerance
+        && (a.height - b.height).abs() <= tolerance
+}
+
+fn bbox_union(a: &BoundingBox, b: &BoundingBox) -> BoundingBox {
+    let min_x = a.x.min(b.x);
+    let min_y = a.y.min(b.y);
+    let max_x = (a.x + a.width).max(b.x + b.width);
+    let max_y = (a.y + a.height).max(b.y + b.height);
+    BoundingBox {
+        x: min_x,
+        y: min_y,
+        width: (max_x - min_x).max(0.01),
+        height: (max_y - min_y).max(0.01),
+    }
+}
+
+pub const CONTENT_EXT_DECOMPRESS_LIMIT_BYTES: usize = 16 * 1024 * 1024;
+
+pub fn decompress_content_ext_bytes(
+    content_ext: &ContentExt,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    Ok(zstd::bulk::decompress(
+        &content_ext.ext_json,
+        CONTENT_EXT_DECOMPRESS_LIMIT_BYTES,
+    )?)
+}
+
+/// Helper function to decompress and deserialize ContentExt data.
 pub fn decompress_content_ext(
     content_ext: &ContentExt,
 ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-    let decompressed = zstd::bulk::decompress(&content_ext.ext_json, 1024 * 1024)?; // 1MB max
+    let decompressed = decompress_content_ext_bytes(content_ext)?;
     let json_value: serde_json::Value = serde_json::from_slice(&decompressed)?;
     Ok(json_value)
+}
+
+pub fn pdf_page_dimensions(doc: &Document) -> HashMap<u32, (f64, f64)> {
+    let mut dimensions = HashMap::new();
+    for (page_num, object_id) in doc.get_pages() {
+        let Ok(page_obj) = doc.get_object(object_id) else {
+            continue;
+        };
+        let Ok(page_dict) = page_obj.as_dict() else {
+            continue;
+        };
+        let Some(media_box): Option<Vec<f64>> = get_inherited(doc, page_dict, b"MediaBox") else {
+            continue;
+        };
+        if media_box.len() >= 4 {
+            dimensions.insert(
+                page_num,
+                (
+                    (media_box[2] - media_box[0]).abs(),
+                    (media_box[3] - media_box[1]).abs(),
+                ),
+            );
+        }
+    }
+    dimensions
+}
+
+pub fn production_telemetry_for_results(
+    results: &[ExtractionResult],
+    max_tokens: Option<usize>,
+    layout_enabled: bool,
+    all_texts_enabled: bool,
+    layout_fallback_used: bool,
+    layout_normalized_chars: Option<usize>,
+    no_layout_normalized_chars: Option<usize>,
+    page_dimensions: &HashMap<u32, (f64, f64)>,
+    ocr: &OcrImageTelemetrySnapshot,
+) -> ProductionTelemetry {
+    let quality = assess_parse_quality(results);
+    let mut out = ProductionTelemetry {
+        layout_enabled,
+        all_texts_enabled,
+        layout_fallback_used,
+        layout_normalized_chars,
+        no_layout_normalized_chars,
+        layout_to_no_layout_normalized_char_ratio: layout_normalized_chars
+            .zip(no_layout_normalized_chars)
+            .and_then(|(layout, no_layout)| {
+                if no_layout == 0 {
+                    None
+                } else {
+                    Some(layout as f64 / no_layout as f64)
+                }
+            }),
+        chunk_count: results.len(),
+        extracted_chars: quality.extracted_chars,
+        normalized_chars: quality.normalized_chars,
+        repeated_line_ratio: quality.repeated_line_ratio,
+        unique_token_ratio: quality.unique_token_ratio,
+        parse_quality_status: serde_json::to_value(&quality.status)
+            .ok()
+            .and_then(|value| value.as_str().map(str::to_string))
+            .unwrap_or_else(|| "unknown".to_string()),
+        parse_quality_score: quality.score,
+        ocr_images_seen: ocr.images_seen,
+        ocr_images_converted: ocr.images_converted,
+        ocr_images_skipped: ocr.images_skipped,
+        ocr_images_with_text: ocr.images_with_text,
+        ocr_text_chars_emitted: ocr.text_chars_emitted,
+        ..ProductionTelemetry::default()
+    };
+
+    let max_tokens = max_tokens.unwrap_or(usize::MAX);
+    let mut output_chars_total = 0usize;
+    let mut output_chars_pdf_backed = 0usize;
+    let mut output_chars_synthetic = 0usize;
+
+    for result in results {
+        let tokens = CONTENT_CORE_TOKENIZER
+            .as_ref()
+            .map(|tokenizer| {
+                tokenizer
+                    .encode_ordinary(&result.content_core.content)
+                    .len()
+            })
+            .unwrap_or(result.content_core.token_count.max(0) as usize);
+        out.max_chunk_tokens = out.max_chunk_tokens.max(tokens);
+        if tokens > max_tokens {
+            out.over_cap_chunks += 1;
+        }
+
+        let fragments = extract_pdf_location(&result.content_ext)
+            .map(|location| location.fragments)
+            .unwrap_or_default();
+        if fragments.is_empty() {
+            out.chunks_without_location += 1;
+        }
+        for fragment in &fragments {
+            if !valid_bbox(&fragment.bbox) {
+                out.invalid_bbox_count += 1;
+            }
+            if page_dimensions
+                .get(&fragment.page)
+                .map(|dimensions| bbox_outside_page(&fragment.bbox, *dimensions))
+                .unwrap_or(false)
+            {
+                out.out_of_page_bbox_count += 1;
+            }
+        }
+
+        out.content_ext_max_compressed_bytes = out
+            .content_ext_max_compressed_bytes
+            .max(result.content_ext.ext_json.len());
+        out.content_ext_total_compressed_bytes += result.content_ext.ext_json.len();
+
+        let output_chars = result.content_core.content.chars().count();
+        output_chars_total += output_chars;
+        if let Ok(bytes) = decompress_content_ext_bytes(&result.content_ext) {
+            out.content_ext_max_uncompressed_bytes =
+                out.content_ext_max_uncompressed_bytes.max(bytes.len());
+            out.content_ext_total_uncompressed_bytes += bytes.len();
+            if let Ok(ext) = serde_json::from_slice::<serde_json::Value>(&bytes) {
+                if let Some(spans) = ext.get("output_spans").and_then(|value| value.as_array()) {
+                    let mut coverage = vec![0usize; output_chars];
+                    let mut pdf_coverage = vec![false; output_chars];
+                    let mut synthetic_coverage = vec![false; output_chars];
+                    for span in spans {
+                        let start = span
+                            .get("output_start")
+                            .and_then(|value| value.as_u64())
+                            .unwrap_or(0) as usize;
+                        let end = span
+                            .get("output_end")
+                            .and_then(|value| value.as_u64())
+                            .unwrap_or(start as u64) as usize;
+                        let start = start.min(output_chars);
+                        let end = end.min(output_chars);
+                        if start >= end {
+                            continue;
+                        }
+                        let source = span.get("source");
+                        let is_pdf = source.and_then(|source| source.get("Pdf")).is_some();
+                        let is_synthetic =
+                            source.and_then(|source| source.get("Synthetic")).is_some();
+                        for idx in start..end {
+                            coverage[idx] += 1;
+                            if is_pdf {
+                                pdf_coverage[idx] = true;
+                            }
+                            if is_synthetic {
+                                synthetic_coverage[idx] = true;
+                            }
+                        }
+                        if is_pdf {
+                            if let Some(pdf_source) = source.and_then(|source| source.get("Pdf")) {
+                                if let Some(span_bbox) = pdf_source.get("bbox") {
+                                    let invalid = match json_bbox(span_bbox) {
+                                        Some(bbox) => !valid_bbox(&bbox),
+                                        None => true,
+                                    };
+                                    if invalid {
+                                        out.invalid_bbox_count += 1;
+                                    }
+                                } else {
+                                    out.invalid_bbox_count += 1;
+                                }
+                            }
+                        }
+                    }
+                    out.chars_without_span += coverage.iter().filter(|count| **count == 0).count();
+                    out.chars_with_overlapping_spans +=
+                        coverage.iter().filter(|count| **count > 1).count();
+                    output_chars_pdf_backed +=
+                        pdf_coverage.iter().filter(|covered| **covered).count();
+                    output_chars_synthetic += synthetic_coverage
+                        .iter()
+                        .filter(|covered| **covered)
+                        .count();
+                } else {
+                    out.chars_without_span += output_chars;
+                }
+            }
+        }
+    }
+
+    let nonsynthetic_chars = output_chars_total.saturating_sub(output_chars_synthetic);
+    out.pdf_backed_nonsynthetic_char_ratio = if nonsynthetic_chars == 0 {
+        0.0
+    } else {
+        output_chars_pdf_backed as f64 / nonsynthetic_chars as f64
+    };
+    out.synthetic_char_ratio = if output_chars_total == 0 {
+        0.0
+    } else {
+        output_chars_synthetic as f64 / output_chars_total as f64
+    };
+    out
+}
+
+fn json_bbox(value: &serde_json::Value) -> Option<BoundingBox> {
+    Some(BoundingBox {
+        x: value.get("x")?.as_f64()?,
+        y: value.get("y")?.as_f64()?,
+        width: value.get("width")?.as_f64()?,
+        height: value.get("height")?.as_f64()?,
+    })
+}
+
+fn bbox_outside_page(bbox: &BoundingBox, dimensions: (f64, f64)) -> bool {
+    let (width, height) = dimensions;
+    let tolerance = 1.0;
+    bbox.x < -tolerance
+        || bbox.y < -tolerance
+        || bbox.x + bbox.width > width + tolerance
+        || bbox.y + bbox.height > height + tolerance
 }
 
 /// Helper function to extract PdfLocation from ContentExt

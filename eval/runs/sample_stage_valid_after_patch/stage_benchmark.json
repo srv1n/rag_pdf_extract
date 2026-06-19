@@ -1,0 +1,1548 @@
+{
+  "generated_at_epoch_ms": 1780036852871,
+  "manifest_path": "eval/runs/sample_stage_valid_manifest_abs.json",
+  "fixtures": [
+    {
+      "fixture_id": "legal_1",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/1.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 111568,
+          "raw_chars": 111585,
+          "chunk_count": 121,
+          "duplicate_line_ratio": 0.01955104996379431,
+          "duration_ms": 8369
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 111478,
+          "raw_chars": 111565,
+          "chunk_count": 99,
+          "duplicate_line_ratio": 0.1410365335598981,
+          "duration_ms": 7858
+        },
+        "ours_chunks": {
+          "normalized_chars": 111478,
+          "raw_chars": 111565,
+          "chunk_count": 99,
+          "duplicate_line_ratio": 0.1410365335598981,
+          "duration_ms": 7858
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 113066,
+          "delta_to_layout_chars": -1588,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 99,
+        "max_tokens": 350,
+        "max_chunk_tokens": 314,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 510,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.8393425856980092,
+        "fragment_density": 5.151515151515151,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "legal_12__cci_v_kerala_film_exhibitors_federation___ors",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/12. CCI v Kerala Film Exhibitors Federation & Ors.pdf",
+      "category": "form_xobject",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 101188,
+          "raw_chars": 101189,
+          "chunk_count": 122,
+          "duplicate_line_ratio": 0.013548387096774195,
+          "duration_ms": 3258
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 101058,
+          "raw_chars": 101064,
+          "chunk_count": 84,
+          "duplicate_line_ratio": 0.03683492496589358,
+          "duration_ms": 6675
+        },
+        "ours_chunks": {
+          "normalized_chars": 101058,
+          "raw_chars": 101064,
+          "chunk_count": 84,
+          "duplicate_line_ratio": 0.03683492496589358,
+          "duration_ms": 6675
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 102349,
+          "delta_to_layout_chars": -1291,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 84,
+        "max_tokens": 350,
+        "max_chunk_tokens": 301,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 923,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.8595775442905101,
+        "fragment_density": 10.988095238095237,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "legal_13__kumari_shrilekha_vidyarthi_v_state_of_up",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/13. Kumari Shrilekha Vidyarthi v State of UP.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 88725,
+          "raw_chars": 88725,
+          "chunk_count": 85,
+          "duplicate_line_ratio": 0.011235955056179803,
+          "duration_ms": 2808
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 89944,
+          "raw_chars": 89945,
+          "chunk_count": 72,
+          "duplicate_line_ratio": 0.009063444108761365,
+          "duration_ms": 5806
+        },
+        "ours_chunks": {
+          "normalized_chars": 89944,
+          "raw_chars": 89945,
+          "chunk_count": 72,
+          "duplicate_line_ratio": 0.009063444108761365,
+          "duration_ms": 5806
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 91637,
+          "delta_to_layout_chars": -1693,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 72,
+        "max_tokens": 350,
+        "max_chunk_tokens": 307,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 125,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.5399114315597392,
+        "fragment_density": 1.7361111111111112,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "legal_14__tomaso_bruno_v_state_of_up",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/14. Tomaso Bruno v State of UP.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 3956,
+          "raw_chars": 3961,
+          "chunk_count": 20,
+          "duplicate_line_ratio": 0.050000000000000044,
+          "duration_ms": 1393
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 41752,
+          "raw_chars": 41756,
+          "chunk_count": 38,
+          "duplicate_line_ratio": 0.018404907975460127,
+          "duration_ms": 2661
+        },
+        "ours_chunks": {
+          "normalized_chars": 41752,
+          "raw_chars": 41756,
+          "chunk_count": 38,
+          "duplicate_line_ratio": 0.018404907975460127,
+          "duration_ms": 2661
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 42099,
+          "delta_to_layout_chars": -347,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 38,
+        "max_tokens": 350,
+        "max_chunk_tokens": 301,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 671,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.6055993671948033,
+        "fragment_density": 17.657894736842106,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "legal_15__mc_mehta_v_uoi",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/15. MC Mehta v UoI.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 68642,
+          "raw_chars": 68642,
+          "chunk_count": 66,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 2132
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 69566,
+          "raw_chars": 69567,
+          "chunk_count": 55,
+          "duplicate_line_ratio": 0.00877192982456143,
+          "duration_ms": 3708
+        },
+        "ours_chunks": {
+          "normalized_chars": 69566,
+          "raw_chars": 69567,
+          "chunk_count": 55,
+          "duplicate_line_ratio": 0.00877192982456143,
+          "duration_ms": 3708
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 70908,
+          "delta_to_layout_chars": -1342,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 55,
+        "max_tokens": 350,
+        "max_chunk_tokens": 316,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 87,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.44157208004258197,
+        "fragment_density": 1.5818181818181818,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "legal_16__bwssb_v_a_rajappa",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/16. BWSSB v A Rajappa.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 255055,
+          "raw_chars": 255055,
+          "chunk_count": 273,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 7488
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 258804,
+          "raw_chars": 258804,
+          "chunk_count": 215,
+          "duplicate_line_ratio": 0.019943019943019946,
+          "duration_ms": 12046
+        },
+        "ours_chunks": {
+          "normalized_chars": 258804,
+          "raw_chars": 258804,
+          "chunk_count": 215,
+          "duplicate_line_ratio": 0.019943019943019946,
+          "duration_ms": 12046
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 263300,
+          "delta_to_layout_chars": -4496,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 215,
+        "max_tokens": 350,
+        "max_chunk_tokens": 303,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 782,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.5282880235121235,
+        "fragment_density": 3.6372093023255814,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "legal_17__sunil_b_naik_v_geowave_commander",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/17. Sunil B Naik v Geowave Commander.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 80932,
+          "raw_chars": 80938,
+          "chunk_count": 82,
+          "duplicate_line_ratio": 0.014559386973180044,
+          "duration_ms": 2741
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 80932,
+          "raw_chars": 80938,
+          "chunk_count": 82,
+          "duplicate_line_ratio": 0.014559386973180044,
+          "duration_ms": 3030
+        },
+        "ours_chunks": {
+          "normalized_chars": 80932,
+          "raw_chars": 80938,
+          "chunk_count": 82,
+          "duplicate_line_ratio": 0.014559386973180044,
+          "duration_ms": 3030
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 82479,
+          "delta_to_layout_chars": -1547,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 82,
+        "max_tokens": 350,
+        "max_chunk_tokens": 346,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 412,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 59,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.8138070915319638,
+        "fragment_density": 5.024390243902439,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "invalid or zero-area bbox fragments found"
+      ]
+    },
+    {
+      "fixture_id": "legal_18__mardia_chemicals_v_uoi",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/18. Mardia Chemicals v UoI.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 115866,
+          "raw_chars": 115866,
+          "chunk_count": 101,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 3039
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 116337,
+          "raw_chars": 116340,
+          "chunk_count": 128,
+          "duplicate_line_ratio": 0.07282913165266103,
+          "duration_ms": 5249
+        },
+        "ours_chunks": {
+          "normalized_chars": 116337,
+          "raw_chars": 116340,
+          "chunk_count": 128,
+          "duplicate_line_ratio": 0.07282913165266103,
+          "duration_ms": 5249
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 118419,
+          "delta_to_layout_chars": -2082,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 128,
+        "max_tokens": 350,
+        "max_chunk_tokens": 296,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 336,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.880529716985191,
+        "fragment_density": 2.625,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "legal_19__cbse_v_aditya_bandopadyay",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/19. CBSE v Aditya Bandopadyay.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 85451,
+          "raw_chars": 85478,
+          "chunk_count": 76,
+          "duplicate_line_ratio": 0.007481296758104716,
+          "duration_ms": 2435
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 85364,
+          "raw_chars": 85365,
+          "chunk_count": 68,
+          "duplicate_line_ratio": 0.021922428330522714,
+          "duration_ms": 4583
+        },
+        "ours_chunks": {
+          "normalized_chars": 85364,
+          "raw_chars": 85365,
+          "chunk_count": 68,
+          "duplicate_line_ratio": 0.021922428330522714,
+          "duration_ms": 4583
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 85540,
+          "delta_to_layout_chars": -176,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 68,
+        "max_tokens": 350,
+        "max_chunk_tokens": 303,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 648,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.9278529391075993,
+        "fragment_density": 9.529411764705882,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "legal_20_rc_cooper_v_uoi",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/20 RC Cooper v UoI.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 363217,
+          "raw_chars": 363217,
+          "chunk_count": 406,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 11036
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 370658,
+          "raw_chars": 370658,
+          "chunk_count": 343,
+          "duplicate_line_ratio": 0.042642924086223055,
+          "duration_ms": 15923
+        },
+        "ours_chunks": {
+          "normalized_chars": 370658,
+          "raw_chars": 370658,
+          "chunk_count": 343,
+          "duplicate_line_ratio": 0.042642924086223055,
+          "duration_ms": 15923
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 376196,
+          "delta_to_layout_chars": -5538,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 343,
+        "max_tokens": 350,
+        "max_chunk_tokens": 331,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 1011,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.4540662569265168,
+        "fragment_density": 2.947521865889213,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "legal_9",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/9.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 63798,
+          "raw_chars": 63804,
+          "chunk_count": 78,
+          "duplicate_line_ratio": 0.005336179295624355,
+          "duration_ms": 2426
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 63651,
+          "raw_chars": 63653,
+          "chunk_count": 57,
+          "duplicate_line_ratio": 0.02216066481994461,
+          "duration_ms": 4237
+        },
+        "ours_chunks": {
+          "normalized_chars": 63651,
+          "raw_chars": 63653,
+          "chunk_count": 57,
+          "duplicate_line_ratio": 0.02216066481994461,
+          "duration_ms": 4237
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 67916,
+          "delta_to_layout_chars": -4265,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 57,
+        "max_tokens": 350,
+        "max_chunk_tokens": 305,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 154,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.834772080444046,
+        "fragment_density": 2.7017543859649122,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "mixed_4",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/mixed/4.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 49144,
+          "raw_chars": 49248,
+          "chunk_count": 56,
+          "duplicate_line_ratio": 0.07151819322459219,
+          "duration_ms": 1940
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 49194,
+          "raw_chars": 49194,
+          "chunk_count": 49,
+          "duplicate_line_ratio": 0.04405286343612336,
+          "duration_ms": 3168
+        },
+        "ours_chunks": {
+          "normalized_chars": 49194,
+          "raw_chars": 49194,
+          "chunk_count": 49,
+          "duplicate_line_ratio": 0.04405286343612336,
+          "duration_ms": 3168
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 49304,
+          "delta_to_layout_chars": -110,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 49,
+        "max_tokens": 350,
+        "max_chunk_tokens": 300,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 329,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.3753509949945062,
+        "fragment_density": 6.714285714285714,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "mixed_documents_stack",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/mixed/documents_stack.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 1488,
+          "raw_chars": 1488,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 745
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 1509,
+          "raw_chars": 1509,
+          "chunk_count": 8,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 1402
+        },
+        "ours_chunks": {
+          "normalized_chars": 1509,
+          "raw_chars": 1509,
+          "chunk_count": 8,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 1402
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 1600,
+          "delta_to_layout_chars": -91,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 8,
+        "max_tokens": 350,
+        "max_chunk_tokens": 167,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 16,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.10918774966711052,
+        "fragment_density": 2.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "mixed_embeded_core_fonts",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/mixed/embeded-core-fonts.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 98404,
+          "raw_chars": 98404,
+          "chunk_count": 106,
+          "duplicate_line_ratio": 0.07101947308132872,
+          "duration_ms": 3015
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 99356,
+          "raw_chars": 99356,
+          "chunk_count": 89,
+          "duplicate_line_ratio": 0.06468531468531469,
+          "duration_ms": 5510
+        },
+        "ours_chunks": {
+          "normalized_chars": 99356,
+          "raw_chars": 99356,
+          "chunk_count": 89,
+          "duplicate_line_ratio": 0.06468531468531469,
+          "duration_ms": 5510
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 98793,
+          "delta_to_layout_chars": 563,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 89,
+        "max_tokens": 350,
+        "max_chunk_tokens": 329,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 261,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.9665148889873877,
+        "fragment_density": 2.932584269662921,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "scientific_3",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/scientific/3.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 47595,
+          "raw_chars": 47611,
+          "chunk_count": 139,
+          "duplicate_line_ratio": 0.4176656151419559,
+          "duration_ms": 1447
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 47974,
+          "raw_chars": 47996,
+          "chunk_count": 116,
+          "duplicate_line_ratio": 0.3873668188736682,
+          "duration_ms": 3085
+        },
+        "ours_chunks": {
+          "normalized_chars": 47974,
+          "raw_chars": 47996,
+          "chunk_count": 116,
+          "duplicate_line_ratio": 0.3873668188736682,
+          "duration_ms": 3085
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 47828,
+          "delta_to_layout_chars": 146,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 116,
+        "max_tokens": 350,
+        "max_chunk_tokens": 313,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 915,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 50,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.8551408700737244,
+        "fragment_density": 7.887931034482759,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "invalid or zero-area bbox fragments found"
+      ]
+    },
+    {
+      "fixture_id": "scientific_6",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/scientific/6.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 40263,
+          "raw_chars": 40263,
+          "chunk_count": 42,
+          "duplicate_line_ratio": 0.2857142857142857,
+          "duration_ms": 24112
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 40263,
+          "raw_chars": 40263,
+          "chunk_count": 42,
+          "duplicate_line_ratio": 0.2857142857142857,
+          "duration_ms": 27614
+        },
+        "ours_chunks": {
+          "normalized_chars": 40263,
+          "raw_chars": 40263,
+          "chunk_count": 42,
+          "duplicate_line_ratio": 0.2857142857142857,
+          "duration_ms": 27614
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 39652,
+          "delta_to_layout_chars": 611,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 42,
+        "max_tokens": 350,
+        "max_chunk_tokens": 345,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 730,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 39,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.2221421112823828,
+        "fragment_density": 17.38095238095238,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "invalid or zero-area bbox fragments found"
+      ]
+    },
+    {
+      "fixture_id": "pdfs_ctm_scaled_text",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/ctm_scaled_text.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 655
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 1229
+        },
+        "ours_chunks": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 1229
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 15,
+          "delta_to_layout_chars": 0,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 1,
+        "max_tokens": 350,
+        "max_chunk_tokens": 4,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 1,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 1.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "pdfs_invisible_ocr_only",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/invisible_ocr_only.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 670
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 1932
+        },
+        "ours_chunks": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 1932
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 24,
+          "delta_to_layout_chars": 0,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 1,
+        "max_tokens": 350,
+        "max_chunk_tokens": 4,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 1,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 1.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "pdfs_long_split_locations",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/long_split_locations.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 5134,
+          "raw_chars": 5134,
+          "chunk_count": 3,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 1089
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 5086,
+          "raw_chars": 5086,
+          "chunk_count": 4,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 3953
+        },
+        "ours_chunks": {
+          "normalized_chars": 5086,
+          "raw_chars": 5086,
+          "chunk_count": 4,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 3953
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 119,
+          "delta_to_layout_chars": 4967,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 4,
+        "max_tokens": 350,
+        "max_chunk_tokens": 341,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 4,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 1.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "pdfs_malformed_text_ops",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/malformed_text_ops.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 0,
+          "raw_chars": 0,
+          "chunk_count": 0,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 1240
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 0,
+          "raw_chars": 0,
+          "chunk_count": 0,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 1454
+        },
+        "ours_chunks": {
+          "normalized_chars": 0,
+          "raw_chars": 0,
+          "chunk_count": 0,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 1454
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 0,
+          "delta_to_layout_chars": 0,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 350,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "docs_cache_documents_stack",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/tests/docs_cache/documents_stack.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 1488,
+          "raw_chars": 1488,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 894
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 1509,
+          "raw_chars": 1509,
+          "chunk_count": 8,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 1727
+        },
+        "ours_chunks": {
+          "normalized_chars": 1509,
+          "raw_chars": 1509,
+          "chunk_count": 8,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 1727
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 1600,
+          "delta_to_layout_chars": -91,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 8,
+        "max_tokens": 350,
+        "max_chunk_tokens": 167,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 16,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.10918774966711052,
+        "fragment_density": 2.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "docs_cache_embeded_core_fonts",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/tests/docs_cache/embeded-core-fonts.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 98404,
+          "raw_chars": 98404,
+          "chunk_count": 106,
+          "duplicate_line_ratio": 0.07101947308132872,
+          "duration_ms": 3491
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 99356,
+          "raw_chars": 99356,
+          "chunk_count": 89,
+          "duplicate_line_ratio": 0.06468531468531469,
+          "duration_ms": 9362
+        },
+        "ours_chunks": {
+          "normalized_chars": 99356,
+          "raw_chars": 99356,
+          "chunk_count": 89,
+          "duplicate_line_ratio": 0.06468531468531469,
+          "duration_ms": 9362
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 98793,
+          "delta_to_layout_chars": 563,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 89,
+        "max_tokens": 350,
+        "max_chunk_tokens": 329,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 261,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.9665148889873877,
+        "fragment_density": 2.932584269662921,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "_10",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/10.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 162651,
+          "raw_chars": 162651,
+          "chunk_count": 163,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 7367
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 163026,
+          "raw_chars": 163026,
+          "chunk_count": 138,
+          "duplicate_line_ratio": 0.0430232558139535,
+          "duration_ms": 13502
+        },
+        "ours_chunks": {
+          "normalized_chars": 163026,
+          "raw_chars": 163026,
+          "chunk_count": 138,
+          "duplicate_line_ratio": 0.0430232558139535,
+          "duration_ms": 13502
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 165427,
+          "delta_to_layout_chars": -2401,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 138,
+        "max_tokens": 350,
+        "max_chunk_tokens": 316,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 422,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.49593895229266555,
+        "fragment_density": 3.0579710144927534,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    },
+    {
+      "fixture_id": "_ocr",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/ocr.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 5638,
+          "raw_chars": 5638,
+          "chunk_count": 7,
+          "duplicate_line_ratio": 0.0,
+          "duration_ms": 940
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 6257,
+          "raw_chars": 6266,
+          "chunk_count": 16,
+          "duplicate_line_ratio": 0.3074935400516796,
+          "duration_ms": 2817
+        },
+        "ours_chunks": {
+          "normalized_chars": 6257,
+          "raw_chars": 6266,
+          "chunk_count": 16,
+          "duplicate_line_ratio": 0.3074935400516796,
+          "duration_ms": 2817
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 5629,
+          "delta_to_layout_chars": 628,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 16,
+        "max_tokens": 350,
+        "max_chunk_tokens": 344,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 405,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.9929611262198048,
+        "fragment_density": 25.3125,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    }
+  ]
+}

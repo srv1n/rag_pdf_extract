@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "mixed_4",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/mixed/4.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

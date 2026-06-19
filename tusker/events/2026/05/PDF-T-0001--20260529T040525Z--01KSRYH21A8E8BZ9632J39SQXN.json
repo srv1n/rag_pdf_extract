@@ -1,0 +1,52 @@
+{
+  "actor": "tusker:reconcile",
+  "at": "2026-05-29T04:05:25Z",
+  "event_kind": "updated",
+  "id": "01KSRYH21A8E8BZ9632J39SQXN",
+  "object": "PDF-T-0001",
+  "object_kind": "task",
+  "payload": {
+    "changes": {
+      "agent_action": {
+        "from": "stop_until_human_response",
+        "to": ""
+      },
+      "closeout_status": {
+        "from": "machine_complete_waiting_for_human",
+        "to": ""
+      },
+      "human_status": {
+        "from": "pending",
+        "to": ""
+      },
+      "machine_status": {
+        "from": "complete",
+        "to": ""
+      },
+      "next_action": {
+        "from": "Accept, waive, or return rework for close_policy:human_acceptor.",
+        "to": "Review evidence and close or return to rework."
+      },
+      "next_owner": {
+        "from": "human:sarav",
+        "to": "reviewer"
+      },
+      "next_ref": {
+        "from": "close_policy:human_acceptor",
+        "to": ""
+      },
+      "next_source": {
+        "from": "closeout:PDF-T-0001-C-0003",
+        "to": "review_policy"
+      },
+      "readiness": {
+        "from": "waiting_on_human",
+        "to": "waiting_on_review"
+      }
+    },
+    "source": "projection",
+    "state_rev": "sha256:9cc7d7f6658e9a1c4f01a280d472aac954b8f85758917b7ead0f4bb8655e4f96"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

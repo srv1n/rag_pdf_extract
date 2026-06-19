@@ -7,18 +7,34 @@ use crate::TextSegment;
 
 /// Common word prefixes that often appear before hyphens in compound words
 const COMPOUND_PREFIXES: &[&str] = &[
-    "self", "well", "ill", "cross", "all", "ex", "half", "high", "low",
-    "mid", "non", "anti", "co", "pre", "post", "re", "sub", "semi",
-    "multi", "inter", "intra", "counter", "super", "ultra", "under",
-    "over", "out", "pseudo", "quasi", "vice",
+    "self", "well", "ill", "cross", "all", "ex", "half", "high", "low", "mid", "non", "anti", "co",
+    "pre", "post", "re", "sub", "semi", "multi", "inter", "intra", "counter", "super", "ultra",
+    "under", "over", "out", "pseudo", "quasi", "vice",
 ];
 
 /// Common compound word patterns (words that should keep their hyphen)
 const COMPOUND_PATTERNS: &[&str] = &[
-    "state-of", "out-of", "up-to", "day-to", "face-to", "one-on",
-    "word-of", "matter-of", "point-of", "end-to", "back-to",
-    "well-known", "well-being", "self-", "non-", "anti-", "co-",
-    "e-mail", "e-commerce", "re-elect", "re-enter",
+    "state-of",
+    "out-of",
+    "up-to",
+    "day-to",
+    "face-to",
+    "one-on",
+    "word-of",
+    "matter-of",
+    "point-of",
+    "end-to",
+    "back-to",
+    "well-known",
+    "well-being",
+    "self-",
+    "non-",
+    "anti-",
+    "co-",
+    "e-mail",
+    "e-commerce",
+    "re-elect",
+    "re-enter",
 ];
 
 /// Result of hyphen analysis
@@ -50,10 +66,7 @@ pub fn analyze_hyphen(text_before: &str, text_after: &str) -> HyphenType {
         .unwrap_or("");
 
     // Get the word fragment after (first word of next line)
-    let word_after = trimmed_after
-        .split_whitespace()
-        .next()
-        .unwrap_or("");
+    let word_after = trimmed_after.split_whitespace().next().unwrap_or("");
 
     if word_before.is_empty() || word_after.is_empty() {
         return HyphenType::None;
@@ -124,11 +137,48 @@ fn is_standalone_word(word: &str) -> bool {
     // Common short words that shouldn't be joined
     matches!(
         lower.as_str(),
-        "the" | "and" | "for" | "but" | "not" | "you" | "all" | "can" | "had" |
-        "her" | "was" | "one" | "our" | "out" | "are" | "has" | "his" | "how" |
-        "its" | "may" | "new" | "now" | "old" | "see" | "two" | "way" | "who" |
-        "did" | "get" | "let" | "put" | "say" | "she" | "too" | "use" | "man" |
-        "day" | "per" | "sub" | "non" | "pre" | "pro"
+        "the"
+            | "and"
+            | "for"
+            | "but"
+            | "not"
+            | "you"
+            | "all"
+            | "can"
+            | "had"
+            | "her"
+            | "was"
+            | "one"
+            | "our"
+            | "out"
+            | "are"
+            | "has"
+            | "his"
+            | "how"
+            | "its"
+            | "may"
+            | "new"
+            | "now"
+            | "old"
+            | "see"
+            | "two"
+            | "way"
+            | "who"
+            | "did"
+            | "get"
+            | "let"
+            | "put"
+            | "say"
+            | "she"
+            | "too"
+            | "use"
+            | "man"
+            | "day"
+            | "per"
+            | "sub"
+            | "non"
+            | "pre"
+            | "pro"
     )
 }
 
@@ -181,7 +231,10 @@ pub fn join_hyphenated(before: &str, after: &str) -> Option<String> {
             // Get the continuation and rest
             let after_parts: Vec<&str> = trimmed_after.splitn(2, char::is_whitespace).collect();
             let continuation = after_parts.get(0).unwrap_or(&"");
-            let rest = after_parts.get(1).map(|s| format!(" {}", s)).unwrap_or_default();
+            let rest = after_parts
+                .get(1)
+                .map(|s| format!(" {}", s))
+                .unwrap_or_default();
 
             Some(format!("{}{}{}{}", prefix, word_frag, continuation, rest))
         }
@@ -211,8 +264,7 @@ pub fn recover_hyphenation(segments: Vec<TextSegment>) -> Vec<TextSegment> {
 
             // Only join if same page or consecutive pages
             let same_or_consecutive_page =
-                current.page_num == next.page_num ||
-                current.page_num + 1 == next.page_num;
+                current.page_num == next.page_num || current.page_num + 1 == next.page_num;
 
             if same_or_consecutive_page {
                 if let Some(joined) = join_hyphenated(&current.content, &next.content) {
@@ -293,15 +345,9 @@ mod tests {
     #[test]
     fn test_hard_hyphen_detection() {
         // Compound words
-        assert_eq!(
-            analyze_hyphen("self-", "evident truth"),
-            HyphenType::Hard
-        );
+        assert_eq!(analyze_hyphen("self-", "evident truth"), HyphenType::Hard);
 
-        assert_eq!(
-            analyze_hyphen("well-", "known fact"),
-            HyphenType::Hard
-        );
+        assert_eq!(analyze_hyphen("well-", "known fact"), HyphenType::Hard);
 
         assert_eq!(
             analyze_hyphen("non-", "profit organization"),
@@ -322,33 +368,21 @@ mod tests {
         );
 
         // Should not join compound words
-        assert_eq!(
-            join_hyphenated("self-", "evident"),
-            None
-        );
+        assert_eq!(join_hyphenated("self-", "evident"), None);
     }
 
     #[test]
     fn test_clean_internal_hyphens() {
         let text = "The competi-\ntion was fierce";
-        assert_eq!(
-            clean_internal_hyphens(text),
-            "The competition was fierce"
-        );
+        assert_eq!(clean_internal_hyphens(text), "The competition was fierce");
 
         // Should preserve hard hyphens
         let text2 = "A well-\nknown fact";
-        assert_eq!(
-            clean_internal_hyphens(text2),
-            "A well-\nknown fact"
-        );
+        assert_eq!(clean_internal_hyphens(text2), "A well-\nknown fact");
     }
 
     #[test]
     fn test_no_hyphen() {
-        assert_eq!(
-            analyze_hyphen("normal text", "more text"),
-            HyphenType::None
-        );
+        assert_eq!(analyze_hyphen("normal text", "more text"), HyphenType::None);
     }
 }

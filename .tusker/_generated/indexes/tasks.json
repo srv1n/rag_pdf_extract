@@ -1,0 +1,43 @@
+[
+  {
+    "created_at": "2026-06-18T13:01:59Z",
+    "created_by": "agent:sarav",
+    "dependencies": [],
+    "domains": [
+      "pdf",
+      "eval",
+      "telemetry"
+    ],
+    "epic": "PDF",
+    "evidence_budget": 1,
+    "evidence_required": [
+      "automated_test"
+    ],
+    "gates": [],
+    "id": "PDF-T-0001",
+    "kind": "task",
+    "next_action": "Review evidence and close or return to rework.",
+    "next_owner": "reviewer",
+    "next_ref": "",
+    "next_source": "review_policy",
+    "path": "work/tasks/PDF-T-0001.md",
+    "priority": "p1",
+    "project": "rag_pdf_extract",
+    "proof_mode": "card",
+    "proof_required": [
+      "focused_test",
+      "broad_test"
+    ],
+    "proof_status": "satisfied",
+    "raw_artifacts_allowed": false,
+    "readiness": "waiting_on_review",
+    "risk": "medium",
+    "schema": "tusker.task/v7",
+    "size": "m",
+    "state_rev": "sha256:279463e4a73349b252fa69fa3927a5e313ceece7df0005c066b5fefb5e6ec829",
+    "status": "review",
+    "title": "Fix Supreme Court legal PDF parse-quality false positives",
+    "updated_at": "2026-06-18T13:33:33Z",
+    "updated_by": "agent:sarav"
+  }
+]

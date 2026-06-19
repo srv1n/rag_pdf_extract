@@ -24,7 +24,8 @@ fn main() {
     }
 
     // Default file and options
-    let default_file = "eval/corpus/legal/12. CCI v Kerala Film Exhibitors Federation & Ors.pdf".to_string();
+    let default_file =
+        "eval/corpus/legal/12. CCI v Kerala Film Exhibitors Federation & Ors.pdf".to_string();
     let file = args.get(1).unwrap_or(&default_file);
     let max_tokens = args
         .get(2)
@@ -55,12 +56,11 @@ fn main() {
     // Use layout analysis by default (matches extract_markdown.rs behavior)
     // Can be disabled with --no-layout flag
     let disable_layout = args.iter().any(|a| a == "--no-layout");
-    let mut lp = if disable_layout { None } else { Some(LAParams::default()) };
-    // Enable all_texts to include text inside Form XObjects (matches extract_markdown.rs)
-    if let Some(ref mut p) = lp {
-        p.all_texts = true;
-    }
-
+    let mut lp = if disable_layout {
+        None
+    } else {
+        Some(LAParams::default())
+    };
     // Text cleaning for indexing (enabled by default, can be disabled with --raw)
     let clean_text = !args.iter().any(|a| a == "--raw");
     // LAParams tuning flags
@@ -68,15 +68,21 @@ fn main() {
     while i < args.len() {
         match args[i].as_str() {
             "--la-all-texts" => {
-                if let Some(ref mut p) = lp { p.all_texts = true; }
+                if let Some(ref mut p) = lp {
+                    p.all_texts = true;
+                }
             }
             "--la-detect-vertical" => {
-                if let Some(ref mut p) = lp { p.detect_vertical = true; }
+                if let Some(ref mut p) = lp {
+                    p.detect_vertical = true;
+                }
             }
             "--la-boxes-flow" => {
                 if i + 1 < args.len() {
-                    if let Ok(v) = args[i+1].parse::<f32>() {
-                        if let Some(ref mut p) = lp { p.boxes_flow = v; }
+                    if let Ok(v) = args[i + 1].parse::<f32>() {
+                        if let Some(ref mut p) = lp {
+                            p.boxes_flow = v;
+                        }
                     }
                     i += 1;
                 }

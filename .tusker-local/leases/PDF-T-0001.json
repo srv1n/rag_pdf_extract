@@ -1,0 +1,13 @@
+{
+  "schema": "tusker.lease/v1",
+  "id": "PDF-T-0001",
+  "project": "rag_pdf_extract",
+  "task": "PDF-T-0001",
+  "owner": "agent:codex",
+  "workspace": "",
+  "branch": "main",
+  "status": "active",
+  "claimed_at": "2026-05-29T03:44:19Z",
+  "expires_at": "2026-06-18T15:16:41Z",
+  "heartbeat_at": "2026-06-18T13:16:41Z"
+}

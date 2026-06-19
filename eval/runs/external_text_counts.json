@@ -1,0 +1,574 @@
+[
+  {
+    "id": "legal_1",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/1.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 115389,
+      "seconds": 0.082,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 115759,
+      "seconds": 0.522,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 115428,
+      "seconds": 1.38,
+      "error": null
+    }
+  },
+  {
+    "id": "legal_12__cci_v_kerala_film_exhibitors_federation___ors",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/12. CCI v Kerala Film Exhibitors Federation & Ors.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 102227,
+      "seconds": 0.361,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 102580,
+      "seconds": 0.886,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 102280,
+      "seconds": 1.701,
+      "error": null
+    }
+  },
+  {
+    "id": "legal_13__kumari_shrilekha_vidyarthi_v_state_of_up",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/13. Kumari Shrilekha Vidyarthi v State of UP.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 91445,
+      "seconds": 0.03,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 91637,
+      "seconds": 0.096,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 91637,
+      "seconds": 0.753,
+      "error": null
+    }
+  },
+  {
+    "id": "legal_14__tomaso_bruno_v_state_of_up",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/14. Tomaso Bruno v State of UP.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 42097,
+      "seconds": 0.032,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 42135,
+      "seconds": 0.449,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 42105,
+      "seconds": 0.772,
+      "error": null
+    }
+  },
+  {
+    "id": "legal_15__mc_mehta_v_uoi",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/15. MC Mehta v UoI.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 70752,
+      "seconds": 0.021,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 70908,
+      "seconds": 0.074,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 70908,
+      "seconds": 0.583,
+      "error": null
+    }
+  },
+  {
+    "id": "legal_16__bwssb_v_a_rajappa",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/16. BWSSB v A Rajappa.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 263234,
+      "seconds": 0.084,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 263300,
+      "seconds": 0.29,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 263300,
+      "seconds": 2.337,
+      "error": null
+    }
+  },
+  {
+    "id": "legal_17__sunil_b_naik_v_geowave_commander",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/17. Sunil B Naik v Geowave Commander.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 82486,
+      "seconds": 0.047,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 82523,
+      "seconds": 0.63,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 80951,
+      "seconds": 0.841,
+      "error": null
+    }
+  },
+  {
+    "id": "legal_18__mardia_chemicals_v_uoi",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/18. Mardia Chemicals v UoI.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 118395,
+      "seconds": 0.036,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 118419,
+      "seconds": 0.142,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 118419,
+      "seconds": 0.967,
+      "error": null
+    }
+  },
+  {
+    "id": "legal_19__cbse_v_aditya_bandopadyay",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/19. CBSE v Aditya Bandopadyay.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 85528,
+      "seconds": 0.048,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 85547,
+      "seconds": 0.567,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 85547,
+      "seconds": 1.448,
+      "error": null
+    }
+  },
+  {
+    "id": "legal_20_rc_cooper_v_uoi",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/20 RC Cooper v UoI.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 376107,
+      "seconds": 0.105,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 376196,
+      "seconds": 0.388,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 376196,
+      "seconds": 3.137,
+      "error": null
+    }
+  },
+  {
+    "id": "legal_9",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/9.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 65280,
+      "seconds": 0.053,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 65450,
+      "seconds": 0.526,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 65283,
+      "seconds": 1.002,
+      "error": null
+    }
+  },
+  {
+    "id": "mixed_4",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/mixed/4.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 49298,
+      "seconds": 0.026,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 49304,
+      "seconds": 0.347,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 49304,
+      "seconds": 0.608,
+      "error": null
+    }
+  },
+  {
+    "id": "mixed_alternate_color_space",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/mixed/alternate-color-space.pdf",
+    "pdfium": {
+      "status": "PdfiumError",
+      "chars": null,
+      "seconds": 0.002,
+      "error": "Failed to load document (PDFium: Data format error)."
+    },
+    "pypdf": {
+      "status": "PdfStreamError",
+      "chars": null,
+      "seconds": 0.0,
+      "error": "Stream has ended unexpectedly"
+    },
+    "pdfminer": {
+      "status": "PDFSyntaxError",
+      "chars": null,
+      "seconds": 0.0,
+      "error": "No /Root object! - Is this really a PDF?"
+    }
+  },
+  {
+    "id": "mixed_documents_stack",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/mixed/documents_stack.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 1485,
+      "seconds": 0.003,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 1603,
+      "seconds": 0.014,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 5638,
+      "seconds": 0.024,
+      "error": null
+    }
+  },
+  {
+    "id": "mixed_embeded_core_fonts",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/mixed/embeded-core-fonts.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 98520,
+      "seconds": 0.03,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 99172,
+      "seconds": 0.192,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 98851,
+      "seconds": 1.101,
+      "error": null
+    }
+  },
+  {
+    "id": "scientific_3",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/scientific/3.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 47943,
+      "seconds": 0.034,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 47627,
+      "seconds": 0.29,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 48325,
+      "seconds": 2.384,
+      "error": null
+    }
+  },
+  {
+    "id": "scientific_6",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/scientific/6.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 39602,
+      "seconds": 0.085,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 39626,
+      "seconds": 0.547,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 39360,
+      "seconds": 1.136,
+      "error": null
+    }
+  },
+  {
+    "id": "pdfs_ctm_scaled_text",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/ctm_scaled_text.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 15,
+      "seconds": 0.001,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 15,
+      "seconds": 0.0,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 15,
+      "seconds": 0.001,
+      "error": null
+    }
+  },
+  {
+    "id": "pdfs_invisible_ocr_only",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/invisible_ocr_only.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 24,
+      "seconds": 0.001,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 24,
+      "seconds": 0.0,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 24,
+      "seconds": 0.002,
+      "error": null
+    }
+  },
+  {
+    "id": "pdfs_long_split_locations",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/long_split_locations.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 5134,
+      "seconds": 0.002,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 5134,
+      "seconds": 0.003,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 5134,
+      "seconds": 0.044,
+      "error": null
+    }
+  },
+  {
+    "id": "pdfs_malformed_text_ops",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/malformed_text_ops.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 0,
+      "seconds": 0.001,
+      "error": null
+    },
+    "pypdf": {
+      "status": "AttributeError",
+      "chars": null,
+      "seconds": 0.001,
+      "error": "'NumberObject' object has no attribute 'decode'"
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 0,
+      "seconds": 0.001,
+      "error": null
+    }
+  },
+  {
+    "id": "docs_cache_alternate_color_space",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/tests/docs_cache/alternate-color-space.pdf",
+    "pdfium": {
+      "status": "PdfiumError",
+      "chars": null,
+      "seconds": 0.002,
+      "error": "Failed to load document (PDFium: Data format error)."
+    },
+    "pypdf": {
+      "status": "PdfStreamError",
+      "chars": null,
+      "seconds": 0.0,
+      "error": "Stream has ended unexpectedly"
+    },
+    "pdfminer": {
+      "status": "PDFSyntaxError",
+      "chars": null,
+      "seconds": 0.0,
+      "error": "No /Root object! - Is this really a PDF?"
+    }
+  },
+  {
+    "id": "docs_cache_documents_stack",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/tests/docs_cache/documents_stack.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 1485,
+      "seconds": 0.004,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 1603,
+      "seconds": 0.014,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 5638,
+      "seconds": 0.025,
+      "error": null
+    }
+  },
+  {
+    "id": "docs_cache_embeded_core_fonts",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/tests/docs_cache/embeded-core-fonts.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 98520,
+      "seconds": 0.029,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 99172,
+      "seconds": 0.181,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 98851,
+      "seconds": 1.056,
+      "error": null
+    }
+  },
+  {
+    "id": "_10",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/10.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 165427,
+      "seconds": 0.049,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 165427,
+      "seconds": 0.232,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 165427,
+      "seconds": 1.391,
+      "error": null
+    }
+  },
+  {
+    "id": "_ocr",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/ocr.pdf",
+    "pdfium": {
+      "status": "ok",
+      "chars": 5640,
+      "seconds": 0.008,
+      "error": null
+    },
+    "pypdf": {
+      "status": "ok",
+      "chars": 5639,
+      "seconds": 0.026,
+      "error": null
+    },
+    "pdfminer": {
+      "status": "ok",
+      "chars": 5648,
+      "seconds": 0.081,
+      "error": null
+    }
+  }
+]

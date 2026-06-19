@@ -1,0 +1,61 @@
+{
+  "manifestName": "founder_regression_01",
+  "corpusRoot": "/Users/sarav/Downloads/rzn_founder_corpus_01",
+  "generatedAtEpochMs": 1775579559941,
+  "hardFailures": 0,
+  "warnings": 0,
+  "passed": 3,
+  "cases": [
+    {
+      "id": "puttaswamy_legal_baseline",
+      "label": "Puttaswamy legal baseline",
+      "severity": "hard",
+      "status": "passed",
+      "pdfPath": "/Users/sarav/Downloads/rzn_founder_corpus_01/law/7. Puttaswamy v UoI.pdf",
+      "extractedChars": 1632287,
+      "extractedChunks": 1379,
+      "extractedPages": 547,
+      "matchedTerms": [
+        "privacy",
+        "fundamental rights",
+        "constitution"
+      ],
+      "failureReasons": [],
+      "notes": null
+    },
+    {
+      "id": "energy_watchdog_force_majeure",
+      "label": "Energy Watchdog force majeure baseline",
+      "severity": "hard",
+      "status": "passed",
+      "pdfPath": "/Users/sarav/Downloads/rzn_founder_corpus_01/law/1. Energy Watchdog v CERC.pdf",
+      "extractedChars": 224796,
+      "extractedChunks": 154,
+      "extractedPages": 65,
+      "matchedTerms": [
+        "force majeure",
+        "tariff",
+        "power purchase"
+      ],
+      "failureReasons": [],
+      "notes": null
+    },
+    {
+      "id": "vishaka_suspicious_extraction",
+      "label": "Vishaka suspicious extraction watch",
+      "severity": "warn",
+      "status": "passed",
+      "pdfPath": "/Users/sarav/Downloads/rzn_founder_corpus_01/law/8. Vishaka v State of Rajasthan.pdf",
+      "extractedChars": 45213,
+      "extractedChunks": 50,
+      "extractedPages": 10,
+      "matchedTerms": [
+        "sexual harassment",
+        "guidelines",
+        "employer"
+      ],
+      "failureReasons": [],
+      "notes": "This is intentionally warn-only until the downstream parser path is fixed. It should still stay visible in every run."
+    }
+  ]
+}

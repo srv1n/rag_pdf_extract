@@ -1,0 +1,16 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-05-29T11:47:19Z",
+  "event_kind": "verification_added",
+  "id": "01KSSRYTTEAJQY3YJEWW33CJ7H",
+  "object": "PDF-T-0007",
+  "object_kind": "task",
+  "payload": {
+    "blocked_by": "",
+    "check": "cargo test --features backend-lopdf,backend-pdfium -q",
+    "covers": "A1",
+    "result": "pass"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

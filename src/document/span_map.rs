@@ -1,0 +1,160 @@
+use crate::BoundingBox;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LocatedText {
+    pub text: String,
+    pub spans: Vec<OutputSpan>,
+}
+
+impl LocatedText {
+    pub fn empty(text: String) -> Self {
+        Self {
+            text,
+            spans: Vec::new(),
+        }
+    }
+
+    pub fn slice_chars(&self, start: usize, len: usize, text: String) -> Self {
+        let end = start.saturating_add(len);
+        let mut spans = Vec::new();
+
+        for span in &self.spans {
+            let overlap_start = span.output_start.max(start);
+            let overlap_end = span.output_end.min(end);
+            if overlap_start >= overlap_end {
+                continue;
+            }
+
+            let mut clipped = span.clone();
+            clipped.output_start = overlap_start - start;
+            clipped.output_end = overlap_end - start;
+            clipped.source = span.source.clip_output_overlap(
+                span.output_start,
+                span.output_end,
+                overlap_start,
+                overlap_end,
+            );
+            spans.push(clipped);
+        }
+
+        Self { text, spans }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OutputSpan {
+    pub output_start: usize,
+    pub output_end: usize,
+    pub source: SpanSource,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SpanSource {
+    Pdf {
+        page: u32,
+        char_start: usize,
+        char_end: usize,
+        bbox: BoundingBox,
+    },
+    Synthetic {
+        kind: SyntheticKind,
+        parent_refs: Vec<SourceRef>,
+    },
+}
+
+impl SpanSource {
+    fn clip_output_overlap(
+        &self,
+        span_output_start: usize,
+        span_output_end: usize,
+        overlap_start: usize,
+        overlap_end: usize,
+    ) -> Self {
+        match self {
+            SpanSource::Pdf {
+                page,
+                char_start,
+                char_end,
+                bbox,
+            } => {
+                let output_len = span_output_end.saturating_sub(span_output_start).max(1);
+                let source_len = char_end.saturating_sub(*char_start);
+                let rel_start = overlap_start.saturating_sub(span_output_start);
+                let rel_end = overlap_end.saturating_sub(span_output_start);
+                let clipped_start = *char_start + source_len * rel_start / output_len;
+                let clipped_end = *char_start + source_len * rel_end / output_len;
+                SpanSource::Pdf {
+                    page: *page,
+                    char_start: clipped_start.min(*char_end),
+                    char_end: clipped_end.max(clipped_start).min(*char_end),
+                    bbox: bbox.clone(),
+                }
+            }
+            SpanSource::Synthetic { kind, parent_refs } => SpanSource::Synthetic {
+                kind: *kind,
+                parent_refs: parent_refs.clone(),
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SourceRef {
+    pub page: u32,
+    pub char_start: usize,
+    pub char_end: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SyntheticKind {
+    InsertedWhitespace,
+    HeadingMarker,
+    TableMarkdown,
+    DehyphenationJoin,
+    ContextHeading,
+    NormalizationReplacement,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn slice_chars_rebases_output_and_clips_pdf_source_range() {
+        let located = LocatedText {
+            text: "abcdefghij".to_string(),
+            spans: vec![OutputSpan {
+                output_start: 0,
+                output_end: 10,
+                source: SpanSource::Pdf {
+                    page: 1,
+                    char_start: 100,
+                    char_end: 110,
+                    bbox: BoundingBox {
+                        x: 0.0,
+                        y: 0.0,
+                        width: 100.0,
+                        height: 10.0,
+                    },
+                },
+            }],
+        };
+
+        let sliced = located.slice_chars(3, 4, "defg".to_string());
+        assert_eq!(sliced.text, "defg");
+        assert_eq!(sliced.spans.len(), 1);
+        assert_eq!(sliced.spans[0].output_start, 0);
+        assert_eq!(sliced.spans[0].output_end, 4);
+        match &sliced.spans[0].source {
+            SpanSource::Pdf {
+                char_start,
+                char_end,
+                ..
+            } => {
+                assert_eq!((*char_start, *char_end), (103, 107));
+            }
+            other => panic!("unexpected source: {:?}", other),
+        }
+    }
+}

@@ -1,0 +1,27 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-05-29T12:45:43Z",
+  "event_kind": "updated",
+  "id": "01KSSW9REF5Q7D8QDAVRRHENN0",
+  "object": "PDF-T-0007",
+  "object_kind": "task",
+  "payload": {
+    "changes": {
+      "next_action": {
+        "from": "Resolve this gate so blocked work can proceed.",
+        "to": "Accept, waive, or return rework for PDF-G-0001."
+      },
+      "next_source": {
+        "from": "gate",
+        "to": "human_gate"
+      },
+      "readiness": {
+        "from": "blocked_by_gate",
+        "to": "waiting_on_human"
+      }
+    },
+    "source": "gate:PDF-G-0001"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

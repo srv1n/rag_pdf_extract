@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "_ocr",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/ocr.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

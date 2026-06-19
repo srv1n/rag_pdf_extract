@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "pdfs_long_split_locations",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/long_split_locations.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

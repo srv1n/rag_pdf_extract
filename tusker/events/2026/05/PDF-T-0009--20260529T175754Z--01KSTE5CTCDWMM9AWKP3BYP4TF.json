@@ -1,0 +1,16 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-05-29T17:57:54Z",
+  "event_kind": "verification_added",
+  "id": "01KSTE5CTCDWMM9AWKP3BYP4TF",
+  "object": "PDF-T-0009",
+  "object_kind": "task",
+  "payload": {
+    "blocked_by": "",
+    "check": "cargo run --example stage_benchmark -- --manifest eval/fixtures/pdf_manifest.json --out-dir eval/runs/stage_benchmark_current \u0026\u0026 cargo run --example stage_benchmark -- --manifest eval/manifests/production_broad_corpus.json --out-dir eval/runs/production_broad_corpus \u0026\u0026 cargo run --example founder_regression \u0026\u0026 cargo test \u0026\u0026 ./scripts/check_warning_budget.sh \u0026\u0026 cargo check --no-default-features --features ocr --lib",
+    "covers": "A1",
+    "result": "pass"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

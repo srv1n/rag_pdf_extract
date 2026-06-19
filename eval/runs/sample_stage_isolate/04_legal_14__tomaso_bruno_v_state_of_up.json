@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "legal_14__tomaso_bruno_v_state_of_up",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/14. Tomaso Bruno v State of UP.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

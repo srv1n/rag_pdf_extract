@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "legal_9",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/9.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

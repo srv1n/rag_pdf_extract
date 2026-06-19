@@ -1,0 +1,16 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-05-29T04:05:47Z",
+  "event_kind": "verification_added",
+  "id": "01KSRYHQTTV1A7MNDAWZTT11A5",
+  "object": "PDF-T-0002",
+  "object_kind": "task",
+  "payload": {
+    "blocked_by": "",
+    "check": "cargo test -q \u0026\u0026 cargo test -q pdfium_backend_reports_explicit_unavailable_error --features backend-pdfium \u0026\u0026 cargo check -q --features backend-pdfium \u0026\u0026 cargo check -q --no-default-features --features backend-pdfium",
+    "covers": "A1,A2",
+    "result": "pass"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

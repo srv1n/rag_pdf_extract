@@ -102,22 +102,26 @@ impl Form {
         let mut form_ids = Vec::new();
         let mut queue = VecDeque::new();
 
-        let acroform = doc
-            .objects
-            .get_mut(
-                &doc.trailer
-                    .get(b"Root")?
-                    .deref(&doc)
-                    .unwrap()
-                    .as_dict()?
-                    .get(b"AcroForm")?
-                    .as_reference()?,
-            )
-            .ok_or(LoadError::NotAReference)
-            .unwrap()
-            .as_dict_mut()?;
+        let acroform_id = doc
+            .trailer
+            .get(b"Root")
+            .ok()
+            .and_then(|root| root.deref(&doc).ok())
+            .and_then(|root| root.as_dict().ok())
+            .and_then(|catalog| catalog.get(b"AcroForm").ok())
+            .and_then(|acroform| acroform.as_reference().ok());
+        let Some(acroform_id) = acroform_id else {
+            return Ok(Form { doc, form_ids });
+        };
+        let Some(acroform_obj) = doc.objects.get_mut(&acroform_id) else {
+            return Ok(Form { doc, form_ids });
+        };
+        let acroform = acroform_obj.as_dict_mut()?;
 
-        let fields_list = acroform.get(b"Fields")?.as_array()?;
+        let fields_list = match acroform.get(b"Fields").and_then(|fields| fields.as_array()) {
+            Ok(fields) => fields,
+            Err(_) => return Ok(Form { doc, form_ids }),
+        };
         queue.append(&mut VecDeque::from(fields_list.clone()));
         // println!("camer here");
         while let Some(objref) = queue.pop_front() {
@@ -143,14 +147,20 @@ impl Form {
         self.len() == 0
     }
 
+    fn field_dict(&self, n: usize) -> Option<&lopdf::Dictionary> {
+        self.form_ids
+            .get(n)
+            .and_then(|id| self.doc.get_object(*id).ok())
+            .and_then(|obj| obj.as_dict().ok())
+    }
+
     pub fn get_type(&self, n: usize) -> FieldType {
-        let field = self
-            .doc
-            .get_object(self.form_ids[n])
-            .unwrap()
-            .as_dict()
-            .unwrap();
-        let type_str = field.get(b"FT").unwrap().as_name().unwrap();
+        let Some(field) = self.field_dict(n) else {
+            return FieldType::Unknown;
+        };
+        let Ok(type_str) = field.get(b"FT").and_then(|ft| ft.as_name()) else {
+            return FieldType::Unknown;
+        };
         match type_str {
             b"Btn" => {
                 let flags = get_field_flags(field);
@@ -176,12 +186,7 @@ impl Form {
     }
 
     pub fn get_name(&self, n: usize) -> Option<String> {
-        let field = self
-            .doc
-            .get_object(self.form_ids[n])
-            .unwrap()
-            .as_dict()
-            .unwrap();
+        let field = self.field_dict(n)?;
         field.get(b"T").ok().and_then(|obj| {
             if let Object::String(data, _) = obj {
                 String::from_utf8(data.clone()).ok()
@@ -192,12 +197,9 @@ impl Form {
     }
 
     pub fn get_state(&self, n: usize) -> FieldState {
-        let field = self
-            .doc
-            .get_object(self.form_ids[n])
-            .unwrap()
-            .as_dict()
-            .unwrap();
+        let Some(field) = self.field_dict(n) else {
+            return FieldState::Unknown;
+        };
         match self.get_type(n) {
             FieldType::Button => FieldState::Button,
             FieldType::Radio => FieldState::Radio {
@@ -235,8 +237,12 @@ impl Form {
     }
 
     fn get_possibilities(&self, id: ObjectId) -> Vec<String> {
-        let field = self.doc.get_object(id).unwrap().as_dict().unwrap();
-        get_field_options(field)
+        self.doc
+            .get_object(id)
+            .ok()
+            .and_then(|obj| obj.as_dict().ok())
+            .map(get_field_options)
+            .unwrap_or_default()
     }
 }
 
@@ -266,12 +272,14 @@ fn get_field_values(field: &lopdf::Dictionary) -> Vec<String> {
     field
         .get(b"V")
         .map(|v| match v {
-            Object::String(s, _) => vec![str::from_utf8(s).unwrap().to_owned()],
+            Object::String(s, _) => str::from_utf8(s)
+                .map(|value| vec![value.to_owned()])
+                .unwrap_or_default(),
             Object::Array(arr) => arr
                 .iter()
                 .filter_map(|obj| {
                     if let Object::String(s, _) = obj {
-                        Some(str::from_utf8(s).unwrap().to_owned())
+                        str::from_utf8(s).ok().map(|value| value.to_owned())
                     } else {
                         None
                     }
@@ -289,10 +297,10 @@ fn get_field_options(field: &lopdf::Dictionary) -> Vec<String> {
         .map(|arr| {
             arr.iter()
                 .filter_map(|obj| match obj {
-                    Object::String(s, _) => Some(str::from_utf8(s).unwrap().to_owned()),
+                    Object::String(s, _) => str::from_utf8(s).ok().map(|value| value.to_owned()),
                     Object::Array(inner_arr) if inner_arr.len() > 1 => {
                         if let Object::String(s, _) = &inner_arr[1] {
-                            Some(str::from_utf8(s).unwrap().to_owned())
+                            str::from_utf8(s).ok().map(|value| value.to_owned())
                         } else {
                             None
                         }
@@ -402,6 +410,7 @@ pub fn form_fields(
                 page_char_end: None,
                 bbox: None,
                 page_positions: vec![],
+                located_text: None,
             });
             text.clear();
         }
@@ -420,6 +429,7 @@ pub fn form_fields(
             page_char_end: None,
             bbox: None,
             page_positions: vec![],
+            located_text: None,
         });
     }
     Ok(())

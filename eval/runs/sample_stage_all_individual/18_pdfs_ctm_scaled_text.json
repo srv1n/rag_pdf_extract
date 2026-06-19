@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "pdfs_ctm_scaled_text",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/ctm_scaled_text.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "active_runs": 1,
+  "agent_ready": 0,
+  "done_open_gates": 0,
+  "human_actions": 0,
+  "human_wait": 0,
+  "review_queue": 9,
+  "schema": "tusker.dashboard-index/v1",
+  "stale_leases": 2
+}

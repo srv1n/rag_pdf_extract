@@ -1,0 +1,98 @@
+{
+  "fixtures": [
+    {
+      "id": "large_legal_1",
+      "path": "../corpus/legal/1.pdf",
+      "category": "legal",
+      "expected": {
+        "min_chunks": 1,
+        "location_required": true,
+        "max_over_cap_chunks": 0,
+        "max_out_of_page_bbox_count": 4583,
+        "min_source_span_coverage_ratio": 0.8,
+        "min_output_span_coverage_ratio": 0.8
+      }
+    },
+    {
+      "id": "large_legal_17_form_heavy",
+      "path": "../corpus/legal/17. Sunil B Naik v Geowave Commander.pdf",
+      "category": "form_xobject",
+      "expected": {
+        "min_chunks": 1,
+        "location_required": true,
+        "max_over_cap_chunks": 0,
+        "max_out_of_page_bbox_count": 127
+      }
+    },
+    {
+      "id": "prior_failure_mixed_4",
+      "path": "../corpus/mixed/4.pdf",
+      "category": "mixed",
+      "expected": {
+        "min_chunks": 1,
+        "max_over_cap_chunks": 0,
+        "max_out_of_page_bbox_count": 436
+      }
+    },
+    {
+      "id": "scientific_3",
+      "path": "../corpus/scientific/3.pdf",
+      "category": "scientific",
+      "expected": {
+        "min_chunks": 1,
+        "max_over_cap_chunks": 0,
+        "max_out_of_page_bbox_count": 11194,
+        "max_highlight_replay_failures": 1191
+      }
+    },
+    {
+      "id": "scientific_6",
+      "path": "../corpus/scientific/6.pdf",
+      "category": "scientific",
+      "expected": {
+        "min_chunks": 1,
+        "max_over_cap_chunks": 0,
+        "max_out_of_page_bbox_count": 29406,
+        "max_highlight_replay_failures": 2074,
+        "layout_to_no_layout_normalized_char_ratio_min": 0.9
+      }
+    },
+    {
+      "id": "multi_column_documents_stack",
+      "path": "../corpus/mixed/documents_stack.pdf",
+      "category": "multi_column",
+      "expected": {
+        "min_chunks": 1,
+        "max_over_cap_chunks": 0
+      }
+    },
+    {
+      "id": "form_xobject_fixture",
+      "path": "../fixtures/pdfs/nonzero_form_xobject.pdf",
+      "category": "form_xobject",
+      "expected": {
+        "min_chunks": 1,
+        "location_required": true,
+        "max_over_cap_chunks": 0
+      }
+    },
+    {
+      "id": "ocr_only_invisible_text_fixture",
+      "path": "../fixtures/pdfs/invisible_ocr_only.pdf",
+      "category": "ocr",
+      "expected": {
+        "max_over_cap_chunks": 0
+      }
+    },
+    {
+      "id": "table_repeated_text_legal_19",
+      "path": "../corpus/legal/19. CBSE v Aditya Bandopadyay.pdf",
+      "category": "tables",
+      "expected": {
+        "min_chunks": 1,
+        "max_over_cap_chunks": 0,
+        "max_out_of_page_bbox_count": 998
+      }
+    }
+  ]
+}

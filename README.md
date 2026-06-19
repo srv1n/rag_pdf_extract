@@ -17,7 +17,7 @@ A Rust library for extracting structured content from PDF files with precise pos
 
 ```toml
 [dependencies]
-pdf-extract = "0.7.7"
+pdf-extract = "0.8.0"
 ```
 
 ## Quick Start
@@ -36,7 +36,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         None,           // OCR cache
         None,           // resume from
         Some(500),      // max tokens per chunk
-        None            // LAParams (use default)
+        None,           // LAParams (no layout analysis)
+        Some(true),     // clean text for indexing
     )?;
 
     for result in results {
@@ -55,9 +56,9 @@ Layout analysis enables better text extraction for complex documents:
 ```rust
 use pdf_extract::*;
 
-// Enable layout analysis with Form XObject support
-let mut laparams = LAParams::default();
-laparams.all_texts = true;  // Include text from Form XObjects
+// Enable product layout analysis.
+let mut laparams = LAParams::product_layout();
+laparams.all_texts = false; // Enable per workload when Form XObject text is required.
 
 let results = parse_pdf(
     "document.pdf",
@@ -67,7 +68,8 @@ let results = parse_pdf(
     None,
     None,
     Some(500),
-    Some(laparams)
+    Some(laparams),
+    Some(true),
 )?;
 ```
 
@@ -76,6 +78,11 @@ let results = parse_pdf(
 - Multi-column layouts
 - Complex document structures
 - When you need precise line grouping
+
+`all_texts` is workload-specific. It helps when visible text is stored in Form
+XObjects, but can duplicate hidden/template text in other PDFs. Start with
+`LAParams::product_layout()` and enable `all_texts` only for corpus types that
+prove they need it.
 
 ## Architecture
 
@@ -143,7 +150,8 @@ pub struct ExtractionResult {
 }
 
 pub struct ContentCore {
-    pub chunk_id: String,           // blake3(content)
+    pub chunk_id: String,           // stable source/range/ordinal identity
+    pub content_hash: String,       // blake3(content)
     pub source_id: i64,
     pub source_type: String,        // "file" | "web" | "api"
     pub content: String,            // extracted text
@@ -174,10 +182,34 @@ pub struct PdfLocation {
 
 pub struct PageFragment {
     pub page: u32,
-    pub char_range: CharRange,      // start, end positions
+    pub char_range: CharRange,      // offsets in this output chunk
     pub bbox: BoundingBox,          // x, y, width, height
 }
 ```
+
+`PageFragment.char_range` is an output-chunk character range into
+`ContentCore.content`. Source-PDF character ranges live in
+`ContentExt.output_spans[].source.Pdf.char_start` and `char_end`.
+
+`ContentCore.schema_version` is `2`. `chunk_id` is not `blake3(content)`; use
+`content_hash` when you need the content hash.
+
+`decompress_content_ext()` accepts payloads up to 16 MiB. Production telemetry
+reports compressed and uncompressed `ContentExt` sizes so callers can alert
+before chunks approach that ceiling.
+
+## Production Telemetry
+
+Each `parse_pdf(...)` call logs one JSON `pdf_extraction_telemetry` event with
+layout/fallback state, normalized character ratios, chunk/token counts, location
+coverage, span overlap, synthetic span ratio, invalid/out-of-page boxes,
+`ContentExt` sizes, and OCR image counters. Use
+`production_telemetry_for_results(...)` to compute the same summary directly.
+
+## Migration
+
+`0.8.0` is a breaking release. See [MIGRATION.md](MIGRATION.md) for removed API
+replacements and downstream update examples.
 
 ## Configuration
 
@@ -192,10 +224,15 @@ pub struct LAParams {
     pub boxes_flow: f32,         // Reading order bias (default: 0.5)
     pub detect_vertical: bool,   // Detect vertical text (default: false)
     pub all_texts: bool,         // Include Form XObject text (default: false)
+    pub layout_fallback_policy: LayoutFallbackPolicy, // Product default catches text loss and suspicious volume
 }
 ```
 
-**Important:** Set `all_texts = true` for documents with text in Form XObjects (common in legal PDFs).
+`LAParams::default()` and `LAParams::product_layout()` use suspicious-volume fallback. Use `LAParams::diagnostic_layout()` when you need raw layout behavior with fallback disabled.
+
+**Important:** Set `all_texts = true` only for document classes that need Form
+XObject text. Keep it off for general ingestion unless corpus validation shows
+text loss without it.
 
 ## Examples
 
@@ -206,7 +243,7 @@ cargo run --release --example extract_markdown input.pdf > output.md
 ```
 
 This example:
-- Uses layout analysis with `all_texts = true`
+- Uses layout analysis, with `all_texts = true` only when `--la-all-texts` is provided
 - Converts headings to markdown format (##)
 - Joins continuation lines intelligently
 - Preserves paragraph structure
@@ -268,8 +305,8 @@ Evaluation corpus includes:
 - May need adjustment for documents with unusual line spacing
 
 ### Form XObjects
-- Must set `LAParams.all_texts = true` to extract text from Form XObjects
-- This is common in legal documents where text is embedded for layout control
+- Set `LAParams.all_texts = true` for corpora that prove Form XObject text is required
+- Keep it off by default for broad ingestion to avoid hidden/template duplication
 
 ## Performance Considerations
 

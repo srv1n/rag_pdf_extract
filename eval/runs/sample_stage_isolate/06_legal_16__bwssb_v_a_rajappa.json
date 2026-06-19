@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "legal_16__bwssb_v_a_rajappa",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/16. BWSSB v A Rajappa.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

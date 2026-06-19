@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "legal_19__cbse_v_aditya_bandopadyay",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/19. CBSE v Aditya Bandopadyay.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

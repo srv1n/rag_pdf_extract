@@ -1,0 +1,54 @@
+{
+  "generated_at_epoch_ms": 1780035253111,
+  "manifest_path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/runs/sample_stage_all_individual/22_docs_cache_alternate_color_space.json",
+  "fixtures": [
+    {
+      "fixture_id": "docs_cache_alternate_color_space",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/tests/docs_cache/alternate-color-space.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 350,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "layout parse failed: couldn't parse input: invalid file header"
+      ]
+    }
+  ]
+}

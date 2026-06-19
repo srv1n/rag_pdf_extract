@@ -1,0 +1,1149 @@
+{
+  "generated_at_epoch_ms": 1780077097144,
+  "command": "target/debug/examples/stage_benchmark --manifest eval/fixtures/pdf_manifest.json --out-dir eval/runs/stage_benchmark_current",
+  "git_sha": "de635f7cc694e4398ab51aa2381e2914fc232500",
+  "git_dirty": true,
+  "manifest_path": "eval/fixtures/pdf_manifest.json",
+  "fixtures": [
+    {
+      "fixture_id": "ctm_scaled_text",
+      "path": "eval/fixtures/pdfs/ctm_scaled_text.pdf",
+      "category": "geometry",
+      "status": "passed",
+      "product_status": "passed",
+      "raw_layout_status": "passed",
+      "overall_status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 1713
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 593
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1169
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 1713
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1169
+        },
+        "ours_chunks": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1169
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 15,
+          "delta_to_layout_chars": 0,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 1,
+        "max_tokens": 500,
+        "max_chunk_tokens": 4,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0,
+        "content_ext_max_compressed_bytes": 533,
+        "content_ext_max_uncompressed_bytes": 3063,
+        "content_ext_total_compressed_bytes": 533,
+        "content_ext_total_uncompressed_bytes": 3063
+      },
+      "location": {
+        "fragment_count": 3,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 15,
+        "output_chars_with_any_span": 15,
+        "output_chars_pdf_backed": 13,
+        "output_chars_synthetic": 2,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8666666666666667,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "wrong_page_span_count": 0,
+        "invalid_span_bbox_count": 0,
+        "out_of_page_bbox_count": 0,
+        "span_bbox_collapse_count": 0,
+        "identical_span_set_sibling_count": 0,
+        "synthetic_char_ratio": 0.13333333333333333,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 3.0,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.9999999999999996,
+        "highlight_replay_iou_p95": 0.9999999999999996
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "invisible_ocr_only",
+      "path": "eval/fixtures/pdfs/invisible_ocr_only.pdf",
+      "category": "visibility",
+      "status": "passed",
+      "product_status": "passed",
+      "raw_layout_status": "passed",
+      "overall_status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 590
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 585
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1233
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 590
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1233
+        },
+        "ours_chunks": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1233
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 24,
+          "delta_to_layout_chars": 0,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 1,
+        "max_tokens": 500,
+        "max_chunk_tokens": 4,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0,
+        "content_ext_max_compressed_bytes": 601,
+        "content_ext_max_uncompressed_bytes": 4334,
+        "content_ext_total_compressed_bytes": 601,
+        "content_ext_total_uncompressed_bytes": 4334
+      },
+      "location": {
+        "fragment_count": 4,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 24,
+        "output_chars_with_any_span": 24,
+        "output_chars_pdf_backed": 21,
+        "output_chars_synthetic": 3,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.875,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "wrong_page_span_count": 0,
+        "invalid_span_bbox_count": 0,
+        "out_of_page_bbox_count": 0,
+        "span_bbox_collapse_count": 0,
+        "identical_span_set_sibling_count": 0,
+        "synthetic_char_ratio": 0.125,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 4.0,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 1.0,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "long_split_locations",
+      "path": "eval/fixtures/pdfs/long_split_locations.pdf",
+      "category": "location",
+      "status": "passed",
+      "product_status": "passed",
+      "raw_layout_status": "passed",
+      "overall_status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 5134,
+          "raw_chars": 5134,
+          "chunk_count": 3,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 1516
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 5134,
+          "raw_chars": 5134,
+          "chunk_count": 2,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 905
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 5134,
+          "raw_chars": 5134,
+          "chunk_count": 2,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1664
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 5134,
+          "raw_chars": 5134,
+          "chunk_count": 3,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 1516
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 5134,
+          "raw_chars": 5134,
+          "chunk_count": 2,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1664
+        },
+        "ours_chunks": {
+          "normalized_chars": 5134,
+          "raw_chars": 5134,
+          "chunk_count": 2,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1664
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 5134,
+          "delta_to_layout_chars": 0,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 2,
+        "max_tokens": 500,
+        "max_chunk_tokens": 440,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0,
+        "content_ext_max_compressed_bytes": 20115,
+        "content_ext_max_uncompressed_bytes": 473552,
+        "content_ext_total_compressed_bytes": 40033,
+        "content_ext_total_uncompressed_bytes": 938001
+      },
+      "location": {
+        "fragment_count": 711,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 5133,
+        "output_chars_with_any_span": 5133,
+        "output_chars_pdf_backed": 4424,
+        "output_chars_synthetic": 709,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8618741476719267,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "wrong_page_span_count": 0,
+        "invalid_span_bbox_count": 0,
+        "out_of_page_bbox_count": 0,
+        "span_bbox_collapse_count": 0,
+        "identical_span_set_sibling_count": 0,
+        "synthetic_char_ratio": 0.13812585232807326,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 355.5,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 1.0,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "span_bbox_two_lines",
+      "path": "eval/fixtures/pdfs/span_bbox_two_lines.pdf",
+      "category": "location",
+      "status": "passed",
+      "product_status": "passed",
+      "raw_layout_status": "passed",
+      "overall_status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 36,
+          "raw_chars": 36,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 609
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 36,
+          "raw_chars": 36,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 658
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 36,
+          "raw_chars": 36,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1177
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 36,
+          "raw_chars": 36,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 609
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 36,
+          "raw_chars": 36,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1177
+        },
+        "ours_chunks": {
+          "normalized_chars": 36,
+          "raw_chars": 36,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1177
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 36,
+          "delta_to_layout_chars": 0,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 1,
+        "max_tokens": 500,
+        "max_chunk_tokens": 6,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0,
+        "content_ext_max_compressed_bytes": 739,
+        "content_ext_max_uncompressed_bytes": 6721,
+        "content_ext_total_compressed_bytes": 739,
+        "content_ext_total_uncompressed_bytes": 6721
+      },
+      "location": {
+        "fragment_count": 6,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 36,
+        "output_chars_with_any_span": 36,
+        "output_chars_pdf_backed": 31,
+        "output_chars_synthetic": 5,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8611111111111112,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "wrong_page_span_count": 0,
+        "invalid_span_bbox_count": 0,
+        "out_of_page_bbox_count": 0,
+        "span_bbox_collapse_count": 0,
+        "identical_span_set_sibling_count": 0,
+        "synthetic_char_ratio": 0.1388888888888889,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 6.0,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 1.0000000000000004,
+        "highlight_replay_iou_p95": 1.0000000000000004
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "nonzero_mediabox",
+      "path": "eval/fixtures/pdfs/nonzero_mediabox.pdf",
+      "category": "geometry",
+      "status": "passed",
+      "product_status": "passed",
+      "raw_layout_status": "passed",
+      "overall_status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 21,
+          "raw_chars": 21,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 619
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 21,
+          "raw_chars": 21,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 636
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 21,
+          "raw_chars": 21,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1233
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 21,
+          "raw_chars": 21,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 619
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 21,
+          "raw_chars": 21,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1233
+        },
+        "ours_chunks": {
+          "normalized_chars": 21,
+          "raw_chars": 21,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1233
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 21,
+          "delta_to_layout_chars": 0,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 1,
+        "max_tokens": 500,
+        "max_chunk_tokens": 5,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0,
+        "content_ext_max_compressed_bytes": 581,
+        "content_ext_max_uncompressed_bytes": 4035,
+        "content_ext_total_compressed_bytes": 581,
+        "content_ext_total_uncompressed_bytes": 4035
+      },
+      "location": {
+        "fragment_count": 3,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 21,
+        "output_chars_with_any_span": 21,
+        "output_chars_pdf_backed": 19,
+        "output_chars_synthetic": 2,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.9047619047619048,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "wrong_page_span_count": 0,
+        "invalid_span_bbox_count": 0,
+        "out_of_page_bbox_count": 0,
+        "span_bbox_collapse_count": 0,
+        "identical_span_set_sibling_count": 0,
+        "synthetic_char_ratio": 0.09523809523809523,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 3.0,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 1.0,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "cropbox_smaller",
+      "path": "eval/fixtures/pdfs/cropbox_smaller.pdf",
+      "category": "geometry",
+      "status": "passed",
+      "product_status": "passed",
+      "raw_layout_status": "passed",
+      "overall_status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 12,
+          "raw_chars": 12,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 569
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 12,
+          "raw_chars": 12,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 627
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 12,
+          "raw_chars": 12,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1247
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 12,
+          "raw_chars": 12,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 569
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 12,
+          "raw_chars": 12,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1247
+        },
+        "ours_chunks": {
+          "normalized_chars": 12,
+          "raw_chars": 12,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1247
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 12,
+          "delta_to_layout_chars": 0,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 1,
+        "max_tokens": 500,
+        "max_chunk_tokens": 3,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0,
+        "content_ext_max_compressed_bytes": 474,
+        "content_ext_max_uncompressed_bytes": 2311,
+        "content_ext_total_compressed_bytes": 474,
+        "content_ext_total_uncompressed_bytes": 2311
+      },
+      "location": {
+        "fragment_count": 2,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 12,
+        "output_chars_with_any_span": 12,
+        "output_chars_pdf_backed": 11,
+        "output_chars_synthetic": 1,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.9166666666666666,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "wrong_page_span_count": 0,
+        "invalid_span_bbox_count": 0,
+        "out_of_page_bbox_count": 0,
+        "span_bbox_collapse_count": 0,
+        "identical_span_set_sibling_count": 0,
+        "synthetic_char_ratio": 0.08333333333333333,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 2.0,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 1.0,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "rotate_90",
+      "path": "eval/fixtures/pdfs/rotate_90.pdf",
+      "category": "geometry",
+      "status": "passed",
+      "product_status": "passed",
+      "raw_layout_status": "passed",
+      "overall_status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 14,
+          "raw_chars": 14,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 593
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 14,
+          "raw_chars": 14,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 635
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 14,
+          "raw_chars": 14,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1181
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 14,
+          "raw_chars": 14,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 593
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 14,
+          "raw_chars": 14,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1181
+        },
+        "ours_chunks": {
+          "normalized_chars": 14,
+          "raw_chars": 14,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1181
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 14,
+          "delta_to_layout_chars": 0,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 1,
+        "max_tokens": 500,
+        "max_chunk_tokens": 4,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0,
+        "content_ext_max_compressed_bytes": 509,
+        "content_ext_max_uncompressed_bytes": 2708,
+        "content_ext_total_compressed_bytes": 509,
+        "content_ext_total_uncompressed_bytes": 2708
+      },
+      "location": {
+        "fragment_count": 3,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 14,
+        "output_chars_with_any_span": 14,
+        "output_chars_pdf_backed": 12,
+        "output_chars_synthetic": 2,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8571428571428571,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "wrong_page_span_count": 0,
+        "invalid_span_bbox_count": 0,
+        "out_of_page_bbox_count": 0,
+        "span_bbox_collapse_count": 0,
+        "identical_span_set_sibling_count": 0,
+        "synthetic_char_ratio": 0.14285714285714285,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 3.0,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 1.0,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "rotate_180",
+      "path": "eval/fixtures/pdfs/rotate_180.pdf",
+      "category": "geometry",
+      "status": "passed",
+      "product_status": "passed",
+      "raw_layout_status": "passed",
+      "overall_status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 594
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 570
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1140
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 594
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1140
+        },
+        "ours_chunks": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1140
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 15,
+          "delta_to_layout_chars": 0,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 1,
+        "max_tokens": 500,
+        "max_chunk_tokens": 4,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0,
+        "content_ext_max_compressed_bytes": 524,
+        "content_ext_max_uncompressed_bytes": 2842,
+        "content_ext_total_compressed_bytes": 524,
+        "content_ext_total_uncompressed_bytes": 2842
+      },
+      "location": {
+        "fragment_count": 3,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 15,
+        "output_chars_with_any_span": 15,
+        "output_chars_pdf_backed": 13,
+        "output_chars_synthetic": 2,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8666666666666667,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "wrong_page_span_count": 0,
+        "invalid_span_bbox_count": 0,
+        "out_of_page_bbox_count": 0,
+        "span_bbox_collapse_count": 0,
+        "identical_span_set_sibling_count": 0,
+        "synthetic_char_ratio": 0.13333333333333333,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 3.0,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 1.0,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "rotate_270",
+      "path": "eval/fixtures/pdfs/rotate_270.pdf",
+      "category": "geometry",
+      "status": "passed",
+      "product_status": "passed",
+      "raw_layout_status": "passed",
+      "overall_status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 601
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 594
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1235
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 601
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1235
+        },
+        "ours_chunks": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1235
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 15,
+          "delta_to_layout_chars": 0,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 1,
+        "max_tokens": 500,
+        "max_chunk_tokens": 4,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0,
+        "content_ext_max_compressed_bytes": 524,
+        "content_ext_max_uncompressed_bytes": 2842,
+        "content_ext_total_compressed_bytes": 524,
+        "content_ext_total_uncompressed_bytes": 2842
+      },
+      "location": {
+        "fragment_count": 3,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 15,
+        "output_chars_with_any_span": 15,
+        "output_chars_pdf_backed": 13,
+        "output_chars_synthetic": 2,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8666666666666667,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "wrong_page_span_count": 0,
+        "invalid_span_bbox_count": 0,
+        "out_of_page_bbox_count": 0,
+        "span_bbox_collapse_count": 0,
+        "identical_span_set_sibling_count": 0,
+        "synthetic_char_ratio": 0.13333333333333333,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 3.0,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 1.0,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "nonzero_form_xobject",
+      "path": "eval/fixtures/pdfs/nonzero_form_xobject.pdf",
+      "category": "form_xobject",
+      "status": "passed",
+      "product_status": "passed",
+      "raw_layout_status": "passed",
+      "overall_status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 13,
+          "raw_chars": 13,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 611
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 13,
+          "raw_chars": 13,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 612
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 13,
+          "raw_chars": 13,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1242
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 13,
+          "raw_chars": 13,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 611
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 13,
+          "raw_chars": 13,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1242
+        },
+        "ours_chunks": {
+          "normalized_chars": 13,
+          "raw_chars": 13,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1242
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 13,
+          "delta_to_layout_chars": 0,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 1,
+        "max_tokens": 500,
+        "max_chunk_tokens": 3,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0,
+        "content_ext_max_compressed_bytes": 497,
+        "content_ext_max_uncompressed_bytes": 2737,
+        "content_ext_total_compressed_bytes": 497,
+        "content_ext_total_uncompressed_bytes": 2737
+      },
+      "location": {
+        "fragment_count": 3,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 13,
+        "output_chars_with_any_span": 13,
+        "output_chars_pdf_backed": 11,
+        "output_chars_synthetic": 2,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8461538461538461,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "wrong_page_span_count": 0,
+        "invalid_span_bbox_count": 0,
+        "out_of_page_bbox_count": 0,
+        "span_bbox_collapse_count": 0,
+        "identical_span_set_sibling_count": 0,
+        "synthetic_char_ratio": 0.15384615384615385,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 3.0,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 1.0,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    }
+  ]
+}

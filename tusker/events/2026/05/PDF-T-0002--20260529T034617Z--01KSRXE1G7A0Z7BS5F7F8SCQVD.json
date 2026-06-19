@@ -1,0 +1,13 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-05-29T03:46:17Z",
+  "event_kind": "created",
+  "id": "01KSRXE1G7A0Z7BS5F7F8SCQVD",
+  "object": "PDF-T-0002",
+  "object_kind": "task",
+  "payload": {
+    "path": "work/tasks/PDF-T-0002.md"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

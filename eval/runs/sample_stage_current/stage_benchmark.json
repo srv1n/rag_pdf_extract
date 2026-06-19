@@ -1,0 +1,1254 @@
+{
+  "generated_at_epoch_ms": 1780032498421,
+  "manifest_path": "eval/runs/sample_stage_manifest.json",
+  "fixtures": [
+    {
+      "fixture_id": "legal_1",
+      "path": "eval/runs/eval/corpus/legal/1.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "legal_12__cci_v_kerala_film_exhibitors_federation___ors",
+      "path": "eval/runs/eval/corpus/legal/12. CCI v Kerala Film Exhibitors Federation & Ors.pdf",
+      "category": "form_xobject",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "legal_13__kumari_shrilekha_vidyarthi_v_state_of_up",
+      "path": "eval/runs/eval/corpus/legal/13. Kumari Shrilekha Vidyarthi v State of UP.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "legal_14__tomaso_bruno_v_state_of_up",
+      "path": "eval/runs/eval/corpus/legal/14. Tomaso Bruno v State of UP.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "legal_15__mc_mehta_v_uoi",
+      "path": "eval/runs/eval/corpus/legal/15. MC Mehta v UoI.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "legal_16__bwssb_v_a_rajappa",
+      "path": "eval/runs/eval/corpus/legal/16. BWSSB v A Rajappa.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "legal_17__sunil_b_naik_v_geowave_commander",
+      "path": "eval/runs/eval/corpus/legal/17. Sunil B Naik v Geowave Commander.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "legal_18__mardia_chemicals_v_uoi",
+      "path": "eval/runs/eval/corpus/legal/18. Mardia Chemicals v UoI.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "legal_19__cbse_v_aditya_bandopadyay",
+      "path": "eval/runs/eval/corpus/legal/19. CBSE v Aditya Bandopadyay.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "legal_20_rc_cooper_v_uoi",
+      "path": "eval/runs/eval/corpus/legal/20 RC Cooper v UoI.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "legal_9",
+      "path": "eval/runs/eval/corpus/legal/9.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "mixed_4",
+      "path": "eval/runs/eval/corpus/mixed/4.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "mixed_alternate_color_space",
+      "path": "eval/runs/eval/corpus/mixed/alternate-color-space.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "mixed_documents_stack",
+      "path": "eval/runs/eval/corpus/mixed/documents_stack.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "mixed_embeded_core_fonts",
+      "path": "eval/runs/eval/corpus/mixed/embeded-core-fonts.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "scientific_3",
+      "path": "eval/runs/eval/corpus/scientific/3.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "scientific_6",
+      "path": "eval/runs/eval/corpus/scientific/6.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "pdfs_ctm_scaled_text",
+      "path": "eval/runs/eval/fixtures/pdfs/ctm_scaled_text.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "pdfs_invisible_ocr_only",
+      "path": "eval/runs/eval/fixtures/pdfs/invisible_ocr_only.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "pdfs_long_split_locations",
+      "path": "eval/runs/eval/fixtures/pdfs/long_split_locations.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "pdfs_malformed_text_ops",
+      "path": "eval/runs/eval/fixtures/pdfs/malformed_text_ops.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "docs_cache_alternate_color_space",
+      "path": "eval/runs/tests/docs_cache/alternate-color-space.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "docs_cache_documents_stack",
+      "path": "eval/runs/tests/docs_cache/documents_stack.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "docs_cache_embeded_core_fonts",
+      "path": "eval/runs/tests/docs_cache/embeded-core-fonts.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "_10",
+      "path": "eval/runs/10.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    },
+    {
+      "fixture_id": "_ocr",
+      "path": "eval/runs/ocr.pdf",
+      "category": "sample",
+      "status": "failed",
+      "stages": {
+        "ours_no_layout_post_filters": null,
+        "ours_layout_post_filters": null,
+        "ours_chunks": null
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 0,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "synthetic_char_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0
+      },
+      "failures": [
+        "fixture missing"
+      ]
+    }
+  ]
+}

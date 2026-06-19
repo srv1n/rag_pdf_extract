@@ -177,9 +177,11 @@ if height_ratio > 1.25 && is_standalone && words ≤ 10 { return H1 }
 ```rust
 {
   content_core: {
-    chunk_id: "blake3(content)",
+    chunk_id: "stable source/range/ordinal identity",
+    content_hash: "blake3(content)",
     content: "...",
     token_count: 487,
+    schema_version: 2,
     headings_json: '["Section 1", "Subsection A"]'
   },
   content_ext: {
@@ -194,6 +196,9 @@ if height_ratio > 1.25 && is_standalone && words ≤ 10 { return H1 }
   }
 }
 ```
+
+`PageFragment.char_range` is an output-chunk range into `content_core.content`.
+Source-PDF ranges are stored in `content_ext.output_spans[].source.Pdf`.
 
 ## Design Decisions
 

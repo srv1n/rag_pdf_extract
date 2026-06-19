@@ -1,0 +1,16 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-05-29T16:04:19Z",
+  "event_kind": "verification_added",
+  "id": "01KST7ND49M9A3YD4DA3MACETM",
+  "object": "PDF-T-0008",
+  "object_kind": "task",
+  "payload": {
+    "blocked_by": "",
+    "check": "rg -n 'pdfium|pdfium-render|backend-pdfium|backend-lopdf|ParserBackend|parse_pdf_with_backend|ExtractionBackend|Pdfium|PDFium' Cargo.lock Cargo.toml README.md src examples tests docs eval/README.md eval/REGRESSION_PACK.md",
+    "covers": "A1",
+    "result": "pass"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

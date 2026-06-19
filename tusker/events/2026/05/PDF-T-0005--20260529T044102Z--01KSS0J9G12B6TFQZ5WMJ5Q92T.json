@@ -1,0 +1,14 @@
+{
+  "actor": "agent:codex",
+  "at": "2026-05-29T04:41:02Z",
+  "event_kind": "claim_released",
+  "id": "01KSS0J9G12B6TFQZ5WMJ5Q92T",
+  "object": "PDF-T-0005",
+  "object_kind": "task",
+  "payload": {
+    "lease": "PDF-T-0005",
+    "source": "closeout"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

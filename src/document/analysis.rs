@@ -178,7 +178,7 @@ pub fn classify_line(
 /// Legacy function for backward compatibility.
 /// Classifies a single segment based on font properties.
 /// For better accuracy, use classify_line() with visual line context.
-pub fn is_heading(segment: &TextSegment, doc_stats: &DocumentStats) -> TextLevel {
+pub(crate) fn is_heading(segment: &TextSegment, doc_stats: &DocumentStats) -> TextLevel {
     let trimmed = segment.content.trim();
     let word_count = trimmed.split_whitespace().count();
 

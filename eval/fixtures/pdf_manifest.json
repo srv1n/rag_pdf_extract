@@ -1,0 +1,135 @@
+{
+  "fixtures": [
+    {
+      "id": "ctm_scaled_text",
+      "path": "pdfs/ctm_scaled_text.pdf",
+      "category": "geometry",
+      "expected": {
+        "min_chunks": 1,
+        "max_over_cap_chunks": 0,
+        "location_required": true,
+        "must_contain": ["Scaled CTM Text"],
+        "min_output_span_coverage_ratio": 1.0,
+        "layout_to_no_layout_normalized_char_ratio_min": 0.75,
+        "layout_to_no_layout_normalized_char_ratio_max": 1.25
+      }
+    },
+    {
+      "id": "invisible_ocr_only",
+      "path": "pdfs/invisible_ocr_only.pdf",
+      "category": "visibility",
+      "expected": {
+        "min_chunks": 1,
+        "max_over_cap_chunks": 0,
+        "location_required": true,
+        "must_contain": ["Invisible OCR Layer Text"],
+        "min_output_span_coverage_ratio": 1.0,
+        "layout_to_no_layout_normalized_char_ratio_min": 0.75,
+        "layout_to_no_layout_normalized_char_ratio_max": 1.25
+      }
+    },
+    {
+      "id": "long_split_locations",
+      "path": "pdfs/long_split_locations.pdf",
+      "category": "location",
+      "expected": {
+        "min_chunks": 2,
+        "max_over_cap_chunks": 0,
+        "location_required": true,
+        "must_contain": ["Split provenance paragraph"],
+        "max_identical_location_sibling_count": 0,
+        "min_source_span_coverage_ratio": 1.0,
+        "min_output_span_coverage_ratio": 1.0
+      }
+    },
+    {
+      "id": "span_bbox_two_lines",
+      "path": "pdfs/span_bbox_two_lines.pdf",
+      "category": "location",
+      "expected": {
+        "min_chunks": 1,
+        "max_over_cap_chunks": 0,
+        "location_required": true,
+        "must_contain": ["First visual line", "Second visual line"],
+        "min_source_span_coverage_ratio": 1.0,
+        "min_output_span_coverage_ratio": 1.0,
+        "max_span_bbox_collapse_count": 0,
+        "max_highlight_replay_failures": 0,
+        "min_highlight_replay_iou_p50": 0.99,
+        "min_highlight_replay_iou_p95": 0.99
+      }
+    },
+    {
+      "id": "nonzero_mediabox",
+      "path": "pdfs/nonzero_mediabox.pdf",
+      "category": "geometry",
+      "expected": {
+        "min_chunks": 1,
+        "max_over_cap_chunks": 0,
+        "location_required": true,
+        "must_contain": ["Nonzero MediaBox Text"],
+        "min_output_span_coverage_ratio": 1.0
+      }
+    },
+    {
+      "id": "cropbox_smaller",
+      "path": "pdfs/cropbox_smaller.pdf",
+      "category": "geometry",
+      "expected": {
+        "min_chunks": 1,
+        "max_over_cap_chunks": 0,
+        "location_required": true,
+        "must_contain": ["CropBox Text"],
+        "min_output_span_coverage_ratio": 1.0
+      }
+    },
+    {
+      "id": "rotate_90",
+      "path": "pdfs/rotate_90.pdf",
+      "category": "geometry",
+      "expected": {
+        "min_chunks": 1,
+        "max_over_cap_chunks": 0,
+        "location_required": true,
+        "must_contain": ["Rotate 90 Text"],
+        "min_output_span_coverage_ratio": 1.0
+      }
+    },
+    {
+      "id": "rotate_180",
+      "path": "pdfs/rotate_180.pdf",
+      "category": "geometry",
+      "expected": {
+        "min_chunks": 1,
+        "max_over_cap_chunks": 0,
+        "location_required": true,
+        "must_contain": ["Rotate 180 Text"],
+        "min_output_span_coverage_ratio": 1.0
+      }
+    },
+    {
+      "id": "rotate_270",
+      "path": "pdfs/rotate_270.pdf",
+      "category": "geometry",
+      "expected": {
+        "min_chunks": 1,
+        "max_over_cap_chunks": 0,
+        "location_required": true,
+        "must_contain": ["Rotate 270 Text"],
+        "min_output_span_coverage_ratio": 1.0
+      }
+    },
+    {
+      "id": "nonzero_form_xobject",
+      "path": "pdfs/nonzero_form_xobject.pdf",
+      "category": "form_xobject",
+      "expected": {
+        "min_chunks": 1,
+        "max_over_cap_chunks": 0,
+        "location_required": true,
+        "must_contain": ["Form Box Text"],
+        "min_output_span_coverage_ratio": 1.0
+      }
+    }
+  ]
+}

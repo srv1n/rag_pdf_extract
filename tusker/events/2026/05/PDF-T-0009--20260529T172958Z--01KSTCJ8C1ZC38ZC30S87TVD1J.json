@@ -1,0 +1,15 @@
+{
+  "actor": "agent:codex",
+  "at": "2026-05-29T17:29:58Z",
+  "event_kind": "status_changed",
+  "id": "01KSTCJ8C1ZC38ZC30S87TVD1J",
+  "object": "PDF-T-0009",
+  "object_kind": "task",
+  "payload": {
+    "from": "backlog",
+    "reason": "User requested full production ticket implementation now",
+    "to": "ready"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

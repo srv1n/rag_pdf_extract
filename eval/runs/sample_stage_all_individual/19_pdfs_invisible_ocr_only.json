@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "pdfs_invisible_ocr_only",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/invisible_ocr_only.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

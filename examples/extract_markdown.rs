@@ -17,7 +17,10 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 || args[1] == "--help" || args[1] == "-h" {
-        eprintln!("Usage: {} <input.pdf> [output.md] [--max-tokens N]", args[0]);
+        eprintln!(
+            "Usage: {} <input.pdf> [output.md] [--max-tokens N] [--la-all-texts]",
+            args[0]
+        );
         eprintln!();
         eprintln!("Extracts PDF content to markdown format.");
         eprintln!("If output.md is not specified, writes to stdout.");
@@ -35,22 +38,22 @@ fn main() {
         .and_then(|s| s.parse::<usize>().ok())
         .or(Some(500));
 
-    // Use layout analysis with pdfminer-style line grouping
-    // Enable all_texts to include text inside Form XObjects
+    // Use layout analysis with pdfminer-style line grouping. Keep Form XObject
+    // extraction opt-in; legal/form fixtures should request it explicitly.
     let mut laparams = LAParams::default();
-    laparams.all_texts = true;
+    laparams.all_texts = args.iter().any(|arg| arg == "--la-all-texts");
 
     // Extract PDF
     let docs = match parse_pdf(
         input_pdf,
-        1,           // source_id
-        "file",      // source_type
-        None,        // ocr_config
-        None,        // pages
-        None,        // password
-        max_tokens,  // max_tokens
+        1,              // source_id
+        "file",         // source_type
+        None,           // ocr_config
+        None,           // pages
+        None,           // password
+        max_tokens,     // max_tokens
         Some(laparams), // Enable layout analysis
-        None,        // clean_text (default: true)
+        None,           // clean_text (default: true)
     ) {
         Ok(docs) => docs,
         Err(e) => {

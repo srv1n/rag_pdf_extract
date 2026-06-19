@@ -1,4 +1,5 @@
 target
+artifacts/
 .idea/*
 Cargo.lock
 tests/docs_cache

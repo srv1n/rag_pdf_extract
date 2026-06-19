@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "docs_cache_documents_stack",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/tests/docs_cache/documents_stack.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

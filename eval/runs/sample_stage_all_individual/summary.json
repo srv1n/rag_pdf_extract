@@ -1,0 +1,236 @@
+[
+  {
+    "i": 1,
+    "id": "legal_1",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/1.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 2,
+    "id": "legal_12__cci_v_kerala_film_exhibitors_federation___ors",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/12. CCI v Kerala Film Exhibitors Federation & Ors.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 3,
+    "id": "legal_13__kumari_shrilekha_vidyarthi_v_state_of_up",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/13. Kumari Shrilekha Vidyarthi v State of UP.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 4,
+    "id": "legal_14__tomaso_bruno_v_state_of_up",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/14. Tomaso Bruno v State of UP.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 5,
+    "id": "legal_15__mc_mehta_v_uoi",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/15. MC Mehta v UoI.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 6,
+    "id": "legal_16__bwssb_v_a_rajappa",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/16. BWSSB v A Rajappa.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 7,
+    "id": "legal_17__sunil_b_naik_v_geowave_commander",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/17. Sunil B Naik v Geowave Commander.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 8,
+    "id": "legal_18__mardia_chemicals_v_uoi",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/18. Mardia Chemicals v UoI.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 9,
+    "id": "legal_19__cbse_v_aditya_bandopadyay",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/19. CBSE v Aditya Bandopadyay.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 10,
+    "id": "legal_20_rc_cooper_v_uoi",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/20 RC Cooper v UoI.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 11,
+    "id": "legal_9",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/9.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 12,
+    "id": "mixed_4",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/mixed/4.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 13,
+    "id": "mixed_alternate_color_space",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/mixed/alternate-color-space.pdf",
+    "code": 1,
+    "status": "failed",
+    "failure": "layout parse failed: couldn't parse input: invalid file header",
+    "stderr_tail": ""
+  },
+  {
+    "i": 14,
+    "id": "mixed_documents_stack",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/mixed/documents_stack.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 15,
+    "id": "mixed_embeded_core_fonts",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/mixed/embeded-core-fonts.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 16,
+    "id": "scientific_3",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/scientific/3.pdf",
+    "code": 101,
+    "status": "no_report",
+    "failure": "",
+    "stderr_tail": ":halt_unwinding\n             at /Users/sarav/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.12.1/src/unwind.rs:17:5\n  56: rayon_core::job::JobResult<T>::call\n             at /Users/sarav/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.12.1/src/job.rs:218:15\n  57: <rayon_core::job::StackJob<L,F,R> as rayon_core::job::Job>::execute\n             at /Users/sarav/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.12.1/src/job.rs:120:32\n  58: rayon_core::job::JobRef::execute\n             at /Users/sarav/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.12.1/src/job.rs:64:9\n  59: rayon_core::registry::WorkerThread::execute\n             at /Users/sarav/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.12.1/src/registry.rs:860:13\n  60: rayon_core::registry::WorkerThread::wait_until_cold\n             at /Users/sarav/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.12.1/src/registry.rs:794:26\n  61: rayon_core::registry::WorkerThread::wait_until\n             at /Users/sarav/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.12.1/src/registry.rs:769:18\n  62: rayon_core::registry::WorkerThread::wait_until_out_of_work\n             at /Users/sarav/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.12.1/src/registry.rs:818:14\n  63: rayon_core::registry::main_loop\n             at /Users/sarav/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.12.1/src/registry.rs:923:19\n  64: rayon_core::registry::ThreadBuilder::run\n             at /Users/sarav/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.12.1/src/registry.rs:53:18\n  65: <rayon_core::registry::DefaultSpawn as rayon_core::registry::ThreadSpawn>::spawn::{{closure}}\n             at /Users/sarav/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.12.1/src/registry.rs:98:27\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.\n"
+  },
+  {
+    "i": 17,
+    "id": "scientific_6",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/scientific/6.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 18,
+    "id": "pdfs_ctm_scaled_text",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/ctm_scaled_text.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 19,
+    "id": "pdfs_invisible_ocr_only",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/invisible_ocr_only.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 20,
+    "id": "pdfs_long_split_locations",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/long_split_locations.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 21,
+    "id": "pdfs_malformed_text_ops",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/malformed_text_ops.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 22,
+    "id": "docs_cache_alternate_color_space",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/tests/docs_cache/alternate-color-space.pdf",
+    "code": 1,
+    "status": "failed",
+    "failure": "layout parse failed: couldn't parse input: invalid file header",
+    "stderr_tail": ""
+  },
+  {
+    "i": 23,
+    "id": "docs_cache_documents_stack",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/tests/docs_cache/documents_stack.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 24,
+    "id": "docs_cache_embeded_core_fonts",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/tests/docs_cache/embeded-core-fonts.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 25,
+    "id": "_10",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/10.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  },
+  {
+    "i": 26,
+    "id": "_ocr",
+    "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/ocr.pdf",
+    "code": 0,
+    "status": "passed",
+    "failure": "",
+    "stderr_tail": ""
+  }
+]

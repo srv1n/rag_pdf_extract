@@ -1,0 +1,15 @@
+{
+  "schema": "tusker.lease/v1",
+  "id": "PDF-T-0009",
+  "project": "rag_pdf_extract",
+  "task": "PDF-T-0009",
+  "owner": "agent:codex",
+  "workspace": "",
+  "branch": "main",
+  "status": "stale",
+  "claimed_at": "2026-05-29T17:29:53Z",
+  "expires_at": "2026-05-29T19:29:53Z",
+  "heartbeat_at": "2026-05-29T17:29:53Z",
+  "stale_at": "2026-06-18T13:03:30Z",
+  "stale_reason": "lease expired without heartbeat"
+}

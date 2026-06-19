@@ -45,65 +45,43 @@ pub enum ListDetectionResult {
 }
 
 // Regex patterns for list markers
-static ARABIC_DOT: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(\d{1,3})\.\s+").unwrap()
-});
+static ARABIC_DOT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\d{1,3})\.\s+").unwrap());
 
-static ARABIC_PAREN: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(\d{1,3})\)\s+").unwrap()
-});
+static ARABIC_PAREN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\d{1,3})\)\s+").unwrap());
 
-static ARABIC_PAREN_BOTH: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^\((\d{1,3})\)\s+").unwrap()
-});
+static ARABIC_PAREN_BOTH: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\((\d{1,3})\)\s+").unwrap());
 
-static LOWER_ALPHA_DOT: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^([a-z])\.\s+").unwrap()
-});
+static LOWER_ALPHA_DOT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([a-z])\.\s+").unwrap());
 
-static LOWER_ALPHA_PAREN: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^([a-z])\)\s+").unwrap()
-});
+static LOWER_ALPHA_PAREN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([a-z])\)\s+").unwrap());
 
-static LOWER_ALPHA_PAREN_BOTH: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^\(([a-z])\)\s+").unwrap()
-});
+static LOWER_ALPHA_PAREN_BOTH: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\(([a-z])\)\s+").unwrap());
 
-static UPPER_ALPHA_DOT: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^([A-Z])\.\s+").unwrap()
-});
+static UPPER_ALPHA_DOT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([A-Z])\.\s+").unwrap());
 
-static UPPER_ALPHA_PAREN: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^([A-Z])\)\s+").unwrap()
-});
+static UPPER_ALPHA_PAREN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([A-Z])\)\s+").unwrap());
 
-static UPPER_ALPHA_PAREN_BOTH: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^\(([A-Z])\)\s+").unwrap()
-});
+static UPPER_ALPHA_PAREN_BOTH: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\(([A-Z])\)\s+").unwrap());
 
-static LOWER_ROMAN_DOT: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^([ivxlcdm]+)\.\s+").unwrap()
-});
+static LOWER_ROMAN_DOT: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^([ivxlcdm]+)\.\s+").unwrap());
 
-static LOWER_ROMAN_PAREN: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^([ivxlcdm]+)\)\s+").unwrap()
-});
+static LOWER_ROMAN_PAREN: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^([ivxlcdm]+)\)\s+").unwrap());
 
-static LOWER_ROMAN_PAREN_BOTH: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^\(([ivxlcdm]+)\)\s+").unwrap()
-});
+static LOWER_ROMAN_PAREN_BOTH: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\(([ivxlcdm]+)\)\s+").unwrap());
 
-static UPPER_ROMAN_DOT: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^([IVXLCDM]+)\.\s+").unwrap()
-});
+static UPPER_ROMAN_DOT: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^([IVXLCDM]+)\.\s+").unwrap());
 
-static UPPER_ROMAN_PAREN: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^([IVXLCDM]+)\)\s+").unwrap()
-});
+static UPPER_ROMAN_PAREN: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^([IVXLCDM]+)\)\s+").unwrap());
 
-static BULLET: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^([•\-\*○◦▪▸►])\s+").unwrap()
-});
+static BULLET: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([•\-\*○◦▪▸►])\s+").unwrap());
 
 /// Detect if a line starts with a list marker
 pub fn detect_list_marker(text: &str) -> ListDetectionResult {

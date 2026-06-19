@@ -1,0 +1,15 @@
+{
+  "actor": "agent:codex",
+  "at": "2026-05-29T04:11:08Z",
+  "event_kind": "status_changed",
+  "id": "01KSRYVHCNKRPYH59Q2W9RBSHH",
+  "object": "PDF-T-0004",
+  "object_kind": "task",
+  "payload": {
+    "from": "backlog",
+    "reason": "Continuing current review implementation; default benchmark needs committed deterministic fixtures.",
+    "to": "ready"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

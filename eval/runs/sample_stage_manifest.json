@@ -1,0 +1,160 @@
+{
+  "fixtures": [
+    {
+      "id": "legal_1",
+      "path": "eval/corpus/legal/1.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "legal_12__cci_v_kerala_film_exhibitors_federation___ors",
+      "path": "eval/corpus/legal/12. CCI v Kerala Film Exhibitors Federation & Ors.pdf",
+      "category": "form_xobject",
+      "expected": {}
+    },
+    {
+      "id": "legal_13__kumari_shrilekha_vidyarthi_v_state_of_up",
+      "path": "eval/corpus/legal/13. Kumari Shrilekha Vidyarthi v State of UP.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "legal_14__tomaso_bruno_v_state_of_up",
+      "path": "eval/corpus/legal/14. Tomaso Bruno v State of UP.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "legal_15__mc_mehta_v_uoi",
+      "path": "eval/corpus/legal/15. MC Mehta v UoI.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "legal_16__bwssb_v_a_rajappa",
+      "path": "eval/corpus/legal/16. BWSSB v A Rajappa.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "legal_17__sunil_b_naik_v_geowave_commander",
+      "path": "eval/corpus/legal/17. Sunil B Naik v Geowave Commander.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "legal_18__mardia_chemicals_v_uoi",
+      "path": "eval/corpus/legal/18. Mardia Chemicals v UoI.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "legal_19__cbse_v_aditya_bandopadyay",
+      "path": "eval/corpus/legal/19. CBSE v Aditya Bandopadyay.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "legal_20_rc_cooper_v_uoi",
+      "path": "eval/corpus/legal/20 RC Cooper v UoI.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "legal_9",
+      "path": "eval/corpus/legal/9.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "mixed_4",
+      "path": "eval/corpus/mixed/4.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "mixed_alternate_color_space",
+      "path": "eval/corpus/mixed/alternate-color-space.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "mixed_documents_stack",
+      "path": "eval/corpus/mixed/documents_stack.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "mixed_embeded_core_fonts",
+      "path": "eval/corpus/mixed/embeded-core-fonts.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "scientific_3",
+      "path": "eval/corpus/scientific/3.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "scientific_6",
+      "path": "eval/corpus/scientific/6.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "pdfs_ctm_scaled_text",
+      "path": "eval/fixtures/pdfs/ctm_scaled_text.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "pdfs_invisible_ocr_only",
+      "path": "eval/fixtures/pdfs/invisible_ocr_only.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "pdfs_long_split_locations",
+      "path": "eval/fixtures/pdfs/long_split_locations.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "pdfs_malformed_text_ops",
+      "path": "eval/fixtures/pdfs/malformed_text_ops.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "docs_cache_alternate_color_space",
+      "path": "tests/docs_cache/alternate-color-space.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "docs_cache_documents_stack",
+      "path": "tests/docs_cache/documents_stack.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "docs_cache_embeded_core_fonts",
+      "path": "tests/docs_cache/embeded-core-fonts.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "_10",
+      "path": "10.pdf",
+      "category": "sample",
+      "expected": {}
+    },
+    {
+      "id": "_ocr",
+      "path": "ocr.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

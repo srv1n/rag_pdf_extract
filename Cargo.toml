@@ -7,8 +7,15 @@ keywords = ["pdf2text", "text", "pdf", "pdf2txt"]
 license = "MIT"
 name = "pdf-extract"
 repository = "https://github.com/jrmuizel/pdf-extract"
-version = "0.7.7"
-include = ["src/**/*", "README.md"]
+version = "0.8.0"
+include = ["src/**/*", "README.md", "INTEGRATION.md", "MIGRATION.md"]
+
+[features]
+ocr = ["ocr-ocrs"]
+ocr-ocrs = ["dep:ocrs", "dep:rten", "dep:rten-imageproc", "dep:rten-tensor"]
+# Legacy alias retained for downstream Cargo.toml compatibility. This enables
+# OCRS/RTen OCR; it does not bundle or call Tesseract.
+ocr-tesseract = ["dep:ocrs", "dep:rten", "dep:rten-imageproc", "dep:rten-tensor"]
 
 [profile.release]
 debug = true
@@ -21,12 +28,13 @@ lopdf = {version = "0.36", default-features = false}
 postscript = "0.14"
 type1-encoding-parser = "0.1.0"
 unicode-normalization = "0.1.19"
+cff-parser = "0.1.0"
 rayon = "1.10.0"
 ordered-float = "4.2.2"
-ocrs = {git="https://github.com/robertknight/ocrs", rev="4a29345"}
-rten = { version = ">= 0.14.0, < 0.21.0" }
-rten-imageproc = { version = ">= 0.14.0, < 0.21.0" }
-rten-tensor = { version = ">= 0.14.0, < 0.21.0" }
+ocrs = { git = "https://github.com/robertknight/ocrs", rev = "4a29345", optional = true }
+rten = { version = ">= 0.14.0, < 0.21.0", optional = true }
+rten-imageproc = { version = ">= 0.14.0, < 0.21.0", optional = true }
+rten-tensor = { version = ">= 0.14.0, < 0.21.0", optional = true }
 anyhow = "1.0.98"
 thiserror = "2.0.12"
 fastrand = "2.3.0"
@@ -46,4 +54,5 @@ log = "0.4"
 env_logger = "0.11"
 
 [dev-dependencies]
+sha2 = "0.10"
 ureq = "2.6.2"

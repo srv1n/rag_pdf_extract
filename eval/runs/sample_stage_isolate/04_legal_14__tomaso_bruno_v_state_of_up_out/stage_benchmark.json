@@ -1,0 +1,70 @@
+{
+  "generated_at_epoch_ms": 1780032780222,
+  "manifest_path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/runs/sample_stage_isolate/04_legal_14__tomaso_bruno_v_state_of_up.json",
+  "fixtures": [
+    {
+      "fixture_id": "legal_14__tomaso_bruno_v_state_of_up",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/14. Tomaso Bruno v State of UP.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 3956,
+          "raw_chars": 3961,
+          "chunk_count": 20,
+          "duplicate_line_ratio": 0.050000000000000044,
+          "duration_ms": 2770
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 41752,
+          "raw_chars": 41756,
+          "chunk_count": 38,
+          "duplicate_line_ratio": 0.018404907975460127,
+          "duration_ms": 1907
+        },
+        "ours_chunks": {
+          "normalized_chars": 41752,
+          "raw_chars": 41756,
+          "chunk_count": 38,
+          "duplicate_line_ratio": 0.018404907975460127,
+          "duration_ms": 1907
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 42099,
+          "delta_to_layout_chars": -347,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 38,
+        "max_tokens": 350,
+        "max_chunk_tokens": 301,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 671,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.6055993671948033,
+        "fragment_density": 17.657894736842106,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    }
+  ]
+}

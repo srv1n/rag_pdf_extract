@@ -1,0 +1,15 @@
+{
+  "actor": "agent:codex",
+  "at": "2026-05-29T15:47:42Z",
+  "event_kind": "status_changed",
+  "id": "01KST6PZPY1YHBH3GK0MHQBZ80",
+  "object": "PDF-T-0008",
+  "object_kind": "task",
+  "payload": {
+    "from": "backlog",
+    "reason": "User requested implementation cleanup now",
+    "to": "ready"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

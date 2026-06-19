@@ -87,7 +87,7 @@ impl OcrTextFilter {
     /// Determine if a line should be kept based on quality heuristics
     fn should_keep_line(&self, line: &str) -> bool {
         // Special case: single character lines
-        if line.len() == 1 {
+        if line.chars().count() == 1 {
             return self.is_valid_single_char(line);
         }
 
@@ -129,7 +129,7 @@ impl OcrTextFilter {
 
     /// Check if a single character is valid (section marker, bullet, etc.)
     fn is_valid_single_char(&self, text: &str) -> bool {
-        if text.len() != 1 {
+        if text.chars().count() != 1 {
             return false;
         }
 

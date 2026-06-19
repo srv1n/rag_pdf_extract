@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "legal_17__sunil_b_naik_v_geowave_commander",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/17. Sunil B Naik v Geowave Commander.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

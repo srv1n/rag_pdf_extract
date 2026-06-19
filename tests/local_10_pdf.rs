@@ -12,23 +12,22 @@ fn layout_extracts_more_than_four_chunks_on_10_pdf() {
     }
 
     let mut lp = LAParams::default();
-    // Enable high-recall defaults to reduce surprises while comparing to pdfminer
-    lp.all_texts = true;
-    lp.detect_vertical = true;
+    // Keep production-safe defaults; all_texts/detect_vertical are fixture-specific knobs.
+    lp.all_texts = false;
+    lp.detect_vertical = false;
 
     let docs = parse_pdf(
         path.to_str().unwrap(),
         1,
         "file",
-        None,     // no OCR
-        None,     // no OCR cache
-        None,     // no resume
+        None, // no OCR
+        None, // no OCR cache
+        None, // no resume
         Some(500),
         Some(lp),
-        None,     // clean_text (default: true)
+        None, // clean_text (default: true)
     )
     .expect("parse_pdf should succeed");
 
     assert!(docs.len() > 4, "Expected >4 chunks, got {}", docs.len());
 }
-

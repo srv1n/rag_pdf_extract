@@ -1,0 +1,16 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-05-29T04:39:13Z",
+  "event_kind": "verification_added",
+  "id": "01KSS0EYR2V8T59365QJS3RT05",
+  "object": "PDF-T-0005",
+  "object_kind": "task",
+  "payload": {
+    "blocked_by": "",
+    "check": "cargo run -q --example stage_benchmark -- --manifest eval/fixtures/pdf_manifest.json --out-dir eval/runs/stage_benchmark_current --max-tokens 80",
+    "covers": "A1",
+    "result": "pass"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

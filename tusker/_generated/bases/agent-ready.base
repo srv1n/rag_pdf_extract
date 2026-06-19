@@ -1,0 +1,4 @@
+filters:
+  readiness: ready
+  status: [ready, rework]
+  next_owner_prefix: agent

@@ -1,0 +1,16 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-05-29T04:39:13Z",
+  "event_kind": "verification_added",
+  "id": "01KSS0EYR2X5ZHX9BEK1DMFEXH",
+  "object": "PDF-T-0005",
+  "object_kind": "task",
+  "payload": {
+    "blocked_by": "",
+    "check": "ARTIFACT_DIR=.tusker/scratch/PDF-T-0005 scripts/codebasezip.sh; unzip -l .tusker/scratch/PDF-T-0005/codebase-latest.zip eval/fixtures/pdfs/malformed_text_ops.pdf",
+    "covers": "A1",
+    "result": "pass"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

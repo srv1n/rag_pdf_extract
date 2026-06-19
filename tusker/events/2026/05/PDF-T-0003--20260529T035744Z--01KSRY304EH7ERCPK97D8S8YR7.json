@@ -1,0 +1,16 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-05-29T03:57:44Z",
+  "event_kind": "verification_added",
+  "id": "01KSRY304EH7ERCPK97D8S8YR7",
+  "object": "PDF-T-0003",
+  "object_kind": "task",
+  "payload": {
+    "blocked_by": "",
+    "check": "cargo test -q \u0026\u0026 cargo check -q --no-default-features \u0026\u0026 cargo check -q --features ocr-tesseract",
+    "covers": "A1,A2,A3,A4",
+    "result": "pass"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

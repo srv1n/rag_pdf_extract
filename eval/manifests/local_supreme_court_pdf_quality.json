@@ -1,0 +1,29 @@
+{
+  "suite_name": "local-supreme-court-pdf-quality",
+  "description": "Local ignored production PDFs from backend SRC-T-0004 used to guard legal parse-quality classification.",
+  "base_dir": "../..",
+  "documents": [
+    {
+      "id": "puttaswamy-v-uoi-src-t-0004",
+      "label": "Puttaswamy v UoI",
+      "path": "artifacts/pdf_parser_production_tickets/rzn-src-t-0004-supreme-court-pdfs/7_Puttaswamy_v_UoI.pdf",
+      "sha256": "d148e745af7c55562f519890613ae61d27e13660e5de61e89903fadcb23d31c1",
+      "size_bytes": 2930333,
+      "expected_min_pages": 1,
+      "expected_min_chars": 100000,
+      "expected_min_chunks": 50,
+      "expected_quality_status": "usable"
+    },
+    {
+      "id": "rc-cooper-v-uoi-src-t-0004",
+      "label": "RC Cooper v UoI",
+      "path": "artifacts/pdf_parser_production_tickets/rzn-src-t-0004-supreme-court-pdfs/20_RC_Cooper_v_UoI.pdf",
+      "sha256": "a9f2500936a35eb38a1bdf353ec3c82027a0ba35c1cc3f8746dd7fb1d8e25568",
+      "size_bytes": 430257,
+      "expected_min_pages": 1,
+      "expected_min_chars": 100000,
+      "expected_min_chunks": 50,
+      "expected_quality_status": "usable"
+    }
+  ]
+}

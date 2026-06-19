@@ -1,0 +1,10 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-05-29T03:43:40Z",
+  "event_kind": "created",
+  "id": "01KSRX97JC7C965JMKWPXNZPJN",
+  "object": "PDF",
+  "object_kind": "epic",
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

@@ -1,0 +1,1035 @@
+{
+  "generated_at_epoch_ms": 1780077058307,
+  "command": "target/debug/examples/stage_benchmark --manifest eval/manifests/production_broad_corpus.json --out-dir eval/runs/production_broad_corpus",
+  "git_sha": "de635f7cc694e4398ab51aa2381e2914fc232500",
+  "git_dirty": true,
+  "manifest_path": "eval/manifests/production_broad_corpus.json",
+  "fixtures": [
+    {
+      "fixture_id": "large_legal_1",
+      "path": "eval/manifests/../corpus/legal/1.pdf",
+      "category": "legal",
+      "status": "passed",
+      "product_status": "passed",
+      "raw_layout_status": "passed",
+      "overall_status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 111570,
+          "raw_chars": 112736,
+          "chunk_count": 81,
+          "duplicate_line_ratio": 0.015220700152207,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 10097
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 111379,
+          "raw_chars": 111423,
+          "chunk_count": 70,
+          "duplicate_line_ratio": 0.05913978494623651,
+          "layout_to_no_layout_char_ratio": 0.9982880702697858,
+          "duration_ms": 9144
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 111379,
+          "raw_chars": 111423,
+          "chunk_count": 70,
+          "duplicate_line_ratio": 0.05913978494623651,
+          "layout_to_no_layout_char_ratio": 0.9982880702697858,
+          "duration_ms": 13323
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 111570,
+          "raw_chars": 112736,
+          "chunk_count": 81,
+          "duplicate_line_ratio": 0.015220700152207,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 10097
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 111379,
+          "raw_chars": 111423,
+          "chunk_count": 70,
+          "duplicate_line_ratio": 0.05913978494623651,
+          "layout_to_no_layout_char_ratio": 0.9982880702697858,
+          "duration_ms": 13323
+        },
+        "ours_chunks": {
+          "normalized_chars": 111379,
+          "raw_chars": 111423,
+          "chunk_count": 70,
+          "duplicate_line_ratio": 0.05913978494623651,
+          "layout_to_no_layout_char_ratio": 0.9982880702697858,
+          "duration_ms": 13323
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 113066,
+          "delta_to_layout_chars": -1687,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 70,
+        "max_tokens": 500,
+        "max_chunk_tokens": 476,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0,
+        "content_ext_max_compressed_bytes": 24796,
+        "content_ext_max_uncompressed_bytes": 476044,
+        "content_ext_total_compressed_bytes": 1183474,
+        "content_ext_total_uncompressed_bytes": 23207955
+      },
+      "location": {
+        "fragment_count": 16636,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 561,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 111354,
+        "output_chars_with_any_span": 111354,
+        "output_chars_pdf_backed": 94643,
+        "output_chars_synthetic": 16711,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8499290550855829,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "wrong_page_span_count": 0,
+        "invalid_span_bbox_count": 0,
+        "out_of_page_bbox_count": 4583,
+        "span_bbox_collapse_count": 0,
+        "identical_span_set_sibling_count": 0,
+        "synthetic_char_ratio": 0.15007094491441708,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.05913978494623651,
+        "fragment_density": 237.65714285714284,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 1.0,
+        "highlight_replay_iou_p95": 1.0000000000000004
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "large_legal_17_form_heavy",
+      "path": "eval/manifests/../corpus/legal/17. Sunil B Naik v Geowave Commander.pdf",
+      "category": "form_xobject",
+      "status": "passed",
+      "product_status": "passed",
+      "raw_layout_status": "passed",
+      "overall_status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 80930,
+          "raw_chars": 80942,
+          "chunk_count": 58,
+          "duplicate_line_ratio": 0.015600624024960985,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 5152
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 80918,
+          "raw_chars": 80960,
+          "chunk_count": 50,
+          "duplicate_line_ratio": 0.0847457627118644,
+          "layout_to_no_layout_char_ratio": 0.9998517237118497,
+          "duration_ms": 5270
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 80918,
+          "raw_chars": 80960,
+          "chunk_count": 50,
+          "duplicate_line_ratio": 0.0847457627118644,
+          "layout_to_no_layout_char_ratio": 0.9998517237118497,
+          "duration_ms": 8727
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 80930,
+          "raw_chars": 80942,
+          "chunk_count": 58,
+          "duplicate_line_ratio": 0.015600624024960985,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 5152
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 80918,
+          "raw_chars": 80960,
+          "chunk_count": 50,
+          "duplicate_line_ratio": 0.0847457627118644,
+          "layout_to_no_layout_char_ratio": 0.9998517237118497,
+          "duration_ms": 8727
+        },
+        "ours_chunks": {
+          "normalized_chars": 80918,
+          "raw_chars": 80960,
+          "chunk_count": 50,
+          "duplicate_line_ratio": 0.0847457627118644,
+          "layout_to_no_layout_char_ratio": 0.9998517237118497,
+          "duration_ms": 8727
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 82479,
+          "delta_to_layout_chars": -1561,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 50,
+        "max_tokens": 500,
+        "max_chunk_tokens": 425,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0,
+        "content_ext_max_compressed_bytes": 22133,
+        "content_ext_max_uncompressed_bytes": 414985,
+        "content_ext_total_compressed_bytes": 859661,
+        "content_ext_total_uncompressed_bytes": 15896837
+      },
+      "location": {
+        "fragment_count": 14177,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 25,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 80911,
+        "output_chars_with_any_span": 80911,
+        "output_chars_pdf_backed": 66728,
+        "output_chars_synthetic": 14183,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.824708630470517,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "wrong_page_span_count": 0,
+        "invalid_span_bbox_count": 0,
+        "out_of_page_bbox_count": 127,
+        "span_bbox_collapse_count": 0,
+        "identical_span_set_sibling_count": 0,
+        "synthetic_char_ratio": 0.17529136952948302,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0847457627118644,
+        "fragment_density": 283.54,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 1.0,
+        "highlight_replay_iou_p95": 1.0000000000000002
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "prior_failure_mixed_4",
+      "path": "eval/manifests/../corpus/mixed/4.pdf",
+      "category": "mixed",
+      "status": "passed",
+      "product_status": "passed",
+      "raw_layout_status": "passed",
+      "overall_status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 49138,
+          "raw_chars": 49860,
+          "chunk_count": 37,
+          "duplicate_line_ratio": 0.06666666666666665,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 3744
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 49376,
+          "raw_chars": 49381,
+          "chunk_count": 36,
+          "duplicate_line_ratio": 0.04166666666666663,
+          "layout_to_no_layout_char_ratio": 1.0048435019740323,
+          "duration_ms": 3276
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 49376,
+          "raw_chars": 49381,
+          "chunk_count": 36,
+          "duplicate_line_ratio": 0.04166666666666663,
+          "layout_to_no_layout_char_ratio": 1.0048435019740323,
+          "duration_ms": 5682
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 49138,
+          "raw_chars": 49860,
+          "chunk_count": 37,
+          "duplicate_line_ratio": 0.06666666666666665,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 3744
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 49376,
+          "raw_chars": 49381,
+          "chunk_count": 36,
+          "duplicate_line_ratio": 0.04166666666666663,
+          "layout_to_no_layout_char_ratio": 1.0048435019740323,
+          "duration_ms": 5682
+        },
+        "ours_chunks": {
+          "normalized_chars": 49376,
+          "raw_chars": 49381,
+          "chunk_count": 36,
+          "duplicate_line_ratio": 0.04166666666666663,
+          "layout_to_no_layout_char_ratio": 1.0048435019740323,
+          "duration_ms": 5682
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 49304,
+          "delta_to_layout_chars": 72,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 36,
+        "max_tokens": 500,
+        "max_chunk_tokens": 423,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0,
+        "content_ext_max_compressed_bytes": 25292,
+        "content_ext_max_uncompressed_bytes": 512724,
+        "content_ext_total_compressed_bytes": 531836,
+        "content_ext_total_uncompressed_bytes": 11062259
+      },
+      "location": {
+        "fragment_count": 7935,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 57,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 49346,
+        "output_chars_with_any_span": 49346,
+        "output_chars_pdf_backed": 41132,
+        "output_chars_synthetic": 8214,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8335427390264661,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "wrong_page_span_count": 0,
+        "invalid_span_bbox_count": 0,
+        "out_of_page_bbox_count": 436,
+        "span_bbox_collapse_count": 0,
+        "identical_span_set_sibling_count": 0,
+        "synthetic_char_ratio": 0.16645726097353383,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.04166666666666663,
+        "fragment_density": 220.41666666666666,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.9999999999999997,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "scientific_3",
+      "path": "eval/manifests/../corpus/scientific/3.pdf",
+      "category": "scientific",
+      "status": "passed",
+      "product_status": "passed",
+      "raw_layout_status": "passed",
+      "overall_status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 47853,
+          "raw_chars": 48184,
+          "chunk_count": 135,
+          "duplicate_line_ratio": 0.3945335710041592,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 3382
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 48025,
+          "raw_chars": 48073,
+          "chunk_count": 98,
+          "duplicate_line_ratio": 0.3767178658043654,
+          "layout_to_no_layout_char_ratio": 1.003594341002654,
+          "duration_ms": 3254
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 48025,
+          "raw_chars": 48073,
+          "chunk_count": 98,
+          "duplicate_line_ratio": 0.3767178658043654,
+          "layout_to_no_layout_char_ratio": 1.003594341002654,
+          "duration_ms": 5473
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 47853,
+          "raw_chars": 48184,
+          "chunk_count": 135,
+          "duplicate_line_ratio": 0.3945335710041592,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 3382
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 48025,
+          "raw_chars": 48073,
+          "chunk_count": 98,
+          "duplicate_line_ratio": 0.3767178658043654,
+          "layout_to_no_layout_char_ratio": 1.003594341002654,
+          "duration_ms": 5473
+        },
+        "ours_chunks": {
+          "normalized_chars": 48025,
+          "raw_chars": 48073,
+          "chunk_count": 98,
+          "duplicate_line_ratio": 0.3767178658043654,
+          "layout_to_no_layout_char_ratio": 1.003594341002654,
+          "duration_ms": 5473
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 47828,
+          "delta_to_layout_chars": 197,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 98,
+        "max_tokens": 500,
+        "max_chunk_tokens": 432,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0,
+        "content_ext_max_compressed_bytes": 21142,
+        "content_ext_max_uncompressed_bytes": 440153,
+        "content_ext_total_compressed_bytes": 543228,
+        "content_ext_total_uncompressed_bytes": 10078841
+      },
+      "location": {
+        "fragment_count": 9239,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 1741,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 47976,
+        "output_chars_with_any_span": 47976,
+        "output_chars_pdf_backed": 38504,
+        "output_chars_synthetic": 9472,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8025679506419877,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "wrong_page_span_count": 0,
+        "invalid_span_bbox_count": 0,
+        "out_of_page_bbox_count": 11194,
+        "span_bbox_collapse_count": 0,
+        "identical_span_set_sibling_count": 0,
+        "synthetic_char_ratio": 0.19743204935801234,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.3767178658043654,
+        "fragment_density": 94.27551020408163,
+        "highlight_replay_failures": 1191,
+        "highlight_replay_iou_p50": 1.0,
+        "highlight_replay_iou_p95": 1.0000000000000002
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "scientific_6",
+      "path": "eval/manifests/../corpus/scientific/6.pdf",
+      "category": "scientific",
+      "status": "passed",
+      "product_status": "passed",
+      "raw_layout_status": "passed",
+      "overall_status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 40205,
+          "raw_chars": 40205,
+          "chunk_count": 30,
+          "duplicate_line_ratio": 0.2905569007263923,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 21778
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 36621,
+          "raw_chars": 36632,
+          "chunk_count": 34,
+          "duplicate_line_ratio": 0.06584362139917699,
+          "layout_to_no_layout_char_ratio": 0.9108568585996767,
+          "duration_ms": 21186
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 40205,
+          "raw_chars": 40205,
+          "chunk_count": 30,
+          "duplicate_line_ratio": 0.2905569007263923,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 23825
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 40205,
+          "raw_chars": 40205,
+          "chunk_count": 30,
+          "duplicate_line_ratio": 0.2905569007263923,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 21778
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 40205,
+          "raw_chars": 40205,
+          "chunk_count": 30,
+          "duplicate_line_ratio": 0.2905569007263923,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 23825
+        },
+        "ours_chunks": {
+          "normalized_chars": 40205,
+          "raw_chars": 40205,
+          "chunk_count": 30,
+          "duplicate_line_ratio": 0.2905569007263923,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 23825
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 39652,
+          "delta_to_layout_chars": 553,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 30,
+        "max_tokens": 500,
+        "max_chunk_tokens": 436,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0,
+        "content_ext_max_compressed_bytes": 24700,
+        "content_ext_max_uncompressed_bytes": 430862,
+        "content_ext_total_compressed_bytes": 436228,
+        "content_ext_total_uncompressed_bytes": 7545486
+      },
+      "location": {
+        "fragment_count": 6496,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 4491,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 40176,
+        "output_chars_with_any_span": 40176,
+        "output_chars_pdf_backed": 33548,
+        "output_chars_synthetic": 6628,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8350258861011549,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "wrong_page_span_count": 0,
+        "invalid_span_bbox_count": 0,
+        "out_of_page_bbox_count": 29406,
+        "span_bbox_collapse_count": 0,
+        "identical_span_set_sibling_count": 0,
+        "synthetic_char_ratio": 0.1649741138988451,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.2905569007263923,
+        "fragment_density": 216.53333333333333,
+        "highlight_replay_failures": 2074,
+        "highlight_replay_iou_p50": 1.0000000000000007,
+        "highlight_replay_iou_p95": 1.0000000000000073
+      },
+      "layout_fallback_used": true,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "multi_column_documents_stack",
+      "path": "eval/manifests/../corpus/mixed/documents_stack.pdf",
+      "category": "multi_column",
+      "status": "passed",
+      "product_status": "passed",
+      "raw_layout_status": "passed",
+      "overall_status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 1488,
+          "raw_chars": 1500,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 748
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 1546,
+          "raw_chars": 1547,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0357142857142857,
+          "layout_to_no_layout_char_ratio": 1.038978494623656,
+          "duration_ms": 751
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 1546,
+          "raw_chars": 1547,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0357142857142857,
+          "layout_to_no_layout_char_ratio": 1.038978494623656,
+          "duration_ms": 1427
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 1488,
+          "raw_chars": 1500,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 748
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 1546,
+          "raw_chars": 1547,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0357142857142857,
+          "layout_to_no_layout_char_ratio": 1.038978494623656,
+          "duration_ms": 1427
+        },
+        "ours_chunks": {
+          "normalized_chars": 1546,
+          "raw_chars": 1547,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0357142857142857,
+          "layout_to_no_layout_char_ratio": 1.038978494623656,
+          "duration_ms": 1427
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 1600,
+          "delta_to_layout_chars": -54,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 6,
+        "max_tokens": 500,
+        "max_chunk_tokens": 229,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0,
+        "content_ext_max_compressed_bytes": 7033,
+        "content_ext_max_uncompressed_bytes": 133795,
+        "content_ext_total_compressed_bytes": 16773,
+        "content_ext_total_uncompressed_bytes": 305206
+      },
+      "location": {
+        "fragment_count": 194,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 1542,
+        "output_chars_with_any_span": 1542,
+        "output_chars_pdf_backed": 1277,
+        "output_chars_synthetic": 265,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8281452658884566,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "wrong_page_span_count": 0,
+        "invalid_span_bbox_count": 0,
+        "out_of_page_bbox_count": 0,
+        "span_bbox_collapse_count": 0,
+        "identical_span_set_sibling_count": 0,
+        "synthetic_char_ratio": 0.17185473411154345,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0357142857142857,
+        "fragment_density": 32.333333333333336,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 1.0,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "form_xobject_fixture",
+      "path": "eval/manifests/../fixtures/pdfs/nonzero_form_xobject.pdf",
+      "category": "form_xobject",
+      "status": "passed",
+      "product_status": "passed",
+      "raw_layout_status": "passed",
+      "overall_status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 13,
+          "raw_chars": 13,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 567
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 13,
+          "raw_chars": 13,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 574
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 13,
+          "raw_chars": 13,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1133
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 13,
+          "raw_chars": 13,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 567
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 13,
+          "raw_chars": 13,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1133
+        },
+        "ours_chunks": {
+          "normalized_chars": 13,
+          "raw_chars": 13,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1133
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 13,
+          "delta_to_layout_chars": 0,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 1,
+        "max_tokens": 500,
+        "max_chunk_tokens": 3,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0,
+        "content_ext_max_compressed_bytes": 497,
+        "content_ext_max_uncompressed_bytes": 2737,
+        "content_ext_total_compressed_bytes": 497,
+        "content_ext_total_uncompressed_bytes": 2737
+      },
+      "location": {
+        "fragment_count": 3,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 13,
+        "output_chars_with_any_span": 13,
+        "output_chars_pdf_backed": 11,
+        "output_chars_synthetic": 2,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8461538461538461,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "wrong_page_span_count": 0,
+        "invalid_span_bbox_count": 0,
+        "out_of_page_bbox_count": 0,
+        "span_bbox_collapse_count": 0,
+        "identical_span_set_sibling_count": 0,
+        "synthetic_char_ratio": 0.15384615384615385,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 3.0,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 1.0,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "ocr_only_invisible_text_fixture",
+      "path": "eval/manifests/../fixtures/pdfs/invisible_ocr_only.pdf",
+      "category": "ocr",
+      "status": "passed",
+      "product_status": "passed",
+      "raw_layout_status": "passed",
+      "overall_status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 568
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 575
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1173
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 568
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1173
+        },
+        "ours_chunks": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1173
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 24,
+          "delta_to_layout_chars": 0,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 1,
+        "max_tokens": 500,
+        "max_chunk_tokens": 4,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0,
+        "content_ext_max_compressed_bytes": 601,
+        "content_ext_max_uncompressed_bytes": 4334,
+        "content_ext_total_compressed_bytes": 601,
+        "content_ext_total_uncompressed_bytes": 4334
+      },
+      "location": {
+        "fragment_count": 4,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 24,
+        "output_chars_with_any_span": 24,
+        "output_chars_pdf_backed": 21,
+        "output_chars_synthetic": 3,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.875,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "wrong_page_span_count": 0,
+        "invalid_span_bbox_count": 0,
+        "out_of_page_bbox_count": 0,
+        "span_bbox_collapse_count": 0,
+        "identical_span_set_sibling_count": 0,
+        "synthetic_char_ratio": 0.125,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 4.0,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 1.0,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "table_repeated_text_legal_19",
+      "path": "eval/manifests/../corpus/legal/19. CBSE v Aditya Bandopadyay.pdf",
+      "category": "tables",
+      "status": "passed",
+      "product_status": "passed",
+      "raw_layout_status": "passed",
+      "overall_status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 85437,
+          "raw_chars": 86459,
+          "chunk_count": 53,
+          "duplicate_line_ratio": 0.00679694137638065,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 5367
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 85354,
+          "raw_chars": 85407,
+          "chunk_count": 48,
+          "duplicate_line_ratio": 0.020905923344947785,
+          "layout_to_no_layout_char_ratio": 0.9990285239416178,
+          "duration_ms": 5382
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 85354,
+          "raw_chars": 85407,
+          "chunk_count": 48,
+          "duplicate_line_ratio": 0.020905923344947785,
+          "layout_to_no_layout_char_ratio": 0.9990285239416178,
+          "duration_ms": 8851
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 85437,
+          "raw_chars": 86459,
+          "chunk_count": 53,
+          "duplicate_line_ratio": 0.00679694137638065,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 5367
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 85354,
+          "raw_chars": 85407,
+          "chunk_count": 48,
+          "duplicate_line_ratio": 0.020905923344947785,
+          "layout_to_no_layout_char_ratio": 0.9990285239416178,
+          "duration_ms": 8851
+        },
+        "ours_chunks": {
+          "normalized_chars": 85354,
+          "raw_chars": 85407,
+          "chunk_count": 48,
+          "duplicate_line_ratio": 0.020905923344947785,
+          "layout_to_no_layout_char_ratio": 0.9990285239416178,
+          "duration_ms": 8851
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 85540,
+          "delta_to_layout_chars": -186,
+          "note": null
+        }
+      },
+      "chunks": {
+        "chunk_count": 48,
+        "max_tokens": 500,
+        "max_chunk_tokens": 425,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0,
+        "content_ext_max_compressed_bytes": 24617,
+        "content_ext_max_uncompressed_bytes": 473448,
+        "content_ext_total_compressed_bytes": 917384,
+        "content_ext_total_uncompressed_bytes": 17709581
+      },
+      "location": {
+        "fragment_count": 13832,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 161,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 85360,
+        "output_chars_with_any_span": 85360,
+        "output_chars_pdf_backed": 71519,
+        "output_chars_synthetic": 13841,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8378514526710403,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "wrong_page_span_count": 0,
+        "invalid_span_bbox_count": 0,
+        "out_of_page_bbox_count": 998,
+        "span_bbox_collapse_count": 0,
+        "identical_span_set_sibling_count": 0,
+        "synthetic_char_ratio": 0.1621485473289597,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.020905923344947785,
+        "fragment_density": 288.1666666666667,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 1.0,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    }
+  ]
+}

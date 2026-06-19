@@ -1,0 +1,40 @@
+[
+  {
+    "action": "Review the implemented PDF parser next-items work for PDF-T-0007 against artifacts/pdf_parser_next_items_after_codebase_5, then approve, waive, or return rework with failing item IDs.",
+    "blocking": true,
+    "blocks": [
+      "PDF-T-0007"
+    ],
+    "covers": [
+      "P0-01",
+      "P0-02",
+      "P0-03",
+      "P0-04",
+      "P0-05",
+      "P0-06",
+      "P0-07",
+      "P1-08",
+      "P1-09",
+      "P1-10"
+    ],
+    "created_at": "2026-05-29T12:45:43Z",
+    "created_by": "agent:sarav",
+    "gate_kind": "signoff",
+    "id": "PDF-G-0001",
+    "kind": "gate",
+    "owner": "human:sarav",
+    "path": "work/gates/PDF-G-0001.md",
+    "priority": "p2",
+    "project": "rag_pdf_extract",
+    "satisfaction_evidence": "User explicitly approved this code-review gate and clarified that code review is agent-reviewable; no human-only manual action remains.",
+    "satisfied_at": "2026-05-29T13:36:06Z",
+    "satisfied_by": "agent:sarav",
+    "schema": "tusker.gate/v1",
+    "state_rev": "sha256:0f4437b89de2d61b951ae05177efbcab18156abb387e8cb697ed7e68616bad14",
+    "status": "satisfied",
+    "title": "Review PDF parser next-items implementation",
+    "updated_at": "2026-05-29T13:37:05Z",
+    "updated_by": "tusker:reconcile",
+    "verification": "Human reviewer records an approve/waive/rework decision that names the reviewed packet and any failed P0/P1 item IDs."
+  }
+]

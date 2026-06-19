@@ -1,0 +1,16 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-05-29T04:21:53Z",
+  "event_kind": "verification_added",
+  "id": "01KSRZF74A7Z3N4W824CCE0V5H",
+  "object": "PDF-T-0004",
+  "object_kind": "task",
+  "payload": {
+    "blocked_by": "",
+    "check": "ARTIFACT_DIR=.tusker/scratch/PDF-T-0004 scripts/codebasezip.sh; unzip -l .tusker/scratch/PDF-T-0004/codebase-latest.zip eval/fixtures/pdfs/ctm_scaled_text.pdf eval/fixtures/pdfs/invisible_ocr_only.pdf eval/fixtures/pdfs/long_split_locations.pdf eval/fixtures/pdf_manifest.json",
+    "covers": "A1",
+    "result": "pass"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

@@ -7,9 +7,16 @@ use crate::{apply_transform_to_image, decode_stream, PdfImage, Transform};
 
 // PNG-Up predictor expansion function
 fn png_up_predictor(bytes: &[u8], row: usize) -> Vec<u8> {
+    if row == 0 {
+        warn!("Skipping PNG predictor with zero row width");
+        return bytes.to_vec();
+    }
+
     let mut out = Vec::with_capacity(bytes.len()); // row + 1 per line
     for chunk in bytes.chunks(row + 1) {
-        let (tag, line) = chunk.split_first().unwrap();
+        let Some((tag, line)) = chunk.split_first() else {
+            continue;
+        };
         match tag {
             0 => out.extend_from_slice(line), // None
             2 | 1 => {
@@ -29,7 +36,10 @@ fn png_up_predictor(bytes: &[u8], row: usize) -> Vec<u8> {
                     i += 1;
                 }
             }
-            _ => panic!("Predictor {} not supported", tag),
+            _ => {
+                warn!("Skipping unsupported PNG predictor tag {}", tag);
+                out.extend_from_slice(line);
+            }
         }
     }
     out

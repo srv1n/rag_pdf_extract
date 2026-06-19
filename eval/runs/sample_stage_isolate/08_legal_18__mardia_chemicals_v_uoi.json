@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "legal_18__mardia_chemicals_v_uoi",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/18. Mardia Chemicals v UoI.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

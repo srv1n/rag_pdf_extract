@@ -41,7 +41,9 @@ impl VisualLine {
             return true;
         }
         let first_size = self.segments[0].font_size;
-        self.segments.iter().all(|s| (s.font_size - first_size).abs() < tolerance)
+        self.segments
+            .iter()
+            .all(|s| (s.font_size - first_size).abs() < tolerance)
     }
 
     /// Check if all segments in this line have consistent heights (within tolerance)
@@ -50,19 +52,23 @@ impl VisualLine {
             return true;
         }
         let first_height = self.segments[0].height;
-        self.segments.iter().all(|s| (s.height - first_height).abs() < tolerance)
+        self.segments
+            .iter()
+            .all(|s| (s.height - first_height).abs() < tolerance)
     }
 
     /// Get total word count across all segments
     pub fn word_count(&self) -> usize {
-        self.segments.iter()
+        self.segments
+            .iter()
             .map(|s| s.content.split_whitespace().count())
             .sum()
     }
 
     /// Get combined text content
     pub fn text(&self) -> String {
-        self.segments.iter()
+        self.segments
+            .iter()
             .map(|s| s.content.as_str())
             .collect::<Vec<_>>()
             .join(" ")
@@ -91,7 +97,10 @@ pub struct DocumentStats {
 }
 
 /// Group segments into visual lines based on Y-coordinate proximity
-pub fn group_into_visual_lines(segments: &[TextSegment], y_tolerance: f64) -> Vec<VisualLine> {
+pub(crate) fn group_into_visual_lines(
+    segments: &[TextSegment],
+    y_tolerance: f64,
+) -> Vec<VisualLine> {
     if segments.is_empty() {
         return Vec::new();
     }
@@ -99,7 +108,8 @@ pub fn group_into_visual_lines(segments: &[TextSegment], y_tolerance: f64) -> Ve
     // Sort segments by page, then Y (descending for top-to-bottom), then X
     let mut sorted_segments: Vec<&TextSegment> = segments.iter().collect();
     sorted_segments.sort_by(|a, b| {
-        a.page_num.cmp(&b.page_num)
+        a.page_num
+            .cmp(&b.page_num)
             .then(b.y.partial_cmp(&a.y).unwrap_or(std::cmp::Ordering::Equal))
             .then(a.x.partial_cmp(&b.x).unwrap_or(std::cmp::Ordering::Equal))
     });
@@ -133,18 +143,24 @@ pub fn group_into_visual_lines(segments: &[TextSegment], y_tolerance: f64) -> Ve
 }
 
 fn create_visual_line(segments: &[&TextSegment], page_num: u32) -> VisualLine {
-    let line_segments: Vec<LineSegmentInfo> = segments.iter().map(|s| LineSegmentInfo {
-        content: s.content.clone(),
-        x: s.x,
-        width: s.width,
-        height: s.height,
-        font_size: s.font_size,
-        is_bold: s.is_bold,
-        font_name: s.font_name.clone(),
-    }).collect();
+    let line_segments: Vec<LineSegmentInfo> = segments
+        .iter()
+        .map(|s| LineSegmentInfo {
+            content: s.content.clone(),
+            x: s.x,
+            width: s.width,
+            height: s.height,
+            font_size: s.font_size,
+            is_bold: s.is_bold,
+            font_name: s.font_name.clone(),
+        })
+        .collect();
 
     let min_x = segments.iter().map(|s| s.x).fold(f64::INFINITY, f64::min);
-    let max_x = segments.iter().map(|s| s.x + s.width).fold(f64::NEG_INFINITY, f64::max);
+    let max_x = segments
+        .iter()
+        .map(|s| s.x + s.width)
+        .fold(f64::NEG_INFINITY, f64::max);
     let max_height = segments.iter().map(|s| s.height).fold(0.0_f64, f64::max);
     let y = segments.iter().map(|s| s.y).sum::<f64>() / segments.len() as f64;
 
@@ -159,7 +175,7 @@ fn create_visual_line(segments: &[&TextSegment], page_num: u32) -> VisualLine {
     }
 }
 
-pub fn calculate_document_stats(segments: &[TextSegment]) -> DocumentStats {
+pub(crate) fn calculate_document_stats(segments: &[TextSegment]) -> DocumentStats {
     let mut font_stats: HashMap<String, FontStats> = HashMap::new();
 
     // Collect font statistics
@@ -184,15 +200,18 @@ pub fn calculate_document_stats(segments: &[TextSegment]) -> DocumentStats {
     }
 
     // Collect geometric statistics: heights, widths, positions
-    let mut all_heights: Vec<f64> = segments.iter()
+    let mut all_heights: Vec<f64> = segments
+        .iter()
         .filter(|s| s.height > 0.0)
         .map(|s| s.height)
         .collect();
-    let mut all_x_positions: Vec<f64> = segments.iter()
+    let mut all_x_positions: Vec<f64> = segments
+        .iter()
         .filter(|s| s.width > 0.0)
         .map(|s| s.x)
         .collect();
-    let mut all_right_positions: Vec<f64> = segments.iter()
+    let mut all_right_positions: Vec<f64> = segments
+        .iter()
         .filter(|s| s.width > 0.0)
         .map(|s| s.x + s.width)
         .collect();
@@ -210,7 +229,8 @@ pub fn calculate_document_stats(segments: &[TextSegment]) -> DocumentStats {
             let key = (h * 2.0).round() as i64; // 0.5 precision
             *height_counts.entry(key).or_insert(0) += 1;
         }
-        let mode_key = height_counts.into_iter()
+        let mode_key = height_counts
+            .into_iter()
             .max_by_key(|&(_, count)| count)
             .map(|(key, _)| key)
             .unwrap_or(24); // default 12.0 * 2

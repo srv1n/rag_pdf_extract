@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "legal_12__cci_v_kerala_film_exhibitors_federation___ors",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/12. CCI v Kerala Film Exhibitors Federation & Ors.pdf",
+      "category": "form_xobject",
+      "expected": {}
+    }
+  ]
+}

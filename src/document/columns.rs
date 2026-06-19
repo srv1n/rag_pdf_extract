@@ -55,18 +55,12 @@ pub(crate) fn detect_columns(segments: &[TextSegment], page_width: f64) -> Colum
     }
 
     // Find the content bounds
-    let min_x = segments
-        .iter()
-        .map(|s| s.x)
-        .fold(f64::INFINITY, f64::min);
+    let min_x = segments.iter().map(|s| s.x).fold(f64::INFINITY, f64::min);
     let max_x = segments
         .iter()
         .map(|s| s.x + s.width)
         .fold(f64::NEG_INFINITY, f64::max);
-    let min_y = segments
-        .iter()
-        .map(|s| s.y)
-        .fold(f64::INFINITY, f64::min);
+    let min_y = segments.iter().map(|s| s.y).fold(f64::INFINITY, f64::min);
     let max_y = segments
         .iter()
         .map(|s| s.y + s.height)
@@ -261,13 +255,19 @@ fn calculate_gutter_height(
     }
 
     // Find the y-overlap between left and right content
-    let left_min_y = left_segments.iter().map(|s| s.y).fold(f64::INFINITY, f64::min);
+    let left_min_y = left_segments
+        .iter()
+        .map(|s| s.y)
+        .fold(f64::INFINITY, f64::min);
     let left_max_y = left_segments
         .iter()
         .map(|s| s.y + s.height)
         .fold(f64::NEG_INFINITY, f64::max);
 
-    let right_min_y = right_segments.iter().map(|s| s.y).fold(f64::INFINITY, f64::min);
+    let right_min_y = right_segments
+        .iter()
+        .map(|s| s.y)
+        .fold(f64::INFINITY, f64::min);
     let right_max_y = right_segments
         .iter()
         .map(|s| s.y + s.height)
@@ -288,9 +288,7 @@ fn calculate_gutter_height(
 pub(crate) fn reorder_by_columns(segments: &mut [TextSegment], layout: &ColumnLayout) {
     if !layout.is_multi_column {
         // Single column: just sort by Y (top to bottom)
-        segments.sort_by(|a, b| {
-            a.y.partial_cmp(&b.y).unwrap()
-        });
+        segments.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap());
         return;
     }
 
@@ -317,13 +315,11 @@ pub(crate) fn reorder_by_columns(segments: &mut [TextSegment], layout: &ColumnLa
 
     // Sort by: column index first, then Y position within column
     let y_positions: Vec<f64> = segments.iter().map(|s| s.y).collect();
-    column_assignments.sort_by(|(idx_a, col_a), (idx_b, col_b)| {
-        match col_a.cmp(col_b) {
-            std::cmp::Ordering::Equal => {
-                y_positions[*idx_a].partial_cmp(&y_positions[*idx_b]).unwrap()
-            }
-            other => other,
-        }
+    column_assignments.sort_by(|(idx_a, col_a), (idx_b, col_b)| match col_a.cmp(col_b) {
+        std::cmp::Ordering::Equal => y_positions[*idx_a]
+            .partial_cmp(&y_positions[*idx_b])
+            .unwrap(),
+        other => other,
     });
 
     // Reorder segments based on sorted indices
@@ -381,6 +377,7 @@ mod tests {
             char_start: 0,
             char_end: 4,
             word_count: 1,
+            located_text: None,
         }
     }
 

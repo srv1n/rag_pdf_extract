@@ -1,0 +1,16 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-05-29T17:57:45Z",
+  "event_kind": "verification_added",
+  "id": "01KSTE53XGM8H24A2XH1AGQWEN",
+  "object": "PDF-T-0009",
+  "object_kind": "task",
+  "payload": {
+    "blocked_by": "",
+    "check": "cargo test --lib reconstruction_tests \u0026\u0026 cargo test --test downstream_compat \u0026\u0026 cargo check --examples",
+    "covers": "A1",
+    "result": "pass"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

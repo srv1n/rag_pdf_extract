@@ -1,0 +1,15 @@
+{
+  "actor": "agent:codex",
+  "at": "2026-06-18T13:03:36Z",
+  "event_kind": "status_changed",
+  "id": "01KVDD8W95SQ671X27VDNBXNEW",
+  "object": "PDF-T-0001",
+  "object_kind": "task",
+  "payload": {
+    "from": "backlog",
+    "reason": "Task contract now has concrete acceptance, local artifact paths, and verification commands.",
+    "to": "ready"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

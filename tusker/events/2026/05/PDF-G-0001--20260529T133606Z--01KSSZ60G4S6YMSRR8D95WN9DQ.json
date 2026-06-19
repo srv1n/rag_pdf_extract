@@ -1,0 +1,16 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-05-29T13:36:06Z",
+  "event_kind": "gate_satisfied",
+  "id": "01KSSZ60G4S6YMSRR8D95WN9DQ",
+  "object": "PDF-G-0001",
+  "object_kind": "gate",
+  "payload": {
+    "evidence": "User explicitly approved this code-review gate and clarified that code review is agent-reviewable; no human-only manual action remains.",
+    "from": "open",
+    "reason": "",
+    "to": "satisfied"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

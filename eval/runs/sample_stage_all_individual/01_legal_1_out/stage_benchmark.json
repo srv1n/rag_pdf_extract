@@ -1,0 +1,70 @@
+{
+  "generated_at_epoch_ms": 1780035025836,
+  "manifest_path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/runs/sample_stage_all_individual/01_legal_1.json",
+  "fixtures": [
+    {
+      "fixture_id": "legal_1",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/1.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 111568,
+          "raw_chars": 111585,
+          "chunk_count": 121,
+          "duplicate_line_ratio": 0.01955104996379431,
+          "duration_ms": 6482
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 111478,
+          "raw_chars": 111565,
+          "chunk_count": 99,
+          "duplicate_line_ratio": 0.1410365335598981,
+          "duration_ms": 6623
+        },
+        "ours_chunks": {
+          "normalized_chars": 111478,
+          "raw_chars": 111565,
+          "chunk_count": 99,
+          "duplicate_line_ratio": 0.1410365335598981,
+          "duration_ms": 6623
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 113066,
+          "delta_to_layout_chars": -1588,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 99,
+        "max_tokens": 350,
+        "max_chunk_tokens": 314,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 510,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.8393425856980092,
+        "fragment_density": 5.151515151515151,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "suite_name": "founder-legal-regression-pack",
+  "description": "Mixed local fixture and founder/legal regression pack for catching extraction collapse, chunk collapse, and obvious regressions.",
+  "base_dir": "../..",
+  "documents": [
+    {
+      "id": "repo-documents-stack",
+      "label": "documents_stack.pdf",
+      "group": "repo-fixture",
+      "path": "tests/docs_cache/documents_stack.pdf",
+      "notes": "Ugly smoke fixture. It is useful for crash and cap checks, not prose-quality minimums.",
+      "max_tokens": 500,
+      "all_texts": true,
+      "detect_vertical": false,
+      "clean_text": true,
+      "expected_min_chars": 0,
+      "expected_min_chunks": 0
+    },
+    {
+      "id": "repo-embedded-core-fonts",
+      "label": "embeded-core-fonts.pdf",
+      "group": "repo-fixture",
+      "path": "tests/docs_cache/embeded-core-fonts.pdf",
+      "notes": "Stable repo fixture for embedded font handling.",
+      "max_tokens": 500,
+      "all_texts": true,
+      "detect_vertical": false,
+      "clean_text": true,
+      "expected_min_chars": 100,
+      "expected_min_chunks": 1
+    },
+    {
+      "id": "repo-large-local",
+      "label": "10.pdf",
+      "group": "repo-fixture",
+      "path": "10.pdf",
+      "notes": "A larger local PDF that should not collapse into a trivial one-chunk result.",
+      "max_tokens": 500,
+      "all_texts": true,
+      "detect_vertical": true,
+      "clean_text": true,
+      "expected_min_chars": 300,
+      "expected_min_chunks": 2
+    },
+    {
+      "id": "founder-energy-watchdog",
+      "label": "Energy Watchdog v CERC",
+      "group": "founder-legal",
+      "path": "/Users/sarav/Downloads/rzn_founder_corpus_01/law/1. Energy Watchdog v CERC.pdf",
+      "notes": "Known-good legal corpus baseline.",
+      "max_tokens": 500,
+      "all_texts": true,
+      "detect_vertical": true,
+      "clean_text": true,
+      "expected_min_chars": 500,
+      "expected_min_chunks": 2
+    },
+    {
+      "id": "founder-puttaswamy",
+      "label": "Puttaswamy v UoI",
+      "group": "founder-legal",
+      "path": "/Users/sarav/Downloads/rzn_founder_corpus_01/law/7. Puttaswamy v UoI.pdf",
+      "notes": "High-volume legal baseline used to catch major extraction regressions.",
+      "max_tokens": 500,
+      "all_texts": true,
+      "detect_vertical": true,
+      "clean_text": true,
+      "expected_min_chars": 500,
+      "expected_min_chunks": 2
+    },
+    {
+      "id": "founder-vishaka",
+      "label": "Vishaka v State of Rajasthan",
+      "group": "founder-legal",
+      "path": "/Users/sarav/Downloads/rzn_founder_corpus_01/law/8. Vishaka v State of Rajasthan.pdf",
+      "notes": "The suspicious outlier. This should never quietly collapse to a single chunk again.",
+      "max_tokens": 500,
+      "all_texts": true,
+      "detect_vertical": true,
+      "clean_text": true,
+      "expected_min_chars": 300,
+      "expected_min_chunks": 2
+    }
+  ]
+}

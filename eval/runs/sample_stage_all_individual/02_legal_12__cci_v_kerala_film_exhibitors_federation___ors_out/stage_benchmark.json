@@ -1,0 +1,70 @@
+{
+  "generated_at_epoch_ms": 1780035045596,
+  "manifest_path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/runs/sample_stage_all_individual/02_legal_12__cci_v_kerala_film_exhibitors_federation___ors.json",
+  "fixtures": [
+    {
+      "fixture_id": "legal_12__cci_v_kerala_film_exhibitors_federation___ors",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/12. CCI v Kerala Film Exhibitors Federation & Ors.pdf",
+      "category": "form_xobject",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 101188,
+          "raw_chars": 101189,
+          "chunk_count": 122,
+          "duplicate_line_ratio": 0.013548387096774195,
+          "duration_ms": 10828
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 101058,
+          "raw_chars": 101064,
+          "chunk_count": 84,
+          "duplicate_line_ratio": 0.03683492496589358,
+          "duration_ms": 6785
+        },
+        "ours_chunks": {
+          "normalized_chars": 101058,
+          "raw_chars": 101064,
+          "chunk_count": 84,
+          "duplicate_line_ratio": 0.03683492496589358,
+          "duration_ms": 6785
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 102349,
+          "delta_to_layout_chars": -1291,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 84,
+        "max_tokens": 350,
+        "max_chunk_tokens": 301,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 923,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.8595775442905101,
+        "fragment_density": 10.988095238095237,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    }
+  ]
+}

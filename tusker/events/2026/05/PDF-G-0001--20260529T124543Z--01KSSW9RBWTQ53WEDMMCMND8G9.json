@@ -1,0 +1,15 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-05-29T12:45:43Z",
+  "event_kind": "created",
+  "id": "01KSSW9RBWTQ53WEDMMCMND8G9",
+  "object": "PDF-G-0001",
+  "object_kind": "gate",
+  "payload": {
+    "blocks": [
+      "PDF-T-0007"
+    ]
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

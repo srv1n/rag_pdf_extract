@@ -1,0 +1,15 @@
+{
+  "actor": "agent:codex",
+  "at": "2026-05-29T04:05:33Z",
+  "event_kind": "status_changed",
+  "id": "01KSRYHA3NHVXW1TCBMVE452PN",
+  "object": "PDF-T-0002",
+  "object_kind": "task",
+  "payload": {
+    "from": "backlog",
+    "reason": "backend-pdfium no-op was replaced with an explicit unavailable backend and tests.",
+    "to": "ready"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

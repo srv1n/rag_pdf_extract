@@ -1,0 +1,13 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-05-29T17:58:14Z",
+  "event_kind": "created",
+  "id": "01KSTE605RPN3XHQK5J9H2XRV2",
+  "object": "docs",
+  "object_kind": "domain",
+  "payload": {
+    "path": "knowledge/domains/docs/INDEX.md"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

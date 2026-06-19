@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "legal_13__kumari_shrilekha_vidyarthi_v_state_of_up",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/13. Kumari Shrilekha Vidyarthi v State of UP.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

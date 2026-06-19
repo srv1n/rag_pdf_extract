@@ -1,0 +1,4 @@
+filters:
+  kind: gate
+  status: open
+  owner_prefix: human:

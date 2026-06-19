@@ -1,0 +1,2602 @@
+{
+  "generated_at_epoch_ms": 1780055133198,
+  "manifest_path": "eval/runs/sample_stage_valid_manifest_abs.json",
+  "fixtures": [
+    {
+      "fixture_id": "legal_1",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/1.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 111570,
+          "raw_chars": 112736,
+          "chunk_count": 110,
+          "duplicate_line_ratio": 0.015636634400595706,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 10294
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 111379,
+          "raw_chars": 111423,
+          "chunk_count": 95,
+          "duplicate_line_ratio": 0.05838641188959659,
+          "layout_to_no_layout_char_ratio": 0.9982880702697858,
+          "duration_ms": 6893
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 111379,
+          "raw_chars": 111423,
+          "chunk_count": 95,
+          "duplicate_line_ratio": 0.05838641188959659,
+          "layout_to_no_layout_char_ratio": 0.9982880702697858,
+          "duration_ms": 11354
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 111570,
+          "raw_chars": 112736,
+          "chunk_count": 110,
+          "duplicate_line_ratio": 0.015636634400595706,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 10294
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 111379,
+          "raw_chars": 111423,
+          "chunk_count": 95,
+          "duplicate_line_ratio": 0.05838641188959659,
+          "layout_to_no_layout_char_ratio": 0.9982880702697858,
+          "duration_ms": 11354
+        },
+        "ours_chunks": {
+          "normalized_chars": 111379,
+          "raw_chars": 111423,
+          "chunk_count": 95,
+          "duplicate_line_ratio": 0.05838641188959659,
+          "layout_to_no_layout_char_ratio": 0.9982880702697858,
+          "duration_ms": 11354
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 113066,
+          "delta_to_layout_chars": -1687,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 95,
+        "max_tokens": 350,
+        "max_chunk_tokens": 350,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 401,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 111329,
+        "output_chars_with_any_span": 111329,
+        "output_chars_pdf_backed": 94643,
+        "output_chars_synthetic": 16686,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.850119914846985,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.14988008515301493,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 4.221052631578948,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.05400787503736333,
+        "highlight_replay_iou_p95": 0.3030303074089731
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "legal_12__cci_v_kerala_film_exhibitors_federation___ors",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/12. CCI v Kerala Film Exhibitors Federation & Ors.pdf",
+      "category": "form_xobject",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 101548,
+          "raw_chars": 102893,
+          "chunk_count": 122,
+          "duplicate_line_ratio": 0.014896373056994872,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 4416
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 102176,
+          "raw_chars": 102211,
+          "chunk_count": 84,
+          "duplicate_line_ratio": 0.0357142857142857,
+          "layout_to_no_layout_char_ratio": 1.006184267538504,
+          "duration_ms": 4419
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 102176,
+          "raw_chars": 102211,
+          "chunk_count": 84,
+          "duplicate_line_ratio": 0.0357142857142857,
+          "layout_to_no_layout_char_ratio": 1.006184267538504,
+          "duration_ms": 8009
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 101548,
+          "raw_chars": 102893,
+          "chunk_count": 122,
+          "duplicate_line_ratio": 0.014896373056994872,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 4416
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 102176,
+          "raw_chars": 102211,
+          "chunk_count": 84,
+          "duplicate_line_ratio": 0.0357142857142857,
+          "layout_to_no_layout_char_ratio": 1.006184267538504,
+          "duration_ms": 8009
+        },
+        "ours_chunks": {
+          "normalized_chars": 102176,
+          "raw_chars": 102211,
+          "chunk_count": 84,
+          "duplicate_line_ratio": 0.0357142857142857,
+          "layout_to_no_layout_char_ratio": 1.006184267538504,
+          "duration_ms": 8009
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 102349,
+          "delta_to_layout_chars": -173,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 84,
+        "max_tokens": 350,
+        "max_chunk_tokens": 306,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 923,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 102128,
+        "output_chars_with_any_span": 102128,
+        "output_chars_pdf_backed": 85438,
+        "output_chars_synthetic": 16690,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.836577628074573,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.1634223719254269,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 10.988095238095237,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.11181018613553897,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "legal_13__kumari_shrilekha_vidyarthi_v_state_of_up",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/13. Kumari Shrilekha Vidyarthi v State of UP.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 88741,
+          "raw_chars": 88743,
+          "chunk_count": 85,
+          "duplicate_line_ratio": 0.011235955056179803,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 3932
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 89960,
+          "raw_chars": 89981,
+          "chunk_count": 72,
+          "duplicate_line_ratio": 0.009063444108761365,
+          "layout_to_no_layout_char_ratio": 1.013736604275363,
+          "duration_ms": 2748
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 89960,
+          "raw_chars": 89981,
+          "chunk_count": 72,
+          "duplicate_line_ratio": 0.009063444108761365,
+          "layout_to_no_layout_char_ratio": 1.013736604275363,
+          "duration_ms": 6821
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 88741,
+          "raw_chars": 88743,
+          "chunk_count": 85,
+          "duplicate_line_ratio": 0.011235955056179803,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 3932
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 89960,
+          "raw_chars": 89981,
+          "chunk_count": 72,
+          "duplicate_line_ratio": 0.009063444108761365,
+          "layout_to_no_layout_char_ratio": 1.013736604275363,
+          "duration_ms": 6821
+        },
+        "ours_chunks": {
+          "normalized_chars": 89960,
+          "raw_chars": 89981,
+          "chunk_count": 72,
+          "duplicate_line_ratio": 0.009063444108761365,
+          "layout_to_no_layout_char_ratio": 1.013736604275363,
+          "duration_ms": 6821
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 91637,
+          "delta_to_layout_chars": -1677,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 72,
+        "max_tokens": 350,
+        "max_chunk_tokens": 307,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 125,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 89910,
+        "output_chars_with_any_span": 89910,
+        "output_chars_pdf_backed": 74926,
+        "output_chars_synthetic": 14984,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8333444555666778,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.1666555444333222,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 1.7361111111111112,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.02403846153846154,
+        "highlight_replay_iou_p95": 0.08333333333333333
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "legal_14__tomaso_bruno_v_state_of_up",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/14. Tomaso Bruno v State of UP.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 3961,
+          "raw_chars": 3983,
+          "chunk_count": 20,
+          "duplicate_line_ratio": 0.050000000000000044,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 1750
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 41764,
+          "raw_chars": 41779,
+          "chunk_count": 38,
+          "duplicate_line_ratio": 0.018404907975460127,
+          "layout_to_no_layout_char_ratio": 10.543802070184297,
+          "duration_ms": 2405
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 3961,
+          "raw_chars": 3983,
+          "chunk_count": 20,
+          "duplicate_line_ratio": 0.050000000000000044,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 4442
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 3961,
+          "raw_chars": 3983,
+          "chunk_count": 20,
+          "duplicate_line_ratio": 0.050000000000000044,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 1750
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 3961,
+          "raw_chars": 3983,
+          "chunk_count": 20,
+          "duplicate_line_ratio": 0.050000000000000044,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 4442
+        },
+        "ours_chunks": {
+          "normalized_chars": 3961,
+          "raw_chars": 3983,
+          "chunk_count": 20,
+          "duplicate_line_ratio": 0.050000000000000044,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 4442
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 42099,
+          "delta_to_layout_chars": -38138,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 20,
+        "max_tokens": 350,
+        "max_chunk_tokens": 324,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 108,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 3964,
+        "output_chars_with_any_span": 3964,
+        "output_chars_pdf_backed": 3352,
+        "output_chars_synthetic": 612,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8456104944500504,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.15438950554994954,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 5.4,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.9999999999999997,
+        "highlight_replay_iou_p95": 1.0000000000000004
+      },
+      "layout_fallback_used": true,
+      "raw_layout_failures": [
+        "raw layout/no-layout char ratio 10.544 > 1.250"
+      ],
+      "failures": []
+    },
+    {
+      "fixture_id": "legal_15__mc_mehta_v_uoi",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/15. MC Mehta v UoI.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 68645,
+          "raw_chars": 68646,
+          "chunk_count": 66,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 3678
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 69569,
+          "raw_chars": 69587,
+          "chunk_count": 55,
+          "duplicate_line_ratio": 0.00877192982456143,
+          "layout_to_no_layout_char_ratio": 1.0134605579430402,
+          "duration_ms": 2767
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 69569,
+          "raw_chars": 69587,
+          "chunk_count": 55,
+          "duplicate_line_ratio": 0.00877192982456143,
+          "layout_to_no_layout_char_ratio": 1.0134605579430402,
+          "duration_ms": 6776
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 68645,
+          "raw_chars": 68646,
+          "chunk_count": 66,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 3678
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 69569,
+          "raw_chars": 69587,
+          "chunk_count": 55,
+          "duplicate_line_ratio": 0.00877192982456143,
+          "layout_to_no_layout_char_ratio": 1.0134605579430402,
+          "duration_ms": 6776
+        },
+        "ours_chunks": {
+          "normalized_chars": 69569,
+          "raw_chars": 69587,
+          "chunk_count": 55,
+          "duplicate_line_ratio": 0.00877192982456143,
+          "layout_to_no_layout_char_ratio": 1.0134605579430402,
+          "duration_ms": 6776
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 70908,
+          "delta_to_layout_chars": -1339,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 55,
+        "max_tokens": 350,
+        "max_chunk_tokens": 316,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 87,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 69533,
+        "output_chars_with_any_span": 69533,
+        "output_chars_pdf_backed": 57942,
+        "output_chars_synthetic": 11591,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8333021730689025,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.16669782693109747,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 1.5818181818181818,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.021739130434782608,
+        "highlight_replay_iou_p95": 0.09259259259259259
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "legal_16__bwssb_v_a_rajappa",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/16. BWSSB v A Rajappa.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 255155,
+          "raw_chars": 255155,
+          "chunk_count": 273,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 11656
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 258902,
+          "raw_chars": 258970,
+          "chunk_count": 215,
+          "duplicate_line_ratio": 0.019957234497505305,
+          "layout_to_no_layout_char_ratio": 1.014685191354275,
+          "duration_ms": 7385
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 258902,
+          "raw_chars": 258970,
+          "chunk_count": 215,
+          "duplicate_line_ratio": 0.019957234497505305,
+          "layout_to_no_layout_char_ratio": 1.014685191354275,
+          "duration_ms": 20226
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 255155,
+          "raw_chars": 255155,
+          "chunk_count": 273,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 11656
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 258902,
+          "raw_chars": 258970,
+          "chunk_count": 215,
+          "duplicate_line_ratio": 0.019957234497505305,
+          "layout_to_no_layout_char_ratio": 1.014685191354275,
+          "duration_ms": 20226
+        },
+        "ours_chunks": {
+          "normalized_chars": 258902,
+          "raw_chars": 258970,
+          "chunk_count": 215,
+          "duplicate_line_ratio": 0.019957234497505305,
+          "layout_to_no_layout_char_ratio": 1.014685191354275,
+          "duration_ms": 20226
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 263300,
+          "delta_to_layout_chars": -4398,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 215,
+        "max_tokens": 350,
+        "max_chunk_tokens": 303,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 782,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 258756,
+        "output_chars_with_any_span": 258756,
+        "output_chars_pdf_backed": 216307,
+        "output_chars_synthetic": 42449,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8359496977847857,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.16405030221521433,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 3.6372093023255814,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.06535947712418301,
+        "highlight_replay_iou_p95": 0.23255813953488372
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "legal_17__sunil_b_naik_v_geowave_commander",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/17. Sunil B Naik v Geowave Commander.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 80930,
+          "raw_chars": 80941,
+          "chunk_count": 82,
+          "duplicate_line_ratio": 0.01534919416730618,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 4700
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 80918,
+          "raw_chars": 80959,
+          "chunk_count": 71,
+          "duplicate_line_ratio": 0.08132530120481929,
+          "layout_to_no_layout_char_ratio": 0.9998517237118497,
+          "duration_ms": 4833
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 80918,
+          "raw_chars": 80959,
+          "chunk_count": 71,
+          "duplicate_line_ratio": 0.08132530120481929,
+          "layout_to_no_layout_char_ratio": 0.9998517237118497,
+          "duration_ms": 8039
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 80930,
+          "raw_chars": 80941,
+          "chunk_count": 82,
+          "duplicate_line_ratio": 0.01534919416730618,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 4700
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 80918,
+          "raw_chars": 80959,
+          "chunk_count": 71,
+          "duplicate_line_ratio": 0.08132530120481929,
+          "layout_to_no_layout_char_ratio": 0.9998517237118497,
+          "duration_ms": 8039
+        },
+        "ours_chunks": {
+          "normalized_chars": 80918,
+          "raw_chars": 80959,
+          "chunk_count": 71,
+          "duplicate_line_ratio": 0.08132530120481929,
+          "layout_to_no_layout_char_ratio": 0.9998517237118497,
+          "duration_ms": 8039
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 82479,
+          "delta_to_layout_chars": -1561,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 71,
+        "max_tokens": 350,
+        "max_chunk_tokens": 300,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 615,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 80889,
+        "output_chars_with_any_span": 80889,
+        "output_chars_pdf_backed": 66728,
+        "output_chars_synthetic": 14161,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.824932932784433,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.175067067215567,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 8.661971830985916,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.17837786570950762,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "legal_18__mardia_chemicals_v_uoi",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/18. Mardia Chemicals v UoI.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 115899,
+          "raw_chars": 115899,
+          "chunk_count": 101,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 6032
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 116368,
+          "raw_chars": 116400,
+          "chunk_count": 128,
+          "duplicate_line_ratio": 0.0729312762973352,
+          "layout_to_no_layout_char_ratio": 1.0040466268043728,
+          "duration_ms": 4234
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 116368,
+          "raw_chars": 116400,
+          "chunk_count": 128,
+          "duplicate_line_ratio": 0.0729312762973352,
+          "layout_to_no_layout_char_ratio": 1.0040466268043728,
+          "duration_ms": 9921
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 115899,
+          "raw_chars": 115899,
+          "chunk_count": 101,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 6032
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 116368,
+          "raw_chars": 116400,
+          "chunk_count": 128,
+          "duplicate_line_ratio": 0.0729312762973352,
+          "layout_to_no_layout_char_ratio": 1.0040466268043728,
+          "duration_ms": 9921
+        },
+        "ours_chunks": {
+          "normalized_chars": 116368,
+          "raw_chars": 116400,
+          "chunk_count": 128,
+          "duplicate_line_ratio": 0.0729312762973352,
+          "layout_to_no_layout_char_ratio": 1.0040466268043728,
+          "duration_ms": 9921
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 118419,
+          "delta_to_layout_chars": -2051,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 128,
+        "max_tokens": 350,
+        "max_chunk_tokens": 296,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 336,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 116273,
+        "output_chars_with_any_span": 116273,
+        "output_chars_pdf_backed": 96372,
+        "output_chars_synthetic": 19901,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8288424655767032,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.1711575344232969,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 2.625,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.05390597384234712,
+        "highlight_replay_iou_p95": 0.20348837209302326
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "legal_19__cbse_v_aditya_bandopadyay",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/19. CBSE v Aditya Bandopadyay.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 85437,
+          "raw_chars": 86456,
+          "chunk_count": 76,
+          "duplicate_line_ratio": 0.007531380753138084,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 7344
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 85354,
+          "raw_chars": 85406,
+          "chunk_count": 68,
+          "duplicate_line_ratio": 0.022108843537414935,
+          "layout_to_no_layout_char_ratio": 0.9990285239416178,
+          "duration_ms": 4574
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 85354,
+          "raw_chars": 85406,
+          "chunk_count": 68,
+          "duplicate_line_ratio": 0.022108843537414935,
+          "layout_to_no_layout_char_ratio": 0.9990285239416178,
+          "duration_ms": 5999
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 85437,
+          "raw_chars": 86456,
+          "chunk_count": 76,
+          "duplicate_line_ratio": 0.007531380753138084,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 7344
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 85354,
+          "raw_chars": 85406,
+          "chunk_count": 68,
+          "duplicate_line_ratio": 0.022108843537414935,
+          "layout_to_no_layout_char_ratio": 0.9990285239416178,
+          "duration_ms": 5999
+        },
+        "ours_chunks": {
+          "normalized_chars": 85354,
+          "raw_chars": 85406,
+          "chunk_count": 68,
+          "duplicate_line_ratio": 0.022108843537414935,
+          "layout_to_no_layout_char_ratio": 0.9990285239416178,
+          "duration_ms": 5999
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 85540,
+          "delta_to_layout_chars": -186,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 68,
+        "max_tokens": 350,
+        "max_chunk_tokens": 303,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 648,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 85339,
+        "output_chars_with_any_span": 85339,
+        "output_chars_pdf_backed": 71519,
+        "output_chars_synthetic": 13820,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8380576289855752,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.16194237101442482,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 9.529411764705882,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.2395798075541015,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "legal_20_rc_cooper_v_uoi",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/20 RC Cooper v UoI.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 363292,
+          "raw_chars": 363292,
+          "chunk_count": 406,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 19447
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 370703,
+          "raw_chars": 370796,
+          "chunk_count": 343,
+          "duplicate_line_ratio": 0.042642924086223055,
+          "layout_to_no_layout_char_ratio": 1.0203995683912666,
+          "duration_ms": 10864
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 370703,
+          "raw_chars": 370796,
+          "chunk_count": 343,
+          "duplicate_line_ratio": 0.042642924086223055,
+          "layout_to_no_layout_char_ratio": 1.0203995683912666,
+          "duration_ms": 38003
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 363292,
+          "raw_chars": 363292,
+          "chunk_count": 406,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 19447
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 370703,
+          "raw_chars": 370796,
+          "chunk_count": 343,
+          "duplicate_line_ratio": 0.042642924086223055,
+          "layout_to_no_layout_char_ratio": 1.0203995683912666,
+          "duration_ms": 38003
+        },
+        "ours_chunks": {
+          "normalized_chars": 370703,
+          "raw_chars": 370796,
+          "chunk_count": 343,
+          "duplicate_line_ratio": 0.042642924086223055,
+          "layout_to_no_layout_char_ratio": 1.0203995683912666,
+          "duration_ms": 38003
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 376196,
+          "delta_to_layout_chars": -5493,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 343,
+        "max_tokens": 350,
+        "max_chunk_tokens": 331,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 1011,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 370454,
+        "output_chars_with_any_span": 370454,
+        "output_chars_pdf_backed": 307666,
+        "output_chars_synthetic": 62788,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8305106706905581,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.16948932930944194,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 2.947521865889213,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.06097560975609756,
+        "highlight_replay_iou_p95": 0.23255813953488372
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "legal_9",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/9.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 63802,
+          "raw_chars": 64615,
+          "chunk_count": 78,
+          "duplicate_line_ratio": 0.005336179295624355,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 5199
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 63655,
+          "raw_chars": 63693,
+          "chunk_count": 57,
+          "duplicate_line_ratio": 0.02216066481994461,
+          "layout_to_no_layout_char_ratio": 0.9976959969906899,
+          "duration_ms": 4076
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 63655,
+          "raw_chars": 63693,
+          "chunk_count": 57,
+          "duplicate_line_ratio": 0.02216066481994461,
+          "layout_to_no_layout_char_ratio": 0.9976959969906899,
+          "duration_ms": 6288
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 63802,
+          "raw_chars": 64615,
+          "chunk_count": 78,
+          "duplicate_line_ratio": 0.005336179295624355,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 5199
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 63655,
+          "raw_chars": 63693,
+          "chunk_count": 57,
+          "duplicate_line_ratio": 0.02216066481994461,
+          "layout_to_no_layout_char_ratio": 0.9976959969906899,
+          "duration_ms": 6288
+        },
+        "ours_chunks": {
+          "normalized_chars": 63655,
+          "raw_chars": 63693,
+          "chunk_count": 57,
+          "duplicate_line_ratio": 0.02216066481994461,
+          "layout_to_no_layout_char_ratio": 0.9976959969906899,
+          "duration_ms": 6288
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 67916,
+          "delta_to_layout_chars": -4261,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 57,
+        "max_tokens": 350,
+        "max_chunk_tokens": 305,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 154,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 63637,
+        "output_chars_with_any_span": 63637,
+        "output_chars_pdf_backed": 53291,
+        "output_chars_synthetic": 10346,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8374216257837421,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.16257837421625784,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 2.7017543859649122,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.037204053845876786,
+        "highlight_replay_iou_p95": 0.16295265547431792
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "mixed_4",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/mixed/4.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 49138,
+          "raw_chars": 49854,
+          "chunk_count": 56,
+          "duplicate_line_ratio": 0.07187894073139978,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 2544
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 49376,
+          "raw_chars": 49381,
+          "chunk_count": 49,
+          "duplicate_line_ratio": 0.040000000000000036,
+          "layout_to_no_layout_char_ratio": 1.0048435019740323,
+          "duration_ms": 2104
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 49376,
+          "raw_chars": 49381,
+          "chunk_count": 49,
+          "duplicate_line_ratio": 0.040000000000000036,
+          "layout_to_no_layout_char_ratio": 1.0048435019740323,
+          "duration_ms": 4663
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 49138,
+          "raw_chars": 49854,
+          "chunk_count": 56,
+          "duplicate_line_ratio": 0.07187894073139978,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 2544
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 49376,
+          "raw_chars": 49381,
+          "chunk_count": 49,
+          "duplicate_line_ratio": 0.040000000000000036,
+          "layout_to_no_layout_char_ratio": 1.0048435019740323,
+          "duration_ms": 4663
+        },
+        "ours_chunks": {
+          "normalized_chars": 49376,
+          "raw_chars": 49381,
+          "chunk_count": 49,
+          "duplicate_line_ratio": 0.040000000000000036,
+          "layout_to_no_layout_char_ratio": 1.0048435019740323,
+          "duration_ms": 4663
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 49304,
+          "delta_to_layout_chars": 72,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 49,
+        "max_tokens": 350,
+        "max_chunk_tokens": 338,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 243,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 49333,
+        "output_chars_with_any_span": 49333,
+        "output_chars_pdf_backed": 41132,
+        "output_chars_synthetic": 8201,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8337623902864209,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.16623760971357915,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 4.959183673469388,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.17063712706487014,
+        "highlight_replay_iou_p95": 0.45977011515252547
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "mixed_documents_stack",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/mixed/documents_stack.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 1488,
+          "raw_chars": 1500,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 857
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 1546,
+          "raw_chars": 1547,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0357142857142857,
+          "layout_to_no_layout_char_ratio": 1.038978494623656,
+          "duration_ms": 951
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 1546,
+          "raw_chars": 1547,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0357142857142857,
+          "layout_to_no_layout_char_ratio": 1.038978494623656,
+          "duration_ms": 1915
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 1488,
+          "raw_chars": 1500,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 857
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 1546,
+          "raw_chars": 1547,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0357142857142857,
+          "layout_to_no_layout_char_ratio": 1.038978494623656,
+          "duration_ms": 1915
+        },
+        "ours_chunks": {
+          "normalized_chars": 1546,
+          "raw_chars": 1547,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0357142857142857,
+          "layout_to_no_layout_char_ratio": 1.038978494623656,
+          "duration_ms": 1915
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 1600,
+          "delta_to_layout_chars": -54,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 6,
+        "max_tokens": 350,
+        "max_chunk_tokens": 229,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 15,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 1542,
+        "output_chars_with_any_span": 1542,
+        "output_chars_pdf_backed": 1277,
+        "output_chars_synthetic": 265,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8281452658884566,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.17185473411154345,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 2.5,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.22947764418720076,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "mixed_embeded_core_fonts",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/mixed/embeded-core-fonts.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 98400,
+          "raw_chars": 98400,
+          "chunk_count": 106,
+          "duplicate_line_ratio": 0.0723306544202067,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 4700
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 102708,
+          "raw_chars": 102748,
+          "chunk_count": 93,
+          "duplicate_line_ratio": 0.12393887945670623,
+          "layout_to_no_layout_char_ratio": 1.043780487804878,
+          "duration_ms": 4813
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 102708,
+          "raw_chars": 102748,
+          "chunk_count": 93,
+          "duplicate_line_ratio": 0.12393887945670623,
+          "layout_to_no_layout_char_ratio": 1.043780487804878,
+          "duration_ms": 8670
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 98400,
+          "raw_chars": 98400,
+          "chunk_count": 106,
+          "duplicate_line_ratio": 0.0723306544202067,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 4700
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 102708,
+          "raw_chars": 102748,
+          "chunk_count": 93,
+          "duplicate_line_ratio": 0.12393887945670623,
+          "layout_to_no_layout_char_ratio": 1.043780487804878,
+          "duration_ms": 8670
+        },
+        "ours_chunks": {
+          "normalized_chars": 102708,
+          "raw_chars": 102748,
+          "chunk_count": 93,
+          "duplicate_line_ratio": 0.12393887945670623,
+          "layout_to_no_layout_char_ratio": 1.043780487804878,
+          "duration_ms": 8670
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 98793,
+          "delta_to_layout_chars": 3915,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 93,
+        "max_tokens": 350,
+        "max_chunk_tokens": 338,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 254,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 102656,
+        "output_chars_with_any_span": 102656,
+        "output_chars_pdf_backed": 89115,
+        "output_chars_synthetic": 13541,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8680934382793017,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.13190656172069826,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 2.7311827956989245,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.07342656987019275,
+        "highlight_replay_iou_p95": 0.46666665677671065
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "scientific_3",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/scientific/3.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 47853,
+          "raw_chars": 48183,
+          "chunk_count": 140,
+          "duplicate_line_ratio": 0.395017793594306,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 2198
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 48025,
+          "raw_chars": 48073,
+          "chunk_count": 108,
+          "duplicate_line_ratio": 0.3755036261079774,
+          "layout_to_no_layout_char_ratio": 1.003594341002654,
+          "duration_ms": 2136
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 48025,
+          "raw_chars": 48073,
+          "chunk_count": 108,
+          "duplicate_line_ratio": 0.3755036261079774,
+          "layout_to_no_layout_char_ratio": 1.003594341002654,
+          "duration_ms": 4073
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 47853,
+          "raw_chars": 48183,
+          "chunk_count": 140,
+          "duplicate_line_ratio": 0.395017793594306,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 2198
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 48025,
+          "raw_chars": 48073,
+          "chunk_count": 108,
+          "duplicate_line_ratio": 0.3755036261079774,
+          "layout_to_no_layout_char_ratio": 1.003594341002654,
+          "duration_ms": 4073
+        },
+        "ours_chunks": {
+          "normalized_chars": 48025,
+          "raw_chars": 48073,
+          "chunk_count": 108,
+          "duplicate_line_ratio": 0.3755036261079774,
+          "layout_to_no_layout_char_ratio": 1.003594341002654,
+          "duration_ms": 4073
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 47828,
+          "delta_to_layout_chars": 197,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 108,
+        "max_tokens": 350,
+        "max_chunk_tokens": 331,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 887,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 47966,
+        "output_chars_with_any_span": 47966,
+        "output_chars_pdf_backed": 38504,
+        "output_chars_synthetic": 9462,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8027352708168286,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.19726472918317142,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 8.212962962962964,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.16042354538057862,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "scientific_6",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/scientific/6.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 40205,
+          "raw_chars": 40205,
+          "chunk_count": 42,
+          "duplicate_line_ratio": 0.28639618138424816,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 24815
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 36622,
+          "raw_chars": 36633,
+          "chunk_count": 46,
+          "duplicate_line_ratio": 0.06504065040650409,
+          "layout_to_no_layout_char_ratio": 0.9108817311279691,
+          "duration_ms": 20217
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 40205,
+          "raw_chars": 40205,
+          "chunk_count": 42,
+          "duplicate_line_ratio": 0.28639618138424816,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 22100
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 40205,
+          "raw_chars": 40205,
+          "chunk_count": 42,
+          "duplicate_line_ratio": 0.28639618138424816,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 24815
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 40205,
+          "raw_chars": 40205,
+          "chunk_count": 42,
+          "duplicate_line_ratio": 0.28639618138424816,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 22100
+        },
+        "ours_chunks": {
+          "normalized_chars": 40205,
+          "raw_chars": 40205,
+          "chunk_count": 42,
+          "duplicate_line_ratio": 0.28639618138424816,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 22100
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 39652,
+          "delta_to_layout_chars": 553,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 42,
+        "max_tokens": 350,
+        "max_chunk_tokens": 349,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 756,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 12,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 40164,
+        "output_chars_with_any_span": 40164,
+        "output_chars_pdf_backed": 33548,
+        "output_chars_synthetic": 6616,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8352753709789862,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.16472462902101384,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 18.0,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.45664620103264086,
+        "highlight_replay_iou_p95": 1.0000000000000038
+      },
+      "layout_fallback_used": true,
+      "raw_layout_failures": [
+        "raw layout/no-layout char ratio 0.911 < 0.950"
+      ],
+      "failures": []
+    },
+    {
+      "fixture_id": "pdfs_ctm_scaled_text",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/ctm_scaled_text.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 614
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 598
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1226
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 614
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1226
+        },
+        "ours_chunks": {
+          "normalized_chars": 15,
+          "raw_chars": 15,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1226
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 15,
+          "delta_to_layout_chars": 0,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 1,
+        "max_tokens": 350,
+        "max_chunk_tokens": 4,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 1,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 15,
+        "output_chars_with_any_span": 15,
+        "output_chars_pdf_backed": 13,
+        "output_chars_synthetic": 2,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8666666666666667,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.13333333333333333,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 1.0,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.9999999999999996,
+        "highlight_replay_iou_p95": 0.9999999999999996
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "pdfs_invisible_ocr_only",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/invisible_ocr_only.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 617
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 602
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1172
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 617
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1172
+        },
+        "ours_chunks": {
+          "normalized_chars": 24,
+          "raw_chars": 24,
+          "chunk_count": 1,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 1.0,
+          "duration_ms": 1172
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 24,
+          "delta_to_layout_chars": 0,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 1,
+        "max_tokens": 350,
+        "max_chunk_tokens": 4,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 1,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 24,
+        "output_chars_with_any_span": 24,
+        "output_chars_pdf_backed": 21,
+        "output_chars_synthetic": 3,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.875,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.125,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 1.0,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 1.0,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "pdfs_long_split_locations",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/long_split_locations.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 5134,
+          "raw_chars": 5134,
+          "chunk_count": 3,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 800
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 5086,
+          "raw_chars": 5086,
+          "chunk_count": 4,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 0.9906505648617062,
+          "duration_ms": 938
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 5086,
+          "raw_chars": 5086,
+          "chunk_count": 4,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 0.9906505648617062,
+          "duration_ms": 1675
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 5134,
+          "raw_chars": 5134,
+          "chunk_count": 3,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 800
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 5086,
+          "raw_chars": 5086,
+          "chunk_count": 4,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 0.9906505648617062,
+          "duration_ms": 1675
+        },
+        "ours_chunks": {
+          "normalized_chars": 5086,
+          "raw_chars": 5086,
+          "chunk_count": 4,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": 0.9906505648617062,
+          "duration_ms": 1675
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 119,
+          "delta_to_layout_chars": 4967,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 4,
+        "max_tokens": 350,
+        "max_chunk_tokens": 341,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 4,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 5083,
+        "output_chars_with_any_span": 5083,
+        "output_chars_pdf_backed": 4376,
+        "output_chars_synthetic": 707,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8609089120598072,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.1390910879401928,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 1.0,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 1.0,
+        "highlight_replay_iou_p95": 1.0000000000000004
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "pdfs_malformed_text_ops",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/fixtures/pdfs/malformed_text_ops.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 0,
+          "raw_chars": 0,
+          "chunk_count": 0,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 591
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 0,
+          "raw_chars": 0,
+          "chunk_count": 0,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 582
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 0,
+          "raw_chars": 0,
+          "chunk_count": 0,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 1165
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 0,
+          "raw_chars": 0,
+          "chunk_count": 0,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 591
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 0,
+          "raw_chars": 0,
+          "chunk_count": 0,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 1165
+        },
+        "ours_chunks": {
+          "normalized_chars": 0,
+          "raw_chars": 0,
+          "chunk_count": 0,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 1165
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 0,
+          "delta_to_layout_chars": 0,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 0,
+        "max_tokens": 350,
+        "max_chunk_tokens": 0,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 0,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 0.0,
+        "output_span_coverage_ratio": 0.0,
+        "output_chars_total": 0,
+        "output_chars_with_any_span": 0,
+        "output_chars_pdf_backed": 0,
+        "output_chars_synthetic": 0,
+        "spanned_char_ratio": 0.0,
+        "pdf_backed_char_ratio": 0.0,
+        "pdf_backed_nonsynthetic_char_ratio": 0.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.0,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 0.0,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.0,
+        "highlight_replay_iou_p95": 0.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "docs_cache_documents_stack",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/tests/docs_cache/documents_stack.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 1488,
+          "raw_chars": 1500,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 717
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 1546,
+          "raw_chars": 1547,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0357142857142857,
+          "layout_to_no_layout_char_ratio": 1.038978494623656,
+          "duration_ms": 720
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 1546,
+          "raw_chars": 1547,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0357142857142857,
+          "layout_to_no_layout_char_ratio": 1.038978494623656,
+          "duration_ms": 1394
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 1488,
+          "raw_chars": 1500,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 717
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 1546,
+          "raw_chars": 1547,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0357142857142857,
+          "layout_to_no_layout_char_ratio": 1.038978494623656,
+          "duration_ms": 1394
+        },
+        "ours_chunks": {
+          "normalized_chars": 1546,
+          "raw_chars": 1547,
+          "chunk_count": 6,
+          "duplicate_line_ratio": 0.0357142857142857,
+          "layout_to_no_layout_char_ratio": 1.038978494623656,
+          "duration_ms": 1394
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 1600,
+          "delta_to_layout_chars": -54,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 6,
+        "max_tokens": 350,
+        "max_chunk_tokens": 229,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 15,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 1542,
+        "output_chars_with_any_span": 1542,
+        "output_chars_pdf_backed": 1277,
+        "output_chars_synthetic": 265,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8281452658884566,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.17185473411154345,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 2.5,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.22947764418720076,
+        "highlight_replay_iou_p95": 1.0
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "docs_cache_embeded_core_fonts",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/tests/docs_cache/embeded-core-fonts.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 98400,
+          "raw_chars": 98400,
+          "chunk_count": 106,
+          "duplicate_line_ratio": 0.0723306544202067,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 3089
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 102708,
+          "raw_chars": 102748,
+          "chunk_count": 93,
+          "duplicate_line_ratio": 0.12393887945670623,
+          "layout_to_no_layout_char_ratio": 1.043780487804878,
+          "duration_ms": 2757
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 102708,
+          "raw_chars": 102748,
+          "chunk_count": 93,
+          "duplicate_line_ratio": 0.12393887945670623,
+          "layout_to_no_layout_char_ratio": 1.043780487804878,
+          "duration_ms": 6079
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 98400,
+          "raw_chars": 98400,
+          "chunk_count": 106,
+          "duplicate_line_ratio": 0.0723306544202067,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 3089
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 102708,
+          "raw_chars": 102748,
+          "chunk_count": 93,
+          "duplicate_line_ratio": 0.12393887945670623,
+          "layout_to_no_layout_char_ratio": 1.043780487804878,
+          "duration_ms": 6079
+        },
+        "ours_chunks": {
+          "normalized_chars": 102708,
+          "raw_chars": 102748,
+          "chunk_count": 93,
+          "duplicate_line_ratio": 0.12393887945670623,
+          "layout_to_no_layout_char_ratio": 1.043780487804878,
+          "duration_ms": 6079
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 98793,
+          "delta_to_layout_chars": 3915,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 93,
+        "max_tokens": 350,
+        "max_chunk_tokens": 338,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 254,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 102656,
+        "output_chars_with_any_span": 102656,
+        "output_chars_pdf_backed": 89115,
+        "output_chars_synthetic": 13541,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8680934382793017,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.13190656172069826,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 2.7311827956989245,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.07342656987019275,
+        "highlight_replay_iou_p95": 0.46666665677671065
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "_10",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/10.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 162664,
+          "raw_chars": 162664,
+          "chunk_count": 163,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 5225
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 163041,
+          "raw_chars": 163085,
+          "chunk_count": 138,
+          "duplicate_line_ratio": 0.04297328687572588,
+          "layout_to_no_layout_char_ratio": 1.0023176609452613,
+          "duration_ms": 6853
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 163041,
+          "raw_chars": 163085,
+          "chunk_count": 138,
+          "duplicate_line_ratio": 0.04297328687572588,
+          "layout_to_no_layout_char_ratio": 1.0023176609452613,
+          "duration_ms": 13804
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 162664,
+          "raw_chars": 162664,
+          "chunk_count": 163,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 5225
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 163041,
+          "raw_chars": 163085,
+          "chunk_count": 138,
+          "duplicate_line_ratio": 0.04297328687572588,
+          "layout_to_no_layout_char_ratio": 1.0023176609452613,
+          "duration_ms": 13804
+        },
+        "ours_chunks": {
+          "normalized_chars": 163041,
+          "raw_chars": 163085,
+          "chunk_count": 138,
+          "duplicate_line_ratio": 0.04297328687572588,
+          "layout_to_no_layout_char_ratio": 1.0023176609452613,
+          "duration_ms": 13804
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 165427,
+          "delta_to_layout_chars": -2386,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 138,
+        "max_tokens": 350,
+        "max_chunk_tokens": 316,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 422,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 162948,
+        "output_chars_with_any_span": 162948,
+        "output_chars_pdf_backed": 134815,
+        "output_chars_synthetic": 28133,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.8273498293934262,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.17265017060657387,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 3.0579710144927534,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 0.06535947712418301,
+        "highlight_replay_iou_p95": 0.23255813953488372
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    },
+    {
+      "fixture_id": "_ocr",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/ocr.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_raw": {
+          "normalized_chars": 5640,
+          "raw_chars": 5640,
+          "chunk_count": 7,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 846
+        },
+        "ours_layout_raw_without_fallback": {
+          "normalized_chars": 6255,
+          "raw_chars": 6340,
+          "chunk_count": 19,
+          "duplicate_line_ratio": 0.24863387978142082,
+          "layout_to_no_layout_char_ratio": 1.1090425531914894,
+          "duration_ms": 831
+        },
+        "ours_layout_with_product_fallback": {
+          "normalized_chars": 6255,
+          "raw_chars": 6340,
+          "chunk_count": 19,
+          "duplicate_line_ratio": 0.24863387978142082,
+          "layout_to_no_layout_char_ratio": 1.1090425531914894,
+          "duration_ms": 1583
+        },
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 5640,
+          "raw_chars": 5640,
+          "chunk_count": 7,
+          "duplicate_line_ratio": 0.0,
+          "layout_to_no_layout_char_ratio": null,
+          "duration_ms": 846
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 6255,
+          "raw_chars": 6340,
+          "chunk_count": 19,
+          "duplicate_line_ratio": 0.24863387978142082,
+          "layout_to_no_layout_char_ratio": 1.1090425531914894,
+          "duration_ms": 1583
+        },
+        "ours_chunks": {
+          "normalized_chars": 6255,
+          "raw_chars": 6340,
+          "chunk_count": 19,
+          "duplicate_line_ratio": 0.24863387978142082,
+          "layout_to_no_layout_char_ratio": 1.1090425531914894,
+          "duration_ms": 1583
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 5629,
+          "delta_to_layout_chars": 626,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "backend-pdfium was compiled, but no PDFium runtime backend is available: LoadLibraryError(\n    DlOpen {\n        source: \"dlopen(libpdfium.dylib, 0x0005): tried: \\'libpdfium.dylib\\' (no such file), \\'/System/Volumes/Preboot/Cryptexes/OSlibpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache), \\'libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/blake3-769e34ac98bf1308/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/ring-f849a1945e321cd7/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/build/zstd-sys-136236e85c6aa707/out/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/libpdfium.dylib\\' (no such file), \\'/Users/sarav/Downloads/side/rzn/rag_pdf_extract/target/debug/deps/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/.rustup/toolchains/stable-aarch64-apple-darwin/lib/libpdfium.dylib\\' (no such file), \\'/Users/sarav/lib/libpdfium.dylib\\' (no such file), \\'/usr/local/lib/libpdfium.dylib\\' (no such file), \\'/usr/lib/libpdfium.dylib\\' (no such file, not in dyld cache)\",\n    },\n)"
+        }
+      },
+      "chunks": {
+        "chunk_count": 19,
+        "max_tokens": 350,
+        "max_chunk_tokens": 284,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 427,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 163,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "output_chars_total": 6322,
+        "output_chars_with_any_span": 6322,
+        "output_chars_pdf_backed": 4748,
+        "output_chars_synthetic": 1574,
+        "spanned_char_ratio": 1.0,
+        "pdf_backed_char_ratio": 0.7510281556469471,
+        "pdf_backed_nonsynthetic_char_ratio": 1.0,
+        "chars_without_span": 0,
+        "chars_with_overlapping_spans": 0,
+        "synthetic_char_ratio": 0.24897184435305283,
+        "overlapping_same_text_bbox_ratio": 0.0,
+        "form_text_ratio": 0.0,
+        "invisible_text_ratio": 0.0,
+        "vertical_duplicate_ratio": 0.0,
+        "fragment_density": 22.473684210526315,
+        "highlight_replay_failures": 0,
+        "highlight_replay_iou_p50": 1.0,
+        "highlight_replay_iou_p95": 1.0000000000000004
+      },
+      "layout_fallback_used": false,
+      "raw_layout_failures": [],
+      "failures": []
+    }
+  ]
+}

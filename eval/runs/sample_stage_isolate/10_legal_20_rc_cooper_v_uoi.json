@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "legal_20_rc_cooper_v_uoi",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/20 RC Cooper v UoI.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

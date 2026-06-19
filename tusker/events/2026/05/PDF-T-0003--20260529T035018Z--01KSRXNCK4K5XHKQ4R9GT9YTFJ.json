@@ -1,0 +1,19 @@
+{
+  "actor": "agent:codex",
+  "at": "2026-05-29T03:50:18Z",
+  "event_kind": "updated",
+  "id": "01KSRXNCK4K5XHKQ4R9GT9YTFJ",
+  "object": "PDF-T-0003",
+  "object_kind": "task",
+  "payload": {
+    "changes": {
+      "readiness": {
+        "from": "held",
+        "to": "ready"
+      }
+    },
+    "source": "task:PDF-T-0003"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

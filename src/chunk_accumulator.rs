@@ -1,7 +1,7 @@
 use crate::document::processing::ContentOutput;
+use crate::document::{LocatedText, OutputSpan, SourceRef, SpanSource, SyntheticKind};
 use crate::{BoundingBox, PagePosition, TextSegment};
 use lazy_static::lazy_static;
-use log::error;
 use regex::Regex;
 use std::sync::Arc;
 use tiktoken_rs::CoreBPE;
@@ -71,6 +71,86 @@ pub fn contains_sentence_end(text: &str) -> bool {
     SENTENCE_MIDDLE.is_match(text) || ends_with_sentence_boundary(text)
 }
 
+fn split_by_graphemes(text: &str, max_tokens: usize, tokenizer: &CoreBPE) -> Vec<String> {
+    let mut chunks = Vec::new();
+    let mut current = String::new();
+
+    for grapheme in text.graphemes(true) {
+        let candidate = if current.is_empty() {
+            grapheme.to_string()
+        } else {
+            format!("{current}{grapheme}")
+        };
+
+        if !current.is_empty() && tokenizer.encode_ordinary(&candidate).len() > max_tokens {
+            chunks.push(current);
+            current = grapheme.to_string();
+        } else {
+            current = candidate;
+        }
+    }
+
+    if !current.is_empty() {
+        chunks.push(current);
+    }
+
+    chunks
+}
+
+fn split_at_token_boundary(text: &str, max_tokens: usize, tokenizer: &CoreBPE) -> (String, String) {
+    if text.is_empty() {
+        return (String::new(), String::new());
+    }
+
+    let mut low = 0usize;
+    let mut high = text.len();
+    let mut best = 0usize;
+
+    while low <= high {
+        let mut mid = (low + high) / 2;
+        while mid > 0 && !text.is_char_boundary(mid) {
+            mid -= 1;
+        }
+
+        let candidate = text[..mid].trim_end();
+        let tokens = tokenizer.encode_ordinary(candidate).len();
+        if tokens <= max_tokens {
+            best = mid;
+            low = mid.saturating_add(1);
+        } else if mid == 0 {
+            break;
+        } else {
+            high = mid.saturating_sub(1);
+        }
+    }
+
+    if best == 0 {
+        let mut pieces = split_by_graphemes(text, max_tokens, tokenizer);
+        if pieces.is_empty() {
+            return (String::new(), String::new());
+        }
+        let head = pieces.remove(0);
+        let tail = text[head.len()..].trim_start().to_string();
+        return (head, tail);
+    }
+
+    let mut cut = best;
+    for pattern in ["\n\n", "\n", ". ", "? ", "! ", "; ", ": ", ", ", " "] {
+        if let Some(pos) = text[..best].rfind(pattern) {
+            let candidate_cut = pos + pattern.len();
+            let candidate = text[..candidate_cut].trim_end();
+            if !candidate.is_empty() && tokenizer.encode_ordinary(candidate).len() <= max_tokens {
+                cut = candidate_cut;
+                break;
+            }
+        }
+    }
+
+    let head = text[..cut].trim().to_string();
+    let tail = text[cut..].trim_start().to_string();
+    (head, tail)
+}
+
 /// Split a long sentence at clause boundaries or words
 pub fn split_long_sentence(text: &str, max_tokens: usize, tokenizer: &CoreBPE) -> Vec<String> {
     // Try clause separators first
@@ -131,6 +211,9 @@ pub fn split_long_sentence(text: &str, max_tokens: usize, tokenizer: &CoreBPE) -
 
     // Fallback: split at word boundaries
     let words: Vec<&str> = text.unicode_words().collect();
+    if words.is_empty() {
+        return split_by_graphemes(text, max_tokens, tokenizer);
+    }
     let mut chunks = Vec::new();
     let mut current = String::new();
     let mut current_tokens = 0;
@@ -155,7 +238,321 @@ pub fn split_long_sentence(text: &str, max_tokens: usize, tokenizer: &CoreBPE) -
         chunks.push(current);
     }
 
+    if chunks.is_empty()
+        || chunks
+            .iter()
+            .any(|chunk| tokenizer.encode_ordinary(chunk).len() > max_tokens)
+    {
+        return split_by_graphemes(text, max_tokens, tokenizer);
+    }
+
     chunks
+}
+
+pub fn split_text_hard_capped(text: &str, max_tokens: usize, tokenizer: &CoreBPE) -> Vec<String> {
+    let mut chunks = Vec::new();
+    let mut remaining = text.trim().to_string();
+
+    while !remaining.is_empty() {
+        if tokenizer.encode_ordinary(&remaining).len() <= max_tokens {
+            chunks.push(remaining);
+            break;
+        }
+
+        let (head, tail) = split_at_token_boundary(&remaining, max_tokens, tokenizer);
+        if head.is_empty() {
+            break;
+        }
+
+        chunks.push(head);
+        remaining = tail;
+    }
+
+    if chunks.is_empty() {
+        return split_by_graphemes(text.trim(), max_tokens, tokenizer);
+    }
+
+    chunks
+}
+
+fn char_len(text: &str) -> usize {
+    text.chars().count()
+}
+
+fn segment_source_ref(segment: &TextSegment) -> SourceRef {
+    SourceRef {
+        page: segment.page_num,
+        char_start: segment.char_start,
+        char_end: segment.char_end,
+    }
+}
+
+fn push_synthetic_span(
+    spans: &mut Vec<OutputSpan>,
+    output_start: usize,
+    output_end: usize,
+    kind: SyntheticKind,
+    parent_refs: Vec<SourceRef>,
+) {
+    if output_start >= output_end {
+        return;
+    }
+    spans.push(OutputSpan {
+        output_start,
+        output_end,
+        source: SpanSource::Synthetic { kind, parent_refs },
+    });
+}
+
+fn push_pdf_span(
+    spans: &mut Vec<OutputSpan>,
+    segment: &TextSegment,
+    output_start: usize,
+    output_end: usize,
+    source_offset: usize,
+) {
+    if output_start >= output_end {
+        return;
+    }
+    let len = output_end - output_start;
+    let source_start = segment.char_start.saturating_add(source_offset);
+    let source_end = source_start
+        .saturating_add(len)
+        .min(segment.char_end.max(source_start));
+    spans.push(OutputSpan {
+        output_start,
+        output_end,
+        source: SpanSource::Pdf {
+            page: segment.page_num,
+            char_start: source_start,
+            char_end: source_end,
+            bbox: BoundingBox {
+                x: segment.x,
+                y: segment.y,
+                width: segment.width,
+                height: segment.height,
+            },
+        },
+    });
+}
+
+fn heading_marker_len(text: &str) -> usize {
+    let bytes = text.as_bytes();
+    let mut hashes = 0usize;
+    while hashes < bytes.len() && hashes < 6 && bytes[hashes] == b'#' {
+        hashes += 1;
+    }
+    if hashes > 0 && bytes.get(hashes) == Some(&b' ') {
+        hashes + 1
+    } else {
+        0
+    }
+}
+
+fn push_segment_spans(
+    spans: &mut Vec<OutputSpan>,
+    segment: &TextSegment,
+    matched_text: &str,
+    output_start: usize,
+) {
+    let parent_ref = segment_source_ref(segment);
+    let text_len = char_len(matched_text);
+    if text_len == 0 {
+        return;
+    }
+
+    let marker_chars = heading_marker_len(matched_text);
+    if marker_chars > 0 {
+        push_synthetic_span(
+            spans,
+            output_start,
+            output_start + marker_chars,
+            SyntheticKind::HeadingMarker,
+            vec![parent_ref.clone()],
+        );
+        push_pdf_span(
+            spans,
+            segment,
+            output_start + marker_chars,
+            output_start + text_len,
+            0,
+        );
+        return;
+    }
+
+    if segment.font_name == "Table" {
+        let mut source_offset = 0usize;
+        let mut run_start: Option<usize> = None;
+        let mut run_source_offset = 0usize;
+
+        for (idx, ch) in matched_text.chars().enumerate() {
+            let table_syntax =
+                matches!(ch, '|' | '\n') || (ch == '-' && matched_text.contains("---|"));
+            if table_syntax {
+                if let Some(start) = run_start.take() {
+                    push_pdf_span(
+                        spans,
+                        segment,
+                        output_start + start,
+                        output_start + idx,
+                        run_source_offset,
+                    );
+                }
+                push_synthetic_span(
+                    spans,
+                    output_start + idx,
+                    output_start + idx + 1,
+                    SyntheticKind::TableMarkdown,
+                    vec![parent_ref.clone()],
+                );
+            } else {
+                if run_start.is_none() {
+                    run_start = Some(idx);
+                    run_source_offset = source_offset;
+                }
+                if !ch.is_whitespace() {
+                    source_offset += 1;
+                }
+            }
+        }
+
+        if let Some(start) = run_start {
+            push_pdf_span(
+                spans,
+                segment,
+                output_start + start,
+                output_start + text_len,
+                run_source_offset,
+            );
+        }
+        return;
+    }
+
+    push_pdf_span(spans, segment, output_start, output_start + text_len, 0);
+}
+
+fn slice_text_segment_by_chars(
+    segment: &TextSegment,
+    start_chars: usize,
+    len_chars: usize,
+    new_content: String,
+) -> TextSegment {
+    let total_chars = segment.content.chars().count().max(1);
+    let start_chars = start_chars.min(total_chars);
+    let end_chars = start_chars.saturating_add(len_chars).min(total_chars);
+    let start_ratio = start_chars as f64 / total_chars as f64;
+    let end_ratio = end_chars.max(start_chars + 1) as f64 / total_chars as f64;
+
+    let mut partial = segment.clone();
+    partial.content = new_content;
+    partial.word_count = count_words(&partial.content);
+    partial.char_start = segment.char_start.saturating_add(start_chars);
+    partial.char_end = segment.char_start.saturating_add(end_chars);
+    partial.x = segment.x + segment.width * start_ratio;
+    partial.width = (segment.width * (end_ratio - start_ratio).max(0.0)).max(0.0);
+    partial.located_text = segment.located_text.as_ref().map(|located| {
+        located.slice_chars(
+            start_chars,
+            end_chars - start_chars,
+            partial.content.clone(),
+        )
+    });
+    partial
+}
+
+#[derive(Clone, Debug, Default)]
+struct LocatedBuilder {
+    text: String,
+    spans: Vec<OutputSpan>,
+}
+
+impl LocatedBuilder {
+    fn clear(&mut self) {
+        self.text.clear();
+        self.spans.clear();
+    }
+
+    fn char_len(&self) -> usize {
+        char_len(&self.text)
+    }
+
+    fn push_synthetic(&mut self, text: &str, kind: SyntheticKind, parent_refs: Vec<SourceRef>) {
+        if text.is_empty() {
+            return;
+        }
+        let start = self.char_len();
+        self.text.push_str(text);
+        let end = self.char_len();
+        push_synthetic_span(&mut self.spans, start, end, kind, parent_refs);
+    }
+
+    fn push_source_segment(&mut self, segment: &TextSegment) {
+        if let Some(located) = &segment.located_text {
+            let start = self.char_len();
+            self.text.push_str(&located.text);
+            self.spans
+                .extend(located.spans.iter().cloned().map(|mut span| {
+                    span.output_start += start;
+                    span.output_end += start;
+                    span
+                }));
+            return;
+        }
+
+        let start = self.char_len();
+        self.text.push_str(&segment.content);
+        push_segment_spans(&mut self.spans, segment, &segment.content, start);
+    }
+
+    fn pop_last_char(&mut self) -> Option<char> {
+        let ch = self.text.pop()?;
+        let new_len = self.char_len();
+        for span in self.spans.iter_mut().rev() {
+            if span.output_end > new_len {
+                span.output_end = new_len;
+                if let SpanSource::Pdf {
+                    char_end,
+                    char_start,
+                    ..
+                } = &mut span.source
+                {
+                    *char_end = (*char_end).saturating_sub(1).max(*char_start);
+                }
+                break;
+            }
+        }
+        self.spans
+            .retain(|span| span.output_start < span.output_end);
+        Some(ch)
+    }
+
+    fn located_text(&self) -> LocatedText {
+        LocatedText {
+            text: self.text.clone(),
+            spans: self.spans.clone(),
+        }
+    }
+
+    fn trimmed_located_text(&self) -> LocatedText {
+        let leading = self
+            .text
+            .chars()
+            .take_while(|ch| ch.is_whitespace())
+            .count();
+        let trimmed = self.text.trim().to_string();
+        let trimmed_len = trimmed.chars().count();
+        self.located_text()
+            .slice_chars(leading, trimmed_len, trimmed)
+    }
+
+    fn slice_chars(&self, start: usize, len: usize) -> Self {
+        let text = self.text.chars().skip(start).take(len).collect::<String>();
+        let located = self.located_text().slice_chars(start, len, text);
+        Self {
+            text: located.text,
+            spans: located.spans,
+        }
+    }
 }
 
 /// Accumulates text segments into chunks with efficient tokenization
@@ -179,6 +576,8 @@ pub struct ChunkAccumulator {
 
     // Boundary bookmarks for backtracking on overflow
     boundaries: Vec<BoundaryBookmark>,
+
+    located_builder: LocatedBuilder,
 }
 
 impl ChunkAccumulator {
@@ -197,6 +596,7 @@ impl ChunkAccumulator {
             token_stats: TokenStats::default(),
             current_headings: Vec::new(),
             boundaries: Vec::new(),
+            located_builder: LocatedBuilder::default(),
         }
     }
 
@@ -208,6 +608,7 @@ impl ChunkAccumulator {
         self.token_count = None;
         self.token_buffer.clear();
         self.boundaries.clear();
+        self.located_builder.clear();
 
         // Update word threshold based on learned ratio
         let ratio = self.token_stats.current_ratio();
@@ -235,9 +636,15 @@ impl ChunkAccumulator {
 
         // Quick strict check using current known tokens or an estimate
         let ratio = self.token_stats.current_ratio();
-        let mut base_tokens = if let Some(t) = self.token_count { t } else { ((self.word_count as f64) * ratio).ceil() as usize };
+        let mut base_tokens = if let Some(t) = self.token_count {
+            t
+        } else {
+            ((self.word_count as f64) * ratio).ceil() as usize
+        };
         // If we're about to cross half the capacity, switch to exact counting for the current chunk
-        if self.token_count.is_none() && base_tokens + space_token + segment_tokens > (self.max_tokens / 2) {
+        if self.token_count.is_none()
+            && base_tokens + space_token + segment_tokens > (self.max_tokens / 2)
+        {
             let tokens = self.tokenizer.encode_ordinary(&self.text);
             self.token_count = Some(tokens.len());
             // Update stats so future estimates are better
@@ -257,7 +664,9 @@ impl ChunkAccumulator {
         let mut require_precise = est_total_tokens > self.max_tokens;
         if !require_precise {
             // If comfortably under 80% of limit and below word threshold, allow fast path
-            if new_word_count < self.word_threshold && est_total_tokens <= (self.max_tokens * 6 / 10) {
+            if new_word_count < self.word_threshold
+                && est_total_tokens <= self.max_tokens.saturating_mul(6) / 10
+            {
                 // Large segments can still cause big jumps; precheck tokens for very long lines
                 let seg_chars = segment.content.chars().count();
                 if seg_chars <= 400 {
@@ -266,12 +675,15 @@ impl ChunkAccumulator {
             }
             // If we are near capacity, force precise path
             let est_current = ((self.word_count as f64) * ratio).ceil() as usize;
-            if est_current + space_token + segment_tokens > (self.max_tokens * 8 / 10) {
+            if est_current + space_token + segment_tokens > self.max_tokens.saturating_mul(8) / 10 {
                 require_precise = true;
             }
         }
 
-        if !require_precise && new_word_count < self.word_threshold && est_total_tokens <= (self.max_tokens * 6 / 10) {
+        if !require_precise
+            && new_word_count < self.word_threshold
+            && est_total_tokens <= self.max_tokens.saturating_mul(6) / 10
+        {
             return true;
         }
 
@@ -317,6 +729,7 @@ impl ChunkAccumulator {
                 if let Some(first) = segment.content.chars().next() {
                     if first.is_alphabetic() {
                         self.text.pop(); // drop trailing '-'
+                        self.located_builder.pop_last_char();
                         // no space before joining
                         hyphen_join = true;
                     } else {
@@ -326,6 +739,16 @@ impl ChunkAccumulator {
                             && !segment.content.starts_with(' ');
                         if needs_space {
                             self.text.push(' ');
+                            self.located_builder.push_synthetic(
+                                " ",
+                                SyntheticKind::InsertedWhitespace,
+                                self.segments
+                                    .last()
+                                    .map(segment_source_ref)
+                                    .into_iter()
+                                    .chain(std::iter::once(segment_source_ref(&segment)))
+                                    .collect(),
+                            );
                             space_added = true;
                         }
                     }
@@ -337,12 +760,23 @@ impl ChunkAccumulator {
                     && !segment.content.starts_with(' ');
                 if needs_space {
                     self.text.push(' ');
+                    self.located_builder.push_synthetic(
+                        " ",
+                        SyntheticKind::InsertedWhitespace,
+                        self.segments
+                            .last()
+                            .map(segment_source_ref)
+                            .into_iter()
+                            .chain(std::iter::once(segment_source_ref(&segment)))
+                            .collect(),
+                    );
                     space_added = true;
                 }
             }
         }
         let start_idx = self.text.len();
         self.text.push_str(&segment.content);
+        self.located_builder.push_source_segment(&segment);
 
         // Scan appended content for wide boundaries and bookmark them (tokens filled lazily)
         let seg_idx = self.segments.len();
@@ -373,28 +807,40 @@ impl ChunkAccumulator {
             let b = bytes[i];
             if b == b'.' || b == b'!' || b == b'?' {
                 let mut j = i + 1;
-                while j < n { let c = bytes[j]; if c == b'\'' || c == b'\"' || c == b')' || c == b']' { j += 1; } else { break; } }
+                while j < n {
+                    let c = bytes[j];
+                    if c == b'\'' || c == b'\"' || c == b')' || c == b']' {
+                        j += 1;
+                    } else {
+                        break;
+                    }
+                }
                 // Require whitespace or end after boundary
                 if j == n || matches!(bytes[j], b' ' | b'\t' | b'\n' | b'\r') {
                     boundaries_to_add.push(j);
                 }
-                i = j; continue;
+                i = j;
+                continue;
             }
             if b == b';' {
                 let j = i + 1;
                 if j == n || matches!(bytes[j], b' ' | b'\t' | b'\n' | b'\r') {
                     boundaries_to_add.push(j);
                 }
-                i = j; continue;
+                i = j;
+                continue;
             }
             if b == b':' {
                 let prev_digit = i > 0 && bytes[i - 1].is_ascii_digit();
                 let next_digit = i + 1 < n && bytes[i + 1].is_ascii_digit();
                 let j = i + 1;
-                if (j == n || matches!(bytes[j], b' ' | b'\t' | b'\n' | b'\r')) && !(prev_digit && next_digit) {
+                if (j == n || matches!(bytes[j], b' ' | b'\t' | b'\n' | b'\r'))
+                    && !(prev_digit && next_digit)
+                {
                     boundaries_to_add.push(j);
                 }
-                i = j; continue;
+                i = j;
+                continue;
             }
             if b == 0xE2 && i + 2 < n {
                 let b1 = bytes[i + 1];
@@ -404,7 +850,8 @@ impl ChunkAccumulator {
                     if j == n || matches!(bytes[j], b' ' | b'\t' | b'\n' | b'\r') {
                         boundaries_to_add.push(j);
                     }
-                    i = j; continue;
+                    i = j;
+                    continue;
                 }
             }
             i += 1;
@@ -442,7 +889,7 @@ impl ChunkAccumulator {
     pub fn should_flush(&self) -> bool {
         if let Some(tokens) = self.token_count {
             // Flush when we're at 90% capacity and at a sentence boundary
-            if tokens > (self.max_tokens * 9 / 10) {
+            if tokens > self.max_tokens.saturating_mul(9) / 10 {
                 return ends_with_sentence_boundary(&self.text);
             }
         }
@@ -496,21 +943,6 @@ impl ChunkAccumulator {
 
     /// Create output from current chunk
     pub fn create_output(&self) -> ContentOutput {
-        // Debug: Check final token count
-        let actual_tokens = self.tokenizer.encode_ordinary(&self.text).len();
-        if actual_tokens > self.max_tokens {
-            error!(
-                "WARNING: Creating output with {} actual tokens, exceeds max_tokens {}",
-                actual_tokens, self.max_tokens
-            );
-            error!("Text preview: {}", &self.text[..100.min(self.text.len())]);
-            if let Some(tracked) = self.token_count {
-                error!(
-                    "Tracked tokens: {}, Actual tokens: {}",
-                    tracked, actual_tokens
-                );
-            }
-        }
         // Calculate page range
         let start_page = self.segments.first().map(|s| s.page_num).unwrap_or(0);
         let end_page = self.segments.last().map(|s| s.page_num).unwrap_or(0);
@@ -529,7 +961,8 @@ impl ChunkAccumulator {
         let mut current_page = start_page;
         let mut page_segments: Vec<&TextSegment> = Vec::new();
         let multi = std::env::var("PDF_EXTRACT_MULTIPLE_FRAGMENTS").is_ok();
-        let grouped = std::env::var("PDF_EXTRACT_FRAGMENT_GROUPS").is_ok();
+        let grouped = std::env::var("PDF_EXTRACT_DISABLE_FRAGMENT_GROUPS").is_err()
+            || std::env::var("PDF_EXTRACT_FRAGMENT_GROUPS").is_ok();
 
         for segment in &self.segments {
             if segment.page_num != current_page {
@@ -538,12 +971,22 @@ impl ChunkAccumulator {
                     if multi {
                         for s in &page_segments {
                             let bbox = calculate_bbox_for_segments(&[*s]);
-                            page_positions.push(PagePosition { page: current_page, char_start: s.char_start, char_end: s.char_end, bbox });
+                            page_positions.push(PagePosition {
+                                page: current_page,
+                                char_start: s.char_start,
+                                char_end: s.char_end,
+                                bbox,
+                            });
                         }
                     } else if grouped {
                         let mut groups = group_page_segments(&page_segments);
                         for (char_start, char_end, bbox) in groups.drain(..) {
-                            page_positions.push(PagePosition { page: current_page, char_start, char_end, bbox });
+                            page_positions.push(PagePosition {
+                                page: current_page,
+                                char_start,
+                                char_end,
+                                bbox,
+                            });
                         }
                     } else {
                         let bbox = calculate_bbox_for_segments(&page_segments);
@@ -566,12 +1009,22 @@ impl ChunkAccumulator {
             if multi {
                 for s in &page_segments {
                     let bbox = calculate_bbox_for_segments(&[*s]);
-                    page_positions.push(PagePosition { page: current_page, char_start: s.char_start, char_end: s.char_end, bbox });
+                    page_positions.push(PagePosition {
+                        page: current_page,
+                        char_start: s.char_start,
+                        char_end: s.char_end,
+                        bbox,
+                    });
                 }
             } else if grouped {
                 let mut groups = group_page_segments(&page_segments);
                 for (char_start, char_end, bbox) in groups.drain(..) {
-                    page_positions.push(PagePosition { page: current_page, char_start, char_end, bbox });
+                    page_positions.push(PagePosition {
+                        page: current_page,
+                        char_start,
+                        char_end,
+                        bbox,
+                    });
                 }
             } else {
                 let bbox = calculate_bbox_for_segments(&page_segments);
@@ -592,15 +1045,19 @@ impl ChunkAccumulator {
             None
         };
 
+        let located_text = self.located_builder.trimmed_located_text();
+        let paragraph = located_text.text.clone();
+
         ContentOutput {
             headings: self.current_headings.clone(),
-            paragraph: self.text.trim().to_string(),
+            paragraph,
             page: start_page,
             end_page,
             page_char_start,
             page_char_end,
             bbox,
             page_positions,
+            located_text: Some(located_text),
         }
     }
 
@@ -634,7 +1091,9 @@ impl ChunkAccumulator {
                 break;
             }
         }
-        let Some(bidx) = candidate_idx else { return None; };
+        let Some(bidx) = candidate_idx else {
+            return None;
+        };
         if self.boundaries[bidx].tokens_at_boundary.is_none() {
             let t = self
                 .tokenizer
@@ -650,15 +1109,9 @@ impl ChunkAccumulator {
             if si < b.seg_idx {
                 prefix_segments.push(seg.clone());
             } else if si == b.seg_idx {
-                let mut head = seg.clone();
                 let head_content = seg.content[..b.byte_in_seg].to_string();
                 let head_chars = head_content.chars().count();
-                head.content = head_content;
-                head.word_count = count_words(&head.content);
-                head.char_end = head.char_start + head_chars;
-                let total_chars = seg.content.chars().count().max(1);
-                let ratio = (head_chars as f64) / (total_chars as f64);
-                head.width = (seg.width * ratio).max(0.0);
+                let head = slice_text_segment_by_chars(seg, 0, head_chars, head_content);
                 prefix_segments.push(head);
                 break;
             } else {
@@ -668,7 +1121,11 @@ impl ChunkAccumulator {
 
         let start_page = prefix_segments.first().map(|s| s.page_num).unwrap_or(0);
         let last_page = prefix_segments.last().map(|s| s.page_num).unwrap_or(0);
-        let end_page = if last_page != start_page { Some(last_page) } else { None };
+        let end_page = if last_page != start_page {
+            Some(last_page)
+        } else {
+            None
+        };
 
         // Page positions
         let mut page_positions: Vec<PagePosition> = Vec::new();
@@ -676,22 +1133,38 @@ impl ChunkAccumulator {
             let mut current_page = prefix_segments.first().unwrap().page_num;
             let mut page_group: Vec<&TextSegment> = Vec::new();
             let multi = std::env::var("PDF_EXTRACT_MULTIPLE_FRAGMENTS").is_ok();
-            let grouped = std::env::var("PDF_EXTRACT_FRAGMENT_GROUPS").is_ok();
+            let grouped = std::env::var("PDF_EXTRACT_DISABLE_FRAGMENT_GROUPS").is_err()
+                || std::env::var("PDF_EXTRACT_FRAGMENT_GROUPS").is_ok();
             for s in &prefix_segments {
                 if s.page_num != current_page {
                     if multi {
                         for ps in &page_group {
                             let bbox = calculate_bbox_for_segments(&[ps]);
-                            page_positions.push(PagePosition { page: current_page, char_start: ps.char_start, char_end: ps.char_end, bbox });
+                            page_positions.push(PagePosition {
+                                page: current_page,
+                                char_start: ps.char_start,
+                                char_end: ps.char_end,
+                                bbox,
+                            });
                         }
                     } else if grouped {
                         let mut groups = group_page_segments(&page_group);
                         for (char_start, char_end, bbox) in groups.drain(..) {
-                            page_positions.push(PagePosition { page: current_page, char_start, char_end, bbox });
+                            page_positions.push(PagePosition {
+                                page: current_page,
+                                char_start,
+                                char_end,
+                                bbox,
+                            });
                         }
                     } else {
                         let bbox = calculate_bbox_for_segments(&page_group);
-                        page_positions.push(PagePosition { page: current_page, char_start: page_group.first().unwrap().char_start, char_end: page_group.last().unwrap().char_end, bbox });
+                        page_positions.push(PagePosition {
+                            page: current_page,
+                            char_start: page_group.first().unwrap().char_start,
+                            char_end: page_group.last().unwrap().char_end,
+                            bbox,
+                        });
                     }
                     page_group.clear();
                     current_page = s.page_num;
@@ -702,21 +1175,39 @@ impl ChunkAccumulator {
                 if multi {
                     for ps in &page_group {
                         let bbox = calculate_bbox_for_segments(&[ps]);
-                        page_positions.push(PagePosition { page: current_page, char_start: ps.char_start, char_end: ps.char_end, bbox });
+                        page_positions.push(PagePosition {
+                            page: current_page,
+                            char_start: ps.char_start,
+                            char_end: ps.char_end,
+                            bbox,
+                        });
                     }
                 } else if grouped {
                     let mut groups = group_page_segments(&page_group);
                     for (char_start, char_end, bbox) in groups.drain(..) {
-                        page_positions.push(PagePosition { page: current_page, char_start, char_end, bbox });
+                        page_positions.push(PagePosition {
+                            page: current_page,
+                            char_start,
+                            char_end,
+                            bbox,
+                        });
                     }
                 } else {
                     let bbox = calculate_bbox_for_segments(&page_group);
-                    page_positions.push(PagePosition { page: current_page, char_start: page_group.first().unwrap().char_start, char_end: page_group.last().unwrap().char_end, bbox });
+                    page_positions.push(PagePosition {
+                        page: current_page,
+                        char_start: page_group.first().unwrap().char_start,
+                        char_end: page_group.last().unwrap().char_end,
+                        bbox,
+                    });
                 }
             }
         }
 
-        let prefix_text = self.text[..b.text_byte_idx].trim().to_string();
+        let prefix_raw_chars = self.text[..b.text_byte_idx].chars().count();
+        let prefix_builder = self.located_builder.slice_chars(0, prefix_raw_chars);
+        let located_text = prefix_builder.trimmed_located_text();
+        let prefix_text = located_text.text.clone();
         let bbox_overall = if end_page.is_none() && !prefix_segments.is_empty() {
             let refs: Vec<&TextSegment> = prefix_segments.iter().collect();
             Some(calculate_bbox_for_segments(&refs))
@@ -733,27 +1224,22 @@ impl ChunkAccumulator {
             page_char_end: prefix_segments.last().map(|s| s.char_end),
             bbox: bbox_overall,
             page_positions,
+            located_text: Some(located_text),
         };
 
         // Mutate accumulator to keep suffix
         let mut tail_segments: Vec<TextSegment> = Vec::new();
         for (si, seg) in self.segments.iter().enumerate() {
-            if si < b.seg_idx { continue; }
+            if si < b.seg_idx {
+                continue;
+            }
             if si == b.seg_idx {
                 if b.byte_in_seg < seg.content.len() {
-                    let mut tail = seg.clone();
                     let tail_content = seg.content[b.byte_in_seg..].to_string();
                     let tail_chars = tail_content.chars().count();
                     let head_chars = seg.content[..b.byte_in_seg].chars().count();
-                    tail.content = tail_content;
-                    tail.word_count = count_words(&tail.content);
-                    tail.char_start = seg.char_start + head_chars;
-                    tail.char_end = tail.char_start + tail_chars;
-                    let total_chars = seg.content.chars().count().max(1);
-                    let ratio = (head_chars as f64) / (total_chars as f64);
-                    let head_width = (seg.width * ratio).max(0.0);
-                    tail.x = seg.x + head_width;
-                    tail.width = (seg.width - head_width).max(0.0);
+                    let tail =
+                        slice_text_segment_by_chars(seg, head_chars, tail_chars, tail_content);
                     tail_segments.push(tail);
                 }
             } else {
@@ -761,7 +1247,23 @@ impl ChunkAccumulator {
             }
         }
         self.segments = tail_segments;
-        self.text = self.text[b.text_byte_idx..].trim_start().to_string();
+        let suffix_raw_chars = self.text[b.text_byte_idx..].chars().count();
+        let mut suffix_builder = self
+            .located_builder
+            .slice_chars(prefix_raw_chars, suffix_raw_chars);
+        let trim_leading = suffix_builder
+            .text
+            .chars()
+            .take_while(|ch| ch.is_whitespace())
+            .count();
+        if trim_leading > 0 {
+            suffix_builder = suffix_builder.slice_chars(
+                trim_leading,
+                suffix_builder.char_len().saturating_sub(trim_leading),
+            );
+        }
+        self.text = suffix_builder.text.clone();
+        self.located_builder = suffix_builder;
         self.word_count = count_words(&self.text);
         self.token_count = None;
 
@@ -769,11 +1271,17 @@ impl ChunkAccumulator {
         if !self.boundaries.is_empty() {
             let mut new_b: Vec<BoundaryBookmark> = Vec::new();
             for mut bm in self.boundaries.clone() {
-                if bm.text_byte_idx <= b.text_byte_idx { continue; }
+                if bm.text_byte_idx <= b.text_byte_idx {
+                    continue;
+                }
                 bm.text_byte_idx -= b.text_byte_idx;
-                if bm.seg_idx < b.seg_idx { continue; }
+                if bm.seg_idx < b.seg_idx {
+                    continue;
+                }
                 if bm.seg_idx == b.seg_idx {
-                    if bm.byte_in_seg <= b.byte_in_seg { continue; }
+                    if bm.byte_in_seg <= b.byte_in_seg {
+                        continue;
+                    }
                     bm.byte_in_seg -= b.byte_in_seg;
                     bm.seg_idx = 0;
                 } else {
@@ -813,14 +1321,18 @@ fn calculate_bbox_for_segments(segments: &[&TextSegment]) -> BoundingBox {
 // Group segments on a single page into contiguous line groups and return positions
 // Returns Vec of (char_start, char_end, bbox)
 fn group_page_segments(segments: &[&TextSegment]) -> Vec<(usize, usize, BoundingBox)> {
-    if segments.is_empty() { return Vec::new(); }
+    if segments.is_empty() {
+        return Vec::new();
+    }
     // Sort by y (top to bottom), then x (left to right)
     let mut segs: Vec<&TextSegment> = segments.iter().cloned().collect();
     segs.sort_by(|a, b| {
         let ycmp = a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal);
         if ycmp == std::cmp::Ordering::Equal {
             a.x.partial_cmp(&b.x).unwrap_or(std::cmp::Ordering::Equal)
-        } else { ycmp }
+        } else {
+            ycmp
+        }
     });
 
     // Tolerances
@@ -855,7 +1367,9 @@ fn group_page_segments(segments: &[&TextSegment]) -> Vec<(usize, usize, Bounding
             if gap_ok && (left_aligned || right_aligned || center_aligned || h_overlap_ok) {
                 current.push(s);
             } else {
-                if !current.is_empty() { groups.push(current); }
+                if !current.is_empty() {
+                    groups.push(current);
+                }
                 current = vec![s];
             }
         } else {
@@ -863,11 +1377,13 @@ fn group_page_segments(segments: &[&TextSegment]) -> Vec<(usize, usize, Bounding
         }
         last = Some(s);
     }
-    if !current.is_empty() { groups.push(current); }
+    if !current.is_empty() {
+        groups.push(current);
+    }
 
     let mut out: Vec<(usize, usize, BoundingBox)> = Vec::new();
     for g in groups.into_iter() {
-        let bbox = calculate_bbox_for_segments(&g.iter().cloned().collect::<Vec<&TextSegment>>() );
+        let bbox = calculate_bbox_for_segments(&g.iter().cloned().collect::<Vec<&TextSegment>>());
         let char_start = g.first().unwrap().char_start;
         let char_end = g.last().unwrap().char_end;
         out.push((char_start, char_end, bbox));
@@ -878,6 +1394,31 @@ fn group_page_segments(segments: &[&TextSegment]) -> Vec<(usize, usize, Bounding
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::FontWeight;
+
+    fn segment(content: &str, char_start: usize) -> TextSegment {
+        TextSegment {
+            content: content.to_string(),
+            font_size: 12.0,
+            transformed_font_size: 12.0,
+            x: 10.0,
+            y: 20.0,
+            is_bold: false,
+            font_name: "Test".to_string(),
+            font_weight: FontWeight::Regular,
+            is_italic: false,
+            page_num: 1,
+            cutat: String::new(),
+            fill_color: None,
+            stroke_color: None,
+            char_start,
+            char_end: char_start + content.chars().count(),
+            width: content.chars().count() as f64 * 6.0,
+            height: 12.0,
+            word_count: count_words(content),
+            located_text: None,
+        }
+    }
 
     #[test]
     fn test_word_counting() {
@@ -896,5 +1437,87 @@ mod tests {
         assert!(ends_with_sentence_boundary("Parenthetical.)"));
         assert!(!ends_with_sentence_boundary("Not the end"));
         assert!(!ends_with_sentence_boundary("Comma,"));
+    }
+
+    #[test]
+    fn split_long_sentence_hard_caps_symbol_soup() {
+        let tokenizer = tiktoken_rs::cl100k_base().unwrap();
+        let text = "# ?;#% # # \" ' ".repeat(1500);
+        let chunks = split_long_sentence(&text, 256, &tokenizer);
+
+        assert!(!chunks.is_empty());
+        assert!(chunks
+            .iter()
+            .all(|chunk| tokenizer.encode_ordinary(chunk).len() <= 256));
+    }
+
+    #[test]
+    fn split_text_hard_capped_caps_every_chunk() {
+        let tokenizer = tiktoken_rs::cl100k_base().unwrap();
+        let text = "This is a sentence. ".repeat(500);
+        let chunks = split_text_hard_capped(&text, 64, &tokenizer);
+
+        assert!(!chunks.is_empty());
+        assert!(chunks
+            .iter()
+            .all(|chunk| tokenizer.encode_ordinary(chunk).len() <= 64));
+    }
+
+    #[test]
+    fn chunk_output_records_pdf_and_synthetic_space_spans() {
+        let tokenizer = Arc::new(tiktoken_rs::cl100k_base().unwrap());
+        let mut acc = ChunkAccumulator::new(128, tokenizer);
+        acc.add_segment(segment("Hello", 10));
+        acc.add_segment(segment("world", 20));
+
+        let output = acc.create_output();
+        let located = output.located_text.expect("located text");
+
+        assert_eq!(located.text, "Hello world");
+        assert!(located.spans.iter().any(|span| matches!(
+            span.source,
+            SpanSource::Synthetic {
+                kind: SyntheticKind::InsertedWhitespace,
+                ..
+            }
+        )));
+        assert!(located.spans.iter().any(|span| matches!(
+            span.source,
+            SpanSource::Pdf {
+                page: 1,
+                char_start: 10,
+                ..
+            }
+        )));
+        assert!(located.spans.iter().any(|span| matches!(
+            span.source,
+            SpanSource::Pdf {
+                page: 1,
+                char_start: 20,
+                ..
+            }
+        )));
+    }
+
+    #[test]
+    fn heading_marker_is_typed_synthetic_span() {
+        let tokenizer = Arc::new(tiktoken_rs::cl100k_base().unwrap());
+        let mut acc = ChunkAccumulator::new(128, tokenizer);
+        acc.add_segment(segment("# Title", 30));
+        let located = acc
+            .create_output()
+            .located_text
+            .expect("chunk should carry located text");
+        assert!(located.spans.iter().any(|span| {
+            span.output_start == 0
+                && span.output_end == 2
+                && matches!(
+                    span.source,
+                    SpanSource::Synthetic {
+                        kind: SyntheticKind::HeadingMarker,
+                        ..
+                    }
+                )
+        }));
     }
 }

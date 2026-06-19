@@ -1,0 +1,13 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-06-18T13:33:33Z",
+  "event_kind": "review_requested",
+  "id": "01KVDEZQCP0JT5ZRMD7AS9RYF7",
+  "object": "PDF-T-0001",
+  "object_kind": "task",
+  "payload": {
+    "reason": "Ready for independent review after attempt handoff."
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

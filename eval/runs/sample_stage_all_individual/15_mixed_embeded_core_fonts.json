@@ -1,0 +1,10 @@
+{
+  "fixtures": [
+    {
+      "id": "mixed_embeded_core_fonts",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/mixed/embeded-core-fonts.pdf",
+      "category": "sample",
+      "expected": {}
+    }
+  ]
+}

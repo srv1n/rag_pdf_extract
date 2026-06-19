@@ -1,0 +1,15 @@
+{
+  "actor": "agent:codex",
+  "at": "2026-05-29T03:50:18Z",
+  "event_kind": "status_changed",
+  "id": "01KSRXNCJZP9B0WT4VDEHX8VXA",
+  "object": "PDF-T-0003",
+  "object_kind": "task",
+  "payload": {
+    "from": "backlog",
+    "reason": "Continuing implementation of review objective; next machine-runnable P0 provenance work.",
+    "to": "ready"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

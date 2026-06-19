@@ -21,6 +21,25 @@ python eval.py
 python eval.py --diagnose  # Detailed failure analysis
 ```
 
+## Regression Pack
+
+For the smaller, repeatable regression loop used to catch extraction collapse
+on repo fixtures and founder/legal PDFs, see:
+
+- [`REGRESSION_PACK.md`](./REGRESSION_PACK.md)
+- [`regressions/archetype_benchmark_01.json`](./regressions/archetype_benchmark_01.json)
+
+The practical three-layer stack is:
+
+1. `examples/founder_regression.rs` for the founder gate.
+2. `examples/regression_pack.rs` for fixed archetype packs.
+3. `eval.py` for golden-output and baseline-comparison work.
+
+The regression-pack runner also understands two things that matter in practice:
+
+- linked repo fixtures via `tests/docs/*.pdf.link`, cached into `tests/docs_cache/`
+- explicit OCR cases via `use_ocr: true`, using `models/text-detection.rten` and `models/text-recognition.rten` when present
+
 ## Folder Structure
 
 ```
@@ -90,6 +109,21 @@ python eval.py --compare markitdown
 # Compare against OCR baseline (needs API key)
 export GEMINI_API_KEY=your_key
 python eval.py --compare gemini
+```
+
+### Recommended PDF Ownership Loop
+
+```bash
+# 1. Fast founder gate
+cargo run --example founder_regression
+
+# 2. Fixed archetype pack with hard-cap metrics
+cargo run --release --example regression_pack -- \
+  --manifest eval/regressions/archetype_benchmark_01.json \
+  --out-dir eval/runs/archetype_benchmark/current
+
+# 3. Golden-output benchmark comparisons
+python eval.py --diagnose
 ```
 
 ### Available Baseline Tools
@@ -231,6 +265,11 @@ python eval.py --no-save
 mkdir -p eval/corpus/invoices
 # Add PDFs and expected markdown files
 ```
+
+### Adding a Regression Case
+Add a row to `eval/regressions/founder_legal_pack.json` with a path, group,
+and floors for `expected_min_chars` / `expected_min_chunks`. The runner will
+record the actual counts and flag missing or collapsed extraction.
 
 ### Adding a New Baseline Tool
 Edit `tools/baselines.py`:

@@ -1,0 +1,73 @@
+{
+  "manifestName": "founder_regression_01",
+  "corpusRoot": "/Users/sarav/Downloads/rzn_founder_corpus_01",
+  "generatedAtEpochMs": 1775626135209,
+  "hardFailures": 0,
+  "warnings": 0,
+  "passed": 3,
+  "cases": [
+    {
+      "id": "puttaswamy_legal_baseline",
+      "label": "Puttaswamy legal baseline",
+      "severity": "hard",
+      "status": "passed",
+      "pdfPath": "/Users/sarav/Downloads/rzn_founder_corpus_01/law/7. Puttaswamy v UoI.pdf",
+      "extractedChars": 1631363,
+      "extractedChunks": 1550,
+      "extractedPages": 547,
+      "maxChunkTokens": 500,
+      "overCapChunks": 0,
+      "garbageChunks": 330,
+      "duplicateLineRatio": 0.002689873417721519,
+      "matchedTerms": [
+        "privacy",
+        "fundamental rights",
+        "constitution"
+      ],
+      "failureReasons": [],
+      "notes": null
+    },
+    {
+      "id": "energy_watchdog_force_majeure",
+      "label": "Energy Watchdog force majeure baseline",
+      "severity": "hard",
+      "status": "passed",
+      "pdfPath": "/Users/sarav/Downloads/rzn_founder_corpus_01/law/1. Energy Watchdog v CERC.pdf",
+      "extractedChars": 224551,
+      "extractedChunks": 155,
+      "extractedPages": 65,
+      "maxChunkTokens": 489,
+      "overCapChunks": 0,
+      "garbageChunks": 0,
+      "duplicateLineRatio": 0.0015432098765432098,
+      "matchedTerms": [
+        "force majeure",
+        "tariff",
+        "power purchase"
+      ],
+      "failureReasons": [],
+      "notes": null
+    },
+    {
+      "id": "vishaka_suspicious_extraction",
+      "label": "Vishaka suspicious extraction watch",
+      "severity": "warn",
+      "status": "passed",
+      "pdfPath": "/Users/sarav/Downloads/rzn_founder_corpus_01/law/8. Vishaka v State of Rajasthan.pdf",
+      "extractedChars": 45211,
+      "extractedChunks": 52,
+      "extractedPages": 10,
+      "maxChunkTokens": 433,
+      "overCapChunks": 0,
+      "garbageChunks": 0,
+      "duplicateLineRatio": 0.0,
+      "matchedTerms": [
+        "sexual harassment",
+        "guidelines",
+        "employer"
+      ],
+      "failureReasons": [],
+      "notes": "This is intentionally warn-only until the downstream parser path is fixed. It should still stay visible in every run."
+    }
+  ]
+}

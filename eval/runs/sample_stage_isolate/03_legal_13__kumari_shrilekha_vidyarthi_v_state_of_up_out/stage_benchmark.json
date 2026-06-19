@@ -1,0 +1,70 @@
+{
+  "generated_at_epoch_ms": 1780032774713,
+  "manifest_path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/runs/sample_stage_isolate/03_legal_13__kumari_shrilekha_vidyarthi_v_state_of_up.json",
+  "fixtures": [
+    {
+      "fixture_id": "legal_13__kumari_shrilekha_vidyarthi_v_state_of_up",
+      "path": "/Users/sarav/Downloads/side/rzn/rag_pdf_extract/eval/corpus/legal/13. Kumari Shrilekha Vidyarthi v State of UP.pdf",
+      "category": "sample",
+      "status": "passed",
+      "stages": {
+        "ours_no_layout_post_filters": {
+          "normalized_chars": 88725,
+          "raw_chars": 88725,
+          "chunk_count": 85,
+          "duplicate_line_ratio": 0.011235955056179803,
+          "duration_ms": 5721
+        },
+        "ours_layout_post_filters": {
+          "normalized_chars": 89944,
+          "raw_chars": 89945,
+          "chunk_count": 72,
+          "duplicate_line_ratio": 0.009063444108761365,
+          "duration_ms": 2582
+        },
+        "ours_chunks": {
+          "normalized_chars": 89944,
+          "raw_chars": 89945,
+          "chunk_count": 72,
+          "duplicate_line_ratio": 0.009063444108761365,
+          "duration_ms": 2582
+        }
+      },
+      "references": {
+        "poppler_pdftotext": {
+          "status": "available",
+          "normalized_chars": 91637,
+          "delta_to_layout_chars": -1693,
+          "note": null
+        },
+        "pdfium_raw": {
+          "status": "missing_reference",
+          "normalized_chars": null,
+          "delta_to_layout_chars": null,
+          "note": "PDFium raw reference is unavailable in this build"
+        }
+      },
+      "chunks": {
+        "chunk_count": 72,
+        "max_tokens": 350,
+        "max_chunk_tokens": 307,
+        "over_cap_chunks": 0,
+        "empty_chunks": 0,
+        "chunks_without_location": 0
+      },
+      "location": {
+        "fragment_count": 125,
+        "invalid_bbox_count": 0,
+        "zero_area_bbox_count": 0,
+        "fragments_outside_page_count": 0,
+        "identical_location_sibling_count": 0,
+        "source_span_coverage_ratio": 1.0,
+        "output_span_coverage_ratio": 1.0,
+        "synthetic_char_ratio": 0.5399114315597392,
+        "fragment_density": 1.7361111111111112,
+        "highlight_replay_failures": 0
+      },
+      "failures": []
+    }
+  ]
+}

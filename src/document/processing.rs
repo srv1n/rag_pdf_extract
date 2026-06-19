@@ -3,25 +3,42 @@ use super::{
     columns::{detect_columns, reorder_by_columns},
     hyphenation::recover_hyphenation,
     stats::{calculate_document_stats, group_into_visual_lines},
-    tables::{detect_tables, table_to_markdown},
+    tables::{detect_tables, table_to_located_markdown},
     HeaderFooterDetector, TextLevel,
 };
 use crate::chunk_accumulator::{
-    contains_sentence_end, count_words as unicode_count_words, split_long_sentence, ChunkAccumulator,
+    contains_sentence_end, count_words as unicode_count_words, split_long_sentence,
+    split_text_hard_capped, ChunkAccumulator,
 };
+use crate::document::{LocatedText, OutputSpan, SourceRef, SpanSource, SyntheticKind};
 use crate::form::form_fields;
 use crate::heading_hierarchy::HeaderHierarchy;
 use crate::{
-    create_content_core, create_content_ext, create_pdf_location_from_positions, get_inherited,
-    get_page_rotation, BoundingBox, ExtractionResult, MediaBox, OcrHandler, PagePosition,
-    Processor, TextSegment,
+    create_content_core_with_identity, create_content_ext_with_spans,
+    create_pdf_location_from_output_spans, create_pdf_location_from_positions, get_inherited,
+    get_page_rotation, BoundingBox, ExtractionResult, MediaBox, OcrHandler, OcrImageTelemetry,
+    PagePosition, Processor, TextSegment,
 };
-use log::{debug, error};
+use log::{debug, error, info};
 use lopdf::{Dictionary, Document};
 use rayon::prelude::*;
+use regex::Regex;
 use std::collections::{HashMap, HashSet};
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::Arc;
+use std::sync::LazyLock;
 use unicode_segmentation::UnicodeSegmentation;
+
+static RE_MULTI_NEWLINES: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\n{2,}").unwrap());
+static RE_MULTI_SPACES: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[ \t]{2,}").unwrap());
+static RE_EXCESS_DOTS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\.{4,}").unwrap());
+static RE_EXCESS_UNDERSCORES: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"_{4,}").unwrap());
+static RE_EXCESS_DASHES: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"-{4,}").unwrap());
+static RE_EXCESS_EQUALS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"={4,}").unwrap());
+static RE_SPACE_BEFORE_NEWLINE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r" +\n").unwrap());
+static RE_SPACE_AFTER_NEWLINE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\n +").unwrap());
+static OUTPUT_TOKENIZER: LazyLock<Option<tiktoken_rs::CoreBPE>> =
+    LazyLock::new(|| tiktoken_rs::get_bpe_from_model("gpt-4o").ok());
 
 // Helper: ASCII whitespace detection
 fn is_ascii_ws(b: u8) -> bool {
@@ -38,49 +55,60 @@ fn is_ascii_ws(b: u8) -> bool {
 /// - Normalize unicode whitespace to ASCII
 /// - Recover soft hyphens (word continuations across lines)
 pub fn clean_text_for_indexing(text: &str) -> String {
-    use regex::Regex;
     use super::hyphenation::clean_internal_hyphens;
 
     // First, clean internal soft hyphens (word continuations across lines)
     let text = clean_internal_hyphens(text);
+    let text = strip_problematic_control_chars(&text);
 
     // Replace unicode whitespace with ASCII equivalents
     // \u{00A0} = non-breaking space, \u{2000}-\u{200B} = various spaces
-    let text = text.replace('\u{00A0}', " ") // non-breaking space
-                   .replace('\u{2009}', " ") // thin space
-                   .replace('\u{200A}', " ") // hair space
-                   .replace('\u{202F}', " ") // narrow no-break space
-                   .replace('\u{205F}', " "); // medium mathematical space
+    let text = text
+        .replace('\u{00A0}', " ") // non-breaking space
+        .replace('\u{2009}', " ") // thin space
+        .replace('\u{200A}', " ") // hair space
+        .replace('\u{202F}', " ") // narrow no-break space
+        .replace('\u{205F}', " "); // medium mathematical space
 
     // Multiple newlines → single newline (preserve paragraph breaks)
-    let text = Regex::new(r"\n{2,}").unwrap().replace_all(&text, "\n").to_string();
+    let text = RE_MULTI_NEWLINES.replace_all(&text, "\n").to_string();
 
     // Multiple spaces → single space (but preserve newlines)
-    let text = Regex::new(r"[ \t]{2,}").unwrap().replace_all(&text, " ").to_string();
+    let text = RE_MULTI_SPACES.replace_all(&text, " ").to_string();
 
     // Excessive dots (4 or more) → ellipsis
-    let text = Regex::new(r"\.{4,}").unwrap().replace_all(&text, "...").to_string();
+    let text = RE_EXCESS_DOTS.replace_all(&text, "...").to_string();
 
     // Excessive underscores (4 or more) → three underscores
-    let text = Regex::new(r"_{4,}").unwrap().replace_all(&text, "___").to_string();
+    let text = RE_EXCESS_UNDERSCORES.replace_all(&text, "___").to_string();
 
     // Excessive dashes (4 or more) → three dashes
-    let text = Regex::new(r"-{4,}").unwrap().replace_all(&text, "---").to_string();
+    let text = RE_EXCESS_DASHES.replace_all(&text, "---").to_string();
 
     // Excessive equals signs (4 or more) → three equals
-    let text = Regex::new(r"={4,}").unwrap().replace_all(&text, "===").to_string();
+    let text = RE_EXCESS_EQUALS.replace_all(&text, "===").to_string();
 
     // Clean up spaces around newlines
-    let text = Regex::new(r" +\n").unwrap().replace_all(&text, "\n").to_string();
-    let text = Regex::new(r"\n +").unwrap().replace_all(&text, "\n").to_string();
+    let text = RE_SPACE_BEFORE_NEWLINE.replace_all(&text, "\n").to_string();
+    let text = RE_SPACE_AFTER_NEWLINE.replace_all(&text, "\n").to_string();
 
     text
 }
 
+fn strip_problematic_control_chars(text: &str) -> String {
+    text.chars()
+        .filter(|c| !c.is_control() || matches!(c, '\n' | '\t'))
+        .collect()
+}
+
 // Find earliest safe forward boundary with conservative guards
 fn find_forward_boundary(text: &str) -> Option<usize> {
-    if text.is_empty() { return None; }
-    if let Some(pos) = text.find("\n\n") { return Some(pos + 2); }
+    if text.is_empty() {
+        return None;
+    }
+    if let Some(pos) = text.find("\n\n") {
+        return Some(pos + 2);
+    }
 
     let bytes = text.as_bytes();
     let n = bytes.len();
@@ -90,10 +118,18 @@ fn find_forward_boundary(text: &str) -> Option<usize> {
         // Skip closing quotes/brackets
         while j < n {
             let c = bytes[j];
-            if c == b'\'' || c == b'\"' || c == b')' || c == b']' { j += 1; } else { break; }
+            if c == b'\'' || c == b'\"' || c == b')' || c == b']' {
+                j += 1;
+            } else {
+                break;
+            }
         }
-        if j < n && !is_ascii_ws(bytes[j]) { return; }
-        if best.is_none() || j < best.unwrap() { best = Some(j); }
+        if j < n && !is_ascii_ws(bytes[j]) {
+            return;
+        }
+        if best.is_none() || j < best.unwrap() {
+            best = Some(j);
+        }
     };
 
     let mut i = 0usize;
@@ -101,25 +137,33 @@ fn find_forward_boundary(text: &str) -> Option<usize> {
         let b = bytes[i];
         if b == b'.' || b == b'!' || b == b'?' {
             consider(i, i + 1);
-            i += 1; continue;
+            i += 1;
+            continue;
         }
         if b == b';' {
             consider(i, i + 1);
-            i += 1; continue;
+            i += 1;
+            continue;
         }
         if b == b':' {
             let prev_digit = i > 0 && bytes[i - 1].is_ascii_digit();
             let next_digit = i + 1 < n && bytes[i + 1].is_ascii_digit();
-            if !(prev_digit && next_digit) { consider(i, i + 1); }
-            i += 1; continue;
+            if !(prev_digit && next_digit) {
+                consider(i, i + 1);
+            }
+            i += 1;
+            continue;
         }
         if b == 0xE2 && i + 2 < n {
             let b1 = bytes[i + 1];
             let b2 = bytes[i + 2];
             if b1 == 0x80 && (b2 == 0x94 || b2 == 0x93) {
                 let j = i + 3;
-                if j >= n || is_ascii_ws(bytes[j]) { consider(i, j); }
-                i += 3; continue;
+                if j >= n || is_ascii_ws(bytes[j]) {
+                    consider(i, j);
+                }
+                i += 3;
+                continue;
             }
         }
         i += 1;
@@ -128,7 +172,7 @@ fn find_forward_boundary(text: &str) -> Option<usize> {
 }
 
 #[derive(Clone, Debug)]
-pub struct PageText {
+pub(crate) struct PageText {
     pub segments: Vec<TextSegment>,
     pub page_num: u32,
     pub media_box: MediaBox,
@@ -153,8 +197,8 @@ fn merge_continuation_segments(segments: Vec<TextSegment>) -> Vec<TextSegment> {
             Some(mut prev) => {
                 // Check if prev ends with space (continuation marker) and not newline
                 let prev_content = &prev.content;
-                let ends_with_space = prev_content.ends_with(' ')
-                    && !prev_content.trim_end().ends_with('\n');
+                let ends_with_space =
+                    prev_content.ends_with(' ') && !prev_content.trim_end().ends_with('\n');
 
                 // Must be on same page
                 let same_page = prev.page_num == seg.page_num;
@@ -220,9 +264,13 @@ fn merge_title_block_entities(segments: Vec<TextSegment>) -> Vec<TextSegment> {
                 let seg_trimmed = seg.content.trim();
 
                 // Check if both are ALL CAPS short lines (likely title block)
-                let prev_all_caps = prev_trimmed.chars().filter(|c| c.is_alphabetic())
+                let prev_all_caps = prev_trimmed
+                    .chars()
+                    .filter(|c| c.is_alphabetic())
                     .all(|c| c.is_uppercase());
-                let seg_all_caps = seg_trimmed.chars().filter(|c| c.is_alphabetic())
+                let seg_all_caps = seg_trimmed
+                    .chars()
+                    .filter(|c| c.is_alphabetic())
                     .all(|c| c.is_uppercase());
 
                 // Both must be reasonably short and on the same page
@@ -250,8 +298,10 @@ fn merge_title_block_entities(segments: Vec<TextSegment>) -> Vec<TextSegment> {
                 // Limit to 2 merges (3 total lines) to avoid over-merging title blocks
                 let under_limit = merge_count < 2;
 
-                let should_merge = prev_all_caps && seg_all_caps
-                    && both_reasonable && has_short
+                let should_merge = prev_all_caps
+                    && seg_all_caps
+                    && both_reasonable
+                    && has_short
                     && same_page
                     && !prev_ends_terminal
                     && !is_section_marker
@@ -282,7 +332,54 @@ fn merge_title_block_entities(segments: Vec<TextSegment>) -> Vec<TextSegment> {
     result
 }
 
-pub struct PostProcessor {
+fn dedup_overlapping_form_segments(segments: &mut Vec<TextSegment>) {
+    let mut kept: Vec<TextSegment> = Vec::with_capacity(segments.len());
+    'outer: for segment in segments.drain(..) {
+        if segment.cutat.contains(":Form") {
+            let norm = normalize_for_dedup(&segment.content);
+            for existing in kept
+                .iter()
+                .filter(|existing| existing.cutat.contains(":Form"))
+            {
+                if existing.page_num == segment.page_num
+                    && normalize_for_dedup(&existing.content) == norm
+                    && bbox_iou_segments(existing, &segment) >= 0.90
+                {
+                    continue 'outer;
+                }
+            }
+        }
+        kept.push(segment);
+    }
+    *segments = kept;
+}
+
+fn normalize_for_dedup(text: &str) -> String {
+    text.split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase()
+}
+
+fn bbox_iou_segments(a: &TextSegment, b: &TextSegment) -> f64 {
+    let ax2 = a.x + a.width;
+    let ay2 = a.y + a.height;
+    let bx2 = b.x + b.width;
+    let by2 = b.y + b.height;
+    let ix = (ax2.min(bx2) - a.x.max(b.x)).max(0.0);
+    let iy = (ay2.min(by2) - a.y.max(b.y)).max(0.0);
+    let inter = ix * iy;
+    let area_a = a.width.max(0.0) * a.height.max(0.0);
+    let area_b = b.width.max(0.0) * b.height.max(0.0);
+    let denom = area_a + area_b - inter;
+    if denom <= 0.0 {
+        0.0
+    } else {
+        inter / denom
+    }
+}
+
+pub(crate) struct PostProcessor {
     header_threshold: f64,
     footer_threshold: f64,
     continuation_threshold: f64,
@@ -412,6 +509,7 @@ impl PostProcessor {
                             page_char_end: section_end_char_pos,
                             bbox,
                             page_positions: vec![], // TODO: Implement for PostProcessor
+                            located_text: None,
                         });
                         current_chunk.clear();
                         section_segments.clear();
@@ -481,6 +579,7 @@ impl PostProcessor {
                 page_char_end: section_end_char_pos,
                 bbox,
                 page_positions: vec![], // TODO: Implement for PostProcessor
+                located_text: None,
             });
         }
 
@@ -561,7 +660,7 @@ fn ends_with_terminal_punctuation(s: &str) -> bool {
 }
 
 // Temporary ContentOutput structure for backward compatibility during transition
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ContentOutput {
     pub headings: Vec<String>,
     pub paragraph: String,
@@ -571,6 +670,80 @@ pub struct ContentOutput {
     pub page_char_end: Option<usize>,
     pub bbox: Option<BoundingBox>,
     pub page_positions: Vec<PagePosition>,
+    pub located_text: Option<LocatedText>,
+}
+
+fn extend_with_capped_output(
+    outputs: &mut Vec<ContentOutput>,
+    output: ContentOutput,
+    max_tokens: Option<usize>,
+) {
+    let Some(limit) = max_tokens else {
+        outputs.push(output);
+        return;
+    };
+
+    let Some(tokenizer) = OUTPUT_TOKENIZER.as_ref() else {
+        outputs.push(output);
+        return;
+    };
+
+    if tokenizer.encode_ordinary(&output.paragraph).len() <= limit {
+        outputs.push(output);
+        return;
+    }
+
+    let parts = split_text_hard_capped(&output.paragraph, limit, tokenizer);
+    if parts.is_empty() {
+        outputs.push(output);
+        return;
+    }
+
+    let split_total_chars = output.paragraph.chars().count().max(1);
+    let mut split_char_cursor = 0usize;
+    let mut split_search_byte = 0usize;
+    for paragraph in parts {
+        let paragraph_chars = paragraph.chars().count();
+        let split_start_chars = locate_split_start_chars(
+            &output.paragraph,
+            &paragraph,
+            &mut split_search_byte,
+            split_char_cursor,
+        );
+        let page_positions = approximate_split_positions(
+            &output.page_positions,
+            split_start_chars,
+            paragraph_chars,
+            split_total_chars,
+        );
+        let mut part = output.clone();
+        part.paragraph = paragraph;
+        part.located_text = output.located_text.as_ref().map(|located| {
+            located.slice_chars(split_start_chars, paragraph_chars, part.paragraph.clone())
+        });
+        apply_split_location_metadata(&mut part, page_positions);
+        split_char_cursor = split_start_chars + paragraph_chars;
+        outputs.push(part);
+    }
+}
+
+fn locate_split_start_chars(
+    source: &str,
+    part: &str,
+    search_byte: &mut usize,
+    fallback_chars: usize,
+) -> usize {
+    if part.is_empty() || *search_byte >= source.len() {
+        return fallback_chars;
+    }
+
+    if let Some(rel) = source[*search_byte..].find(part) {
+        let byte_start = *search_byte + rel;
+        *search_byte = byte_start + part.len();
+        source[..byte_start].chars().count()
+    } else {
+        fallback_chars
+    }
 }
 
 // Split a text so that the head fits within the given token capacity.
@@ -606,21 +779,31 @@ fn split_to_fit(
             let mut j = i + 1;
             while j < n {
                 let c = bytes[j];
-                if c == b'\'' || c == b'\"' || c == b')' || c == b']' { j += 1; } else { break; }
+                if c == b'\'' || c == b'\"' || c == b')' || c == b']' {
+                    j += 1;
+                } else {
+                    break;
+                }
             }
-            if j == n || is_ascii_ws(bytes[j]) { candidates.push(j); }
+            if j == n || is_ascii_ws(bytes[j]) {
+                candidates.push(j);
+            }
             continue;
         }
         if b == b';' {
             let j = i + 1;
-            if j == n || is_ascii_ws(bytes[j]) { candidates.push(j); }
+            if j == n || is_ascii_ws(bytes[j]) {
+                candidates.push(j);
+            }
             continue;
         }
         if b == b':' {
             let prev_digit = i > 0 && bytes[i - 1].is_ascii_digit();
             let next_digit = i + 1 < n && bytes[i + 1].is_ascii_digit();
             let j = i + 1;
-            if (j == n || is_ascii_ws(bytes[j])) && !(prev_digit && next_digit) { candidates.push(j); }
+            if (j == n || is_ascii_ws(bytes[j])) && !(prev_digit && next_digit) {
+                candidates.push(j);
+            }
             continue;
         }
         if b == 0xE2 && i + 2 < n {
@@ -628,7 +811,9 @@ fn split_to_fit(
             let b2 = bytes[i + 2];
             if b1 == 0x80 && (b2 == 0x94 || b2 == 0x93) {
                 let j = i + 3;
-                if j == n || is_ascii_ws(bytes[j]) { candidates.push(j); }
+                if j == n || is_ascii_ws(bytes[j]) {
+                    candidates.push(j);
+                }
             }
             continue;
         }
@@ -639,9 +824,15 @@ fn split_to_fit(
     candidates.reverse();
 
     for idx in candidates.iter().cloned() {
-        if idx > text.len() { continue; }
+        if idx > text.len() {
+            continue;
+        }
         let head = &text[..idx];
-        let prefix = if sep.is_empty() { head.to_string() } else { format!("{}{}", sep, head) };
+        let prefix = if sep.is_empty() {
+            head.to_string()
+        } else {
+            format!("{}{}", sep, head)
+        };
         let needed = tokenizer.encode_ordinary(&prefix).len();
         if needed <= capacity_tokens {
             let h = head.trim().to_string();
@@ -660,17 +851,82 @@ fn split_to_fit(
             let end = start + word.len();
             let w_tokens = tokenizer.encode_ordinary(word).len();
             let space_tokens = if used_tokens == 0 { 0 } else { 1 };
-            if used_tokens + space_tokens + w_tokens > capacity_tokens { break; }
+            if used_tokens + space_tokens + w_tokens > capacity_tokens {
+                break;
+            }
             used_tokens += space_tokens + w_tokens;
             cursor = end;
             cut_idx_word = Some(cursor);
-        } else { break; }
+        } else {
+            break;
+        }
     }
     let cut_idx = cut_idx_word.unwrap_or(0);
-    if cut_idx == 0 { return (String::new(), text.to_string()); }
+    if cut_idx == 0 {
+        return (String::new(), text.to_string());
+    }
     let head = text[..cut_idx].trim().to_string();
     let tail = text[cut_idx..].trim_start().to_string();
     (head, tail)
+}
+
+fn positioned_split_segments(segment: &TextSegment, chunks: Vec<String>) -> Vec<TextSegment> {
+    let total_chars = segment.content.chars().count().max(1);
+    let mut split_search_byte = 0usize;
+    let mut split_char_cursor = 0usize;
+
+    chunks
+        .into_iter()
+        .filter(|chunk| !chunk.is_empty())
+        .map(|chunk| {
+            let chunk_chars = chunk.chars().count();
+            let start_chars = locate_split_start_chars(
+                &segment.content,
+                &chunk,
+                &mut split_search_byte,
+                split_char_cursor,
+            )
+            .min(total_chars);
+            let end_chars = start_chars.saturating_add(chunk_chars).min(total_chars);
+            split_char_cursor = end_chars;
+
+            slice_text_segment_by_chars(
+                segment,
+                start_chars,
+                end_chars.saturating_sub(start_chars),
+                chunk,
+            )
+        })
+        .collect()
+}
+
+fn slice_text_segment_by_chars(
+    segment: &TextSegment,
+    start_chars: usize,
+    len_chars: usize,
+    new_content: String,
+) -> TextSegment {
+    let total_chars = segment.content.chars().count().max(1);
+    let start_chars = start_chars.min(total_chars);
+    let end_chars = start_chars.saturating_add(len_chars).min(total_chars);
+    let start_ratio = start_chars as f64 / total_chars as f64;
+    let end_ratio = end_chars.max(start_chars + 1) as f64 / total_chars as f64;
+
+    let mut partial = segment.clone();
+    partial.content = new_content;
+    partial.word_count = unicode_count_words(&partial.content);
+    partial.char_start = segment.char_start.saturating_add(start_chars);
+    partial.char_end = segment.char_start.saturating_add(end_chars);
+    partial.x = segment.x + segment.width * start_ratio;
+    partial.width = (segment.width * (end_ratio - start_ratio).max(0.0)).max(0.0);
+    partial.located_text = segment.located_text.as_ref().map(|located| {
+        located.slice_chars(
+            start_chars,
+            end_chars - start_chars,
+            partial.content.clone(),
+        )
+    });
+    partial
 }
 
 pub fn output_doc(
@@ -678,6 +934,16 @@ pub fn output_doc(
     ocr_handler: Option<&OcrHandler>,
     max_tokens: Option<usize>,
     laparams: Option<&crate::LAParams>,
+) -> Result<Vec<ContentOutput>, Box<dyn std::error::Error>> {
+    output_doc_with_ocr_telemetry(doc, ocr_handler, max_tokens, laparams, None)
+}
+
+pub(crate) fn output_doc_with_ocr_telemetry(
+    doc: &Document,
+    ocr_handler: Option<&OcrHandler>,
+    max_tokens: Option<usize>,
+    laparams: Option<&crate::LAParams>,
+    ocr_telemetry: Option<&OcrImageTelemetry>,
 ) -> Result<Vec<ContentOutput>, Box<dyn std::error::Error>> {
     let mut document_structure: Vec<ContentOutput> = Vec::new();
 
@@ -710,26 +976,26 @@ pub fn output_doc(
 
     // Process pages in parallel with error handling
     // Change from flat_map to map to preserve page boundaries
-    let page_results: Vec<(u32, Vec<TextSegment>)> = pages
+    let page_results: Vec<(u32, f64, Vec<TextSegment>)> = pages
         .par_iter()
         .filter_map(|dict| {
             let page_num = dict.0;
-            
+
             // Try to get page dictionary
             let page_dict = match doc.get_object(*dict.1) {
                 Ok(obj) => match obj.as_dict() {
                     Ok(dict) => dict,
                     Err(e) => {
                         error!("Failed to get page {} dictionary: {:?}", page_num, e);
-                        return Some((*page_num, Vec::new())); // Return empty segments for this page
+                        return Some((*page_num, 792.0, Vec::new())); // Return empty segments for this page
                     }
                 },
                 Err(e) => {
                     error!("Failed to get page {} object: {:?}", page_num, e);
-                    return Some((*page_num, Vec::new())); // Return empty segments for this page
+                    return Some((*page_num, 792.0, Vec::new())); // Return empty segments for this page
                 }
             };
-            
+
             let resources = get_inherited(doc, page_dict, b"Resources").unwrap_or(empty_resources);
 
             // Try to get media box
@@ -753,7 +1019,7 @@ pub fn output_doc(
                     }
                 }
             };
-            
+
             // Get page rotation (Layer 1)
             let page_rotate = get_page_rotation(page_dict, &doc);
             debug!("Page {} has rotation: {}°", page_num, page_rotate);
@@ -764,9 +1030,11 @@ pub fn output_doc(
             // Try to process page content
             match doc.get_page_content(*dict.1) {
                 Ok(content) => {
-                    match p.process_stream(
+                    let process_result = catch_unwind(AssertUnwindSafe(|| {
+                        p.process_stream(
                         &doc,
                         ocr_handler,
+                        ocr_telemetry,
                         content,
                         resources,
                         &media_box,
@@ -774,8 +1042,12 @@ pub fn output_doc(
                         &mut page_segments,
                         page_rotate,
                         laparams,
-                    ) {
-                        Ok(_) => {
+                        None,
+                        crate::StreamContext::page(),
+                        )
+                    }));
+                    match process_result {
+                        Ok(Ok(_)) => {
                             let char_count: usize = page_segments.iter().map(|s| s.content.len()).sum();
                             debug!(
                                 "Successfully processed page {} with {} segments ({} chars)",
@@ -784,9 +1056,15 @@ pub fn output_doc(
                                 char_count
                             );
                         }
-                        Err(e) => {
+                        Ok(Err(e)) => {
                             error!("Error processing page {} content: {:?}. Returning partial results.", page_num, e);
                             // page_segments may contain partial results
+                        }
+                        Err(_) => {
+                            error!(
+                                "Panic while processing page {} content. Returning partial results.",
+                                page_num
+                            );
                         }
                     }
                 }
@@ -795,6 +1073,8 @@ pub fn output_doc(
                     // Return empty segments for this page
                 }
             }
+
+            dedup_overlapping_form_segments(&mut page_segments);
 
             // Detect and handle columns for this page
             let page_width = media_box.urx - media_box.llx;
@@ -809,17 +1089,22 @@ pub fn output_doc(
                 reorder_by_columns(&mut page_segments, &column_layout);
             }
 
-            Some((*dict.0, page_segments)) // Return tuple of (page_num, segments)
+            Some((*dict.0, media_box.ury - media_box.lly, page_segments))
         })
         .collect();
 
     // Sort by page number and flatten while maintaining order
     let mut page_results_vec: Vec<_> = page_results.into_iter().collect();
-    page_results_vec.sort_by_key(|(page_num, _)| *page_num);
+    page_results_vec.sort_by_key(|(page_num, _, _)| *page_num);
+
+    let page_heights: HashMap<u32, f64> = page_results_vec
+        .iter()
+        .map(|(page_num, height, _)| (*page_num, *height))
+        .collect();
 
     let text_segments: Vec<TextSegment> = page_results_vec
         .into_iter()
-        .flat_map(|(_, segments)| segments)
+        .flat_map(|(_, _, segments)| segments)
         .collect();
 
     // Merge continuation segments: if a segment ends with space (continuation marker)
@@ -835,10 +1120,11 @@ pub fn output_doc(
     // Create header/footer detector and analyze the document
     let mut header_footer_detector = HeaderFooterDetector::new(pages.len());
 
-    // Feed all text segments to the detector
     for segment in &text_segments {
-        // Approximate page height if unknown; segments carry page_num, not media box
-        let page_height = 792.0; // US Letter default; detector primarily relies on normalization + repetition
+        let page_height = page_heights
+            .get(&segment.page_num)
+            .copied()
+            .unwrap_or(792.0);
         header_footer_detector.add_occurrence(
             &segment.content,
             segment.page_num,
@@ -895,7 +1181,8 @@ pub fn output_doc(
             if !table_result.tables.is_empty() {
                 debug!(
                     "Page {} has {} table(s) detected",
-                    page_num, table_result.tables.len()
+                    page_num,
+                    table_result.tables.len()
                 );
 
                 // Add non-table segments
@@ -903,9 +1190,24 @@ pub fn output_doc(
 
                 // For each detected table, create a markdown segment
                 for table in table_result.tables {
-                    let md = table_to_markdown(&table);
+                    let located = table_to_located_markdown(&table, page_num);
+                    let md = located.text.clone();
                     if !md.is_empty() {
-                        // Create a synthetic segment for the table markdown
+                        let char_start = table
+                            .rows
+                            .iter()
+                            .flat_map(|row| row.cells.iter())
+                            .filter_map(|cell| cell.char_start)
+                            .min()
+                            .unwrap_or(0);
+                        let char_end = table
+                            .rows
+                            .iter()
+                            .flat_map(|row| row.cells.iter())
+                            .filter_map(|cell| cell.char_end)
+                            .max()
+                            .unwrap_or(char_start + md.chars().count());
+                        let word_count = unicode_count_words(&md);
                         all_segments.push(TextSegment {
                             content: md,
                             font_size: 12.0,
@@ -920,11 +1222,12 @@ pub fn output_doc(
                             cutat: String::new(),
                             fill_color: None,
                             stroke_color: None,
-                            char_start: 0,
-                            char_end: 0,
+                            char_start,
+                            char_end,
                             width: table.bbox.width,
                             height: table.bbox.height,
-                            word_count: 0,
+                            word_count,
+                            located_text: Some(located),
                         });
                     }
                 }
@@ -935,11 +1238,16 @@ pub fn output_doc(
         }
 
         // Re-sort by page and y position to maintain reading order
-        all_segments.sort_by(|a, b| {
-            match a.page_num.cmp(&b.page_num) {
-                std::cmp::Ordering::Equal => a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal),
-                other => other,
+        all_segments.sort_by(|a, b| match a.page_num.cmp(&b.page_num) {
+            std::cmp::Ordering::Equal => {
+                let y_cmp = a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal);
+                if y_cmp == std::cmp::Ordering::Equal {
+                    a.x.partial_cmp(&b.x).unwrap_or(std::cmp::Ordering::Equal)
+                } else {
+                    y_cmp
+                }
             }
+            other => other,
         });
 
         all_segments
@@ -975,7 +1283,7 @@ pub fn output_doc(
     );
 
     // Track consecutive headings to group them together
-    let mut pending_headings: Vec<(TextLevel, String)> = Vec::new();
+    let mut pending_headings: Vec<(TextLevel, TextSegment)> = Vec::new();
 
     // Track title block region at the top of the document.
     // Title blocks often have small non-heading elements interspersed (page numbers, dates),
@@ -1005,12 +1313,16 @@ pub fn output_doc(
                 // Heading detected
                 // If we have body content in accumulator, flush before starting new heading sequence
                 if pending_headings.is_empty() && !accumulator.is_empty() {
-                    document_structure.push(accumulator.create_output());
+                    extend_with_capped_output(
+                        &mut document_structure,
+                        accumulator.create_output(),
+                        max_tokens,
+                    );
                     accumulator.reset();
                 }
 
                 // Accumulate this heading (consecutive headings stay together)
-                pending_headings.push((level, segment.content.trim().to_string()));
+                pending_headings.push((level, segment.clone()));
             }
 
             TextLevel::Body | TextLevel::SubBody => {
@@ -1040,7 +1352,8 @@ pub fn output_doc(
                     let is_title_block = pending_headings.len() >= 3
                         || (was_in_title_block_region && title_block_headings_count >= 3);
 
-                    for (h_level, h_text) in &pending_headings {
+                    for (h_level, h_segment) in &pending_headings {
+                        let h_text = h_segment.content.trim();
                         let heading_content = if is_title_block {
                             // Title block: no markdown heading markers, just plain text
                             format!("{}\n", h_text)
@@ -1057,17 +1370,20 @@ pub fn output_doc(
                             };
                             format!("{}{}\n", prefix, h_text)
                         };
-                        let mut heading_seg = segment.clone();
+                        let mut heading_seg = h_segment.clone();
                         heading_seg.content = heading_content;
+                        heading_seg.word_count = unicode_count_words(&heading_seg.content);
+                        let char_len = heading_seg.content.chars().count();
+                        heading_seg.char_end = heading_seg.char_start + char_len;
                         accumulator.add_segment(heading_seg);
                     }
                     // Update hierarchy with last heading (for context tracking)
                     // Only for actual headings, not title block elements
                     if !is_title_block {
-                        if let Some((h_level, h_text)) = pending_headings.last() {
-                            header_hierarchy.push(*h_level, h_text.clone());
-                            accumulator.set_headings(header_hierarchy.get_headers());
+                        for (h_level, h_segment) in &pending_headings {
+                            header_hierarchy.push(*h_level, h_segment.content.trim().to_string());
                         }
+                        accumulator.set_headings(header_hierarchy.get_headers());
                     }
                     pending_headings.clear();
                 }
@@ -1082,7 +1398,7 @@ pub fn output_doc(
                     // Can't add - need to handle overflow
                     // First try backtracking to the last wide boundary under the cap
                     if let Some(output) = accumulator.flush_at_last_boundary() {
-                        document_structure.push(output);
+                        extend_with_capped_output(&mut document_structure, output, max_tokens);
                         accumulator.set_headings(header_hierarchy.get_headers());
                         // After flushing at a clean boundary, try adding again
                         if accumulator.can_add_segment(&segment) {
@@ -1092,7 +1408,11 @@ pub fn output_doc(
                     }
                     if accumulator.should_flush() {
                         // At sentence boundary - safe to flush
-                        document_structure.push(accumulator.create_output());
+                        extend_with_capped_output(
+                            &mut document_structure,
+                            accumulator.create_output(),
+                            max_tokens,
+                        );
                         accumulator.reset();
                         accumulator.set_headings(header_hierarchy.get_headers());
 
@@ -1106,20 +1426,13 @@ pub fn output_doc(
                                 &tokenizer,
                             );
 
-                            for chunk_text in chunks.into_iter() {
-                                let mut partial_segment = segment.clone();
-                                partial_segment.content = chunk_text;
-                                partial_segment.word_count =
-                                    unicode_count_words(&partial_segment.content);
-                                // Adjust bbox approximately by proportion of chars
-                                let orig_chars = segment.content.chars().count().max(1);
-                                let part_chars = partial_segment.content.chars().count();
-                                let ratio = (part_chars as f64) / (orig_chars as f64);
-                                partial_segment.width = (segment.width * ratio).max(0.0);
-                                // Keep x for the first piece in this loop; subsequent pieces will be split by separate flushes
-
+                            for partial_segment in positioned_split_segments(&segment, chunks) {
                                 accumulator.add_segment(partial_segment);
-                                document_structure.push(accumulator.create_output());
+                                extend_with_capped_output(
+                                    &mut document_structure,
+                                    accumulator.create_output(),
+                                    max_tokens,
+                                );
                                 accumulator.reset();
                                 accumulator.set_headings(header_hierarchy.get_headers());
                             }
@@ -1133,7 +1446,11 @@ pub fn output_doc(
                         let segment_tokens = tokenizer.encode_ordinary(&segment.content).len();
                         if segment_tokens > max_tokens.unwrap_or(usize::MAX) {
                             // Even though it completes a sentence, it's too large - must split
-                            document_structure.push(accumulator.create_output());
+                            extend_with_capped_output(
+                                &mut document_structure,
+                                accumulator.create_output(),
+                                max_tokens,
+                            );
                             accumulator.reset();
                             accumulator.set_headings(header_hierarchy.get_headers());
 
@@ -1143,25 +1460,24 @@ pub fn output_doc(
                                 &tokenizer,
                             );
 
-                            for chunk_text in chunks.into_iter() {
-                                let mut partial_segment = segment.clone();
-                                partial_segment.content = chunk_text;
-                                partial_segment.word_count =
-                                    unicode_count_words(&partial_segment.content);
-                                let orig_chars = segment.content.chars().count().max(1);
-                                let part_chars = partial_segment.content.chars().count();
-                                let ratio = (part_chars as f64) / (orig_chars as f64);
-                                partial_segment.width = (segment.width * ratio).max(0.0);
-
+                            for partial_segment in positioned_split_segments(&segment, chunks) {
                                 accumulator.add_segment(partial_segment);
-                                document_structure.push(accumulator.create_output());
+                                extend_with_capped_output(
+                                    &mut document_structure,
+                                    accumulator.create_output(),
+                                    max_tokens,
+                                );
                                 accumulator.reset();
                                 accumulator.set_headings(header_hierarchy.get_headers());
                             }
                         } else {
                             // Force add it since it completes a sentence and fits
                             accumulator.add_segment(segment);
-                            document_structure.push(accumulator.create_output());
+                            extend_with_capped_output(
+                                &mut document_structure,
+                                accumulator.create_output(),
+                                max_tokens,
+                            );
                             accumulator.reset();
                             accumulator.set_headings(header_hierarchy.get_headers());
                         }
@@ -1170,63 +1486,63 @@ pub fn output_doc(
                         let remaining = max_tokens
                             .unwrap_or(usize::MAX)
                             .saturating_sub(accumulator.get_token_count().unwrap_or(0));
-                        let (prefix, rest) = split_to_fit(&segment.content, " ", remaining, &tokenizer);
+                        let (prefix, rest) =
+                            split_to_fit(&segment.content, " ", remaining, &tokenizer);
                         if !prefix.is_empty() {
-                            let mut seg1 = segment.clone();
-                            seg1.content = prefix;
-                            seg1.word_count = unicode_count_words(&seg1.content);
-                            // Adjust char ranges to reflect the prefix length on this page
-                            let prefix_chars = seg1.content.chars().count();
-                            let original_start = seg1.char_start;
-                            seg1.char_end = original_start + prefix_chars;
-                            // Approximate bbox split left-to-right
-                            let total_chars = segment.content.chars().count().max(1);
-                            let ratio = (prefix_chars as f64) / (total_chars as f64);
-                            let w1 = (segment.width * ratio).max(0.0);
-                            seg1.width = w1;
+                            let mut split_search_byte = 0usize;
+                            let prefix_chars = prefix.chars().count();
+                            let prefix_start_chars = locate_split_start_chars(
+                                &segment.content,
+                                &prefix,
+                                &mut split_search_byte,
+                                0,
+                            );
+                            let seg1 = slice_text_segment_by_chars(
+                                &segment,
+                                prefix_start_chars,
+                                prefix_chars,
+                                prefix,
+                            );
                             accumulator.add_segment(seg1);
-                            document_structure.push(accumulator.create_output());
+                            extend_with_capped_output(
+                                &mut document_structure,
+                                accumulator.create_output(),
+                                max_tokens,
+                            );
                             accumulator.reset();
                             accumulator.set_headings(header_hierarchy.get_headers());
 
                             if !rest.is_empty() {
                                 // Handle remainder like a normal segment
-                                let mut seg2 = segment.clone();
-                                seg2.content = rest;
-                                seg2.word_count = unicode_count_words(&seg2.content);
-                                // Remainder starts where prefix ended; end at original end
-                                let rest_chars = seg2.content.chars().count();
-                                seg2.char_start = original_start + prefix_chars;
-                                seg2.char_end = seg2.char_start + rest_chars;
-                                // Adjust bbox for remainder
-                                let w2 = (segment.width - ratio * segment.width).max(0.0);
-                                seg2.x = segment.x + (segment.width - w2);
-                                seg2.width = w2;
+                                let rest_chars = rest.chars().count();
+                                let rest_start_chars = locate_split_start_chars(
+                                    &segment.content,
+                                    &rest,
+                                    &mut split_search_byte,
+                                    prefix_start_chars + prefix_chars,
+                                );
+                                let seg2 = slice_text_segment_by_chars(
+                                    &segment,
+                                    rest_start_chars,
+                                    rest_chars,
+                                    rest,
+                                );
                                 let test_tokens = tokenizer.encode_ordinary(&seg2.content).len();
                                 if test_tokens > max_tokens.unwrap_or(usize::MAX) {
-                                let chunks = split_long_sentence(
+                                    let chunks = split_long_sentence(
                                         &seg2.content,
                                         max_tokens.unwrap_or(usize::MAX),
                                         &tokenizer,
                                     );
-                                    for chunk_text in chunks.into_iter() {
-                                        let mut partial = seg2.clone();
-                                        partial.content = chunk_text;
-                                        partial.word_count =
-                                            unicode_count_words(&partial.content);
-                                        let c = partial.content.chars().count();
-                                        partial.char_end = partial.char_start + c;
-                                        // Proportionally adjust width within the remainder
-                                        let rem_total = seg2.content.chars().count().max(1);
-                                        let part_ratio = (c as f64) / (rem_total as f64);
-                                        partial.width = (seg2.width * part_ratio).max(0.0);
-                                        // Keep x for first piece inside remainder; subsequent pieces are emitted across separate flushes
+                                    for partial in positioned_split_segments(&seg2, chunks) {
                                         accumulator.add_segment(partial);
-                                        document_structure.push(accumulator.create_output());
-                                        accumulator.reset();
-                                        accumulator.set_headings(
-                                            header_hierarchy.get_headers(),
+                                        extend_with_capped_output(
+                                            &mut document_structure,
+                                            accumulator.create_output(),
+                                            max_tokens,
                                         );
+                                        accumulator.reset();
+                                        accumulator.set_headings(header_hierarchy.get_headers());
                                     }
                                 } else {
                                     accumulator.add_segment(seg2);
@@ -1234,14 +1550,21 @@ pub fn output_doc(
                             }
                         } else {
                             // Hard flush, then handle the segment as usual
-                            document_structure.push(accumulator.create_output_with_warning());
+                            extend_with_capped_output(
+                                &mut document_structure,
+                                accumulator.create_output_with_warning(),
+                                max_tokens,
+                            );
                             accumulator.reset();
                             accumulator.set_headings(header_hierarchy.get_headers());
 
                             // Check if segment itself is too large
                             if segment.word_count > 0 {
                                 let test_tokens = tokenizer.encode_ordinary(&segment.content).len();
-                                debug!("Segment has {} tokens (max: {:?})", test_tokens, max_tokens);
+                                debug!(
+                                    "Segment has {} tokens (max: {:?})",
+                                    test_tokens, max_tokens
+                                );
                                 if test_tokens > max_tokens.unwrap_or(usize::MAX) {
                                     debug!("Splitting large segment with {} tokens", test_tokens);
                                     // Split the large segment
@@ -1251,18 +1574,17 @@ pub fn output_doc(
                                         &tokenizer,
                                     );
 
-                                    for (_idx, chunk_text) in chunks.into_iter().enumerate() {
-                                        let mut partial_segment = segment.clone();
-                                        partial_segment.content = chunk_text;
-                                        partial_segment.word_count =
-                                            unicode_count_words(&partial_segment.content);
-
+                                    for partial_segment in
+                                        positioned_split_segments(&segment, chunks)
+                                    {
                                         accumulator.add_segment(partial_segment);
-                                        document_structure.push(accumulator.create_output());
-                                        accumulator.reset();
-                                        accumulator.set_headings(
-                                            header_hierarchy.get_headers(),
+                                        extend_with_capped_output(
+                                            &mut document_structure,
+                                            accumulator.create_output(),
+                                            max_tokens,
                                         );
+                                        accumulator.reset();
+                                        accumulator.set_headings(header_hierarchy.get_headers());
                                     }
                                 } else {
                                     accumulator.add_segment(segment);
@@ -1273,7 +1595,9 @@ pub fn output_doc(
                 } else {
                     // Normal case - consider look-ahead ending before adding full segment
                     let mut handled = false;
-                    if let (Some(max_toks), Some(current_tokens)) = (max_tokens, accumulator.get_token_count()) {
+                    if let (Some(max_toks), Some(current_tokens)) =
+                        (max_tokens, accumulator.get_token_count())
+                    {
                         // Trigger window when we're near capacity
                         if current_tokens > (max_toks * 85 / 100) {
                             // Configurable small token window
@@ -1286,39 +1610,39 @@ pub fn output_doc(
                                     let prefix = &segment.content[..k];
                                     // Conservative space token: assume a join space if accumulator non-empty
                                     let sep_tokens = if accumulator.is_empty() { 0 } else { 1 };
-                                    let needed = sep_tokens + tokenizer.encode_ordinary(prefix).len();
-                                    if needed <= lookahead_n && current_tokens + needed <= max_toks {
+                                    let needed =
+                                        sep_tokens + tokenizer.encode_ordinary(prefix).len();
+                                    if needed <= lookahead_n && current_tokens + needed <= max_toks
+                                    {
                                         // Split incoming segment into prefix + remainder
-                                        let mut seg1 = segment.clone();
-                                        seg1.content = prefix.to_string();
-                                        seg1.word_count = unicode_count_words(&seg1.content);
-                                        let prefix_chars = seg1.content.chars().count();
-                                        let original_start = seg1.char_start;
-                                        seg1.char_end = original_start + prefix_chars;
-                                        // Proportional bbox split
-                                        let total_chars = segment.content.chars().count().max(1);
-                                        let ratio = (prefix_chars as f64) / (total_chars as f64);
-                                        let w1 = (segment.width * ratio).max(0.0);
-                                        seg1.width = w1;
+                                        let prefix_chars = prefix.chars().count();
+                                        let seg1 = slice_text_segment_by_chars(
+                                            &segment,
+                                            0,
+                                            prefix_chars,
+                                            prefix.to_string(),
+                                        );
 
                                         // Add small prefix, then flush
                                         accumulator.add_segment(seg1);
-                                        document_structure.push(accumulator.create_output());
+                                        extend_with_capped_output(
+                                            &mut document_structure,
+                                            accumulator.create_output(),
+                                            max_tokens,
+                                        );
                                         accumulator.reset();
                                         accumulator.set_headings(header_hierarchy.get_headers());
 
                                         // Handle remainder in the fresh chunk
                                         let rest = &segment.content[k..];
                                         if !rest.is_empty() {
-                                            let mut seg2 = segment.clone();
-                                            seg2.content = rest.to_string();
-                                            seg2.word_count = unicode_count_words(&seg2.content);
-                                            let rest_chars = seg2.content.chars().count();
-                                            seg2.char_start = original_start + prefix_chars;
-                                            seg2.char_end = seg2.char_start + rest_chars;
-                                            // Adjust bbox for remainder
-                                            seg2.x = segment.x + w1;
-                                            seg2.width = (segment.width - w1).max(0.0);
+                                            let rest_chars = rest.chars().count();
+                                            let seg2 = slice_text_segment_by_chars(
+                                                &segment,
+                                                prefix_chars,
+                                                rest_chars,
+                                                rest.to_string(),
+                                            );
                                             accumulator.add_segment(seg2);
                                         }
                                         handled = true;
@@ -1337,24 +1661,35 @@ pub fn output_doc(
                         if let Some(max_toks) = max_tokens {
                             if tokens >= max_toks {
                                 // Strict cap: flush immediately
-                                document_structure.push(accumulator.create_output());
+                                extend_with_capped_output(
+                                    &mut document_structure,
+                                    accumulator.create_output(),
+                                    max_tokens,
+                                );
                                 accumulator.reset();
                                 accumulator.set_headings(header_hierarchy.get_headers());
                             } else if tokens > (max_toks * 9 / 10) && accumulator.should_flush() {
-                                document_structure.push(accumulator.create_output());
+                                extend_with_capped_output(
+                                    &mut document_structure,
+                                    accumulator.create_output(),
+                                    max_tokens,
+                                );
                                 accumulator.reset();
                                 accumulator.set_headings(header_hierarchy.get_headers());
                             } else if tokens > (max_toks * 85 / 100) {
                                 // Prefer flushing at the last wide boundary to avoid mid-sentence near cap
                                 if let Some(output) = accumulator.flush_at_last_boundary() {
-                                    document_structure.push(output);
+                                    extend_with_capped_output(
+                                        &mut document_structure,
+                                        output,
+                                        max_tokens,
+                                    );
                                     accumulator.set_headings(header_hierarchy.get_headers());
                                 }
                             }
                         }
                     }
                 }
-
             }
         }
     }
@@ -1369,7 +1704,8 @@ pub fn output_doc(
         let is_title_block = pending_headings.len() >= 3
             || (was_in_title_block_region && title_block_headings_count >= 3);
 
-        for (h_level, h_text) in &pending_headings {
+        for (h_level, h_segment) in &pending_headings {
+            let h_text = h_segment.content.trim();
             let heading_content = if is_title_block {
                 // Title block: no markdown heading markers, just plain text
                 format!("{}\n", h_text)
@@ -1386,47 +1722,281 @@ pub fn output_doc(
                 };
                 format!("{}{}\n", prefix, h_text)
             };
-            // Create a minimal segment for the heading
-            let heading_seg = TextSegment {
-                content: heading_content,
-                page_num: 0,
-                x: 0.0,
-                y: 0.0,
-                width: 0.0,
-                height: 0.0,
-                font_name: String::new(),
-                font_size: 0.0,
-                font_weight: crate::FontWeight::Regular,
-                char_start: 0,
-                char_end: 0,
-                word_count: h_text.split_whitespace().count(),
-                is_bold: false,
-                is_italic: false,
-                transformed_font_size: 0.0,
-                cutat: String::new(),
-                fill_color: None,
-                stroke_color: None,
-            };
+            let mut heading_seg = h_segment.clone();
+            heading_seg.content = heading_content;
+            heading_seg.word_count = unicode_count_words(&heading_seg.content);
+            let char_len = heading_seg.content.chars().count();
+            heading_seg.char_end = heading_seg.char_start + char_len;
             accumulator.add_segment(heading_seg);
         }
         // Only update hierarchy for actual headings, not title block
         if !is_title_block {
-            if let Some((h_level, h_text)) = pending_headings.last() {
-                header_hierarchy.push(*h_level, h_text.clone());
-                accumulator.set_headings(header_hierarchy.get_headers());
+            for (h_level, h_segment) in &pending_headings {
+                header_hierarchy.push(*h_level, h_segment.content.trim().to_string());
             }
+            accumulator.set_headings(header_hierarchy.get_headers());
         }
     }
 
     // Flush any remaining content
     if !accumulator.is_empty() {
-        document_structure.push(accumulator.create_output());
+        extend_with_capped_output(
+            &mut document_structure,
+            accumulator.create_output(),
+            max_tokens,
+        );
     }
 
     // Return the document structure directly - no post-processing needed
     // Dump font decode summary if enabled
     crate::dump_font_decode_summary();
     Ok(document_structure)
+}
+
+fn approximate_split_positions(
+    source_positions: &[PagePosition],
+    split_start_chars: usize,
+    split_len_chars: usize,
+    total_chars: usize,
+) -> Vec<PagePosition> {
+    if source_positions.is_empty() || split_len_chars == 0 {
+        return Vec::new();
+    }
+
+    let split_end_chars = split_start_chars + split_len_chars;
+    let mut out = Vec::new();
+
+    for pos in source_positions {
+        let source_len = pos.char_end.saturating_sub(pos.char_start).max(1);
+        let source_global_start = pos.char_start;
+        let source_global_end = pos.char_end.max(source_global_start + source_len);
+        let abs_start =
+            source_global_start + split_start_chars.min(total_chars) * source_len / total_chars;
+        let abs_end =
+            source_global_start + split_end_chars.min(total_chars) * source_len / total_chars;
+        let mut local_start = abs_start.clamp(source_global_start, source_global_end);
+        if local_start >= source_global_end {
+            local_start = source_global_end.saturating_sub(1).max(source_global_start);
+        }
+        let local_end = abs_end.clamp(local_start + 1, source_global_end);
+
+        let start_ratio =
+            (local_start.saturating_sub(source_global_start) as f64) / source_len as f64;
+        let end_ratio = (local_end.saturating_sub(source_global_start) as f64) / source_len as f64;
+        let width = (pos.bbox.width * (end_ratio - start_ratio).max(0.01)).max(0.01);
+        let x = pos.bbox.x + pos.bbox.width * start_ratio;
+
+        out.push(PagePosition {
+            page: pos.page,
+            char_start: local_start,
+            char_end: local_end,
+            bbox: BoundingBox {
+                x,
+                y: pos.bbox.y,
+                width,
+                height: pos.bbox.height.max(0.01),
+            },
+        });
+    }
+
+    out
+}
+
+fn apply_split_location_metadata(output: &mut ContentOutput, page_positions: Vec<PagePosition>) {
+    if page_positions.is_empty() {
+        return;
+    }
+
+    output.page = page_positions
+        .iter()
+        .map(|pos| pos.page)
+        .min()
+        .unwrap_or(output.page);
+    let end_page = page_positions
+        .iter()
+        .map(|pos| pos.page)
+        .max()
+        .unwrap_or(output.page);
+    output.end_page = (end_page != output.page).then_some(end_page);
+    output.page_char_start = page_positions.iter().map(|pos| pos.char_start).min();
+    output.page_char_end = page_positions.iter().map(|pos| pos.char_end).max();
+    output.bbox = bbox_union_from_positions(&page_positions);
+    output.page_positions = page_positions;
+}
+
+fn bbox_union_from_positions(page_positions: &[PagePosition]) -> Option<BoundingBox> {
+    let mut iter = page_positions.iter();
+    let first = iter.next()?;
+    let mut min_x = first.bbox.x;
+    let mut min_y = first.bbox.y;
+    let mut max_x = first.bbox.x + first.bbox.width;
+    let mut max_y = first.bbox.y + first.bbox.height;
+
+    for pos in iter {
+        min_x = min_x.min(pos.bbox.x);
+        min_y = min_y.min(pos.bbox.y);
+        max_x = max_x.max(pos.bbox.x + pos.bbox.width);
+        max_y = max_y.max(pos.bbox.y + pos.bbox.height);
+    }
+
+    Some(BoundingBox {
+        x: min_x,
+        y: min_y,
+        width: (max_x - min_x).max(0.01),
+        height: (max_y - min_y).max(0.01),
+    })
+}
+
+fn clean_located_text_for_indexing(located: &LocatedText) -> LocatedText {
+    let chars: Vec<char> = located.text.chars().collect();
+    let mut out = String::new();
+    let mut spans = Vec::new();
+    let mut idx = 0usize;
+    let mut pending_whitespace_refs: Vec<SourceRef> = Vec::new();
+
+    while idx < chars.len() {
+        let ch = chars[idx];
+
+        if ch == '-'
+            && idx + 1 < chars.len()
+            && matches!(chars[idx + 1], '\n' | '\r')
+            && idx > 0
+            && chars[idx - 1].is_alphabetic()
+        {
+            let mut next_idx = idx + 1;
+            while next_idx < chars.len() && chars[next_idx].is_whitespace() {
+                collect_source_refs(located, next_idx, &mut pending_whitespace_refs);
+                next_idx += 1;
+            }
+            if next_idx < chars.len() && chars[next_idx].is_alphabetic() {
+                collect_source_refs(located, idx, &mut pending_whitespace_refs);
+                idx = next_idx;
+                continue;
+            }
+        }
+
+        if ch.is_control() && !matches!(ch, '\n' | '\t') {
+            collect_source_refs(located, idx, &mut pending_whitespace_refs);
+            idx += 1;
+            continue;
+        }
+
+        let normalized = match ch {
+            '\u{00A0}' | '\u{2009}' | '\u{200A}' | '\u{202F}' | '\u{205F}' | '\t' => ' ',
+            other => other,
+        };
+
+        if normalized == ' ' {
+            collect_source_refs(located, idx, &mut pending_whitespace_refs);
+            if !out.ends_with(' ') && !out.ends_with('\n') {
+                let start = out.chars().count();
+                out.push(' ');
+                push_clean_span(
+                    &mut spans,
+                    start,
+                    start + 1,
+                    SpanSource::Synthetic {
+                        kind: SyntheticKind::InsertedWhitespace,
+                        parent_refs: pending_whitespace_refs.clone(),
+                    },
+                );
+            }
+            pending_whitespace_refs.clear();
+            idx += 1;
+            continue;
+        }
+
+        if normalized == '\n' {
+            collect_source_refs(located, idx, &mut pending_whitespace_refs);
+            if !out.ends_with('\n') {
+                let start = out.chars().count();
+                out.push('\n');
+                push_clean_span(
+                    &mut spans,
+                    start,
+                    start + 1,
+                    SpanSource::Synthetic {
+                        kind: SyntheticKind::InsertedWhitespace,
+                        parent_refs: pending_whitespace_refs.clone(),
+                    },
+                );
+            }
+            pending_whitespace_refs.clear();
+            idx += 1;
+            continue;
+        }
+
+        let start = out.chars().count();
+        out.push(normalized);
+        if let Some(source) = source_for_char(located, idx, normalized) {
+            push_clean_span(&mut spans, start, start + 1, source);
+        }
+        pending_whitespace_refs.clear();
+        idx += 1;
+    }
+
+    LocatedText { text: out, spans }
+}
+
+fn collect_source_refs(located: &LocatedText, idx: usize, refs: &mut Vec<SourceRef>) {
+    if let Some(source) = source_for_char(located, idx, ' ') {
+        match source {
+            SpanSource::Pdf {
+                page,
+                char_start,
+                char_end,
+                ..
+            } => refs.push(SourceRef {
+                page,
+                char_start,
+                char_end,
+            }),
+            SpanSource::Synthetic { parent_refs, .. } => refs.extend(parent_refs),
+        }
+    }
+}
+
+fn source_for_char(located: &LocatedText, idx: usize, text_char: char) -> Option<SpanSource> {
+    let sliced = located.slice_chars(idx, 1, text_char.to_string());
+    sliced.spans.into_iter().next().map(|span| span.source)
+}
+
+fn push_clean_span(
+    spans: &mut Vec<OutputSpan>,
+    output_start: usize,
+    output_end: usize,
+    source: SpanSource,
+) {
+    if let Some(last) = spans.last_mut() {
+        if last.output_end == output_start && can_merge_clean_span(&last.source, &source) {
+            last.output_end = output_end;
+            match (&mut last.source, source) {
+                (
+                    SpanSource::Synthetic {
+                        parent_refs: last_refs,
+                        ..
+                    },
+                    SpanSource::Synthetic { parent_refs, .. },
+                ) => last_refs.extend(parent_refs),
+                _ => {}
+            }
+            return;
+        }
+    }
+    spans.push(OutputSpan {
+        output_start,
+        output_end,
+        source,
+    });
+}
+
+fn can_merge_clean_span(a: &SpanSource, b: &SpanSource) -> bool {
+    match (a, b) {
+        (SpanSource::Synthetic { kind: ak, .. }, SpanSource::Synthetic { kind: bk, .. }) => {
+            ak == bk
+        }
+        _ => false,
+    }
 }
 
 /// New output_doc function that directly returns the new schema
@@ -1439,45 +2009,149 @@ pub fn output_doc_new_schema(
     laparams: Option<&crate::LAParams>,
     clean_text: bool, // Whether to clean text for indexing
 ) -> Result<Vec<ExtractionResult>, Box<dyn std::error::Error>> {
-    // Reuse most of the existing output_doc logic but modify the return format
-    let content_outputs = output_doc(doc, ocr_handler, max_tokens, laparams)?;
+    output_doc_new_schema_with_ocr_telemetry(
+        doc,
+        ocr_handler,
+        max_tokens,
+        source_id,
+        source_type,
+        laparams,
+        clean_text,
+        None,
+    )
+}
 
+pub(crate) fn output_doc_new_schema_with_ocr_telemetry(
+    doc: &Document,
+    ocr_handler: Option<&OcrHandler>,
+    max_tokens: Option<usize>,
+    source_id: i64,
+    source_type: &str,
+    laparams: Option<&crate::LAParams>,
+    clean_text: bool,
+    ocr_telemetry: Option<&OcrImageTelemetry>,
+) -> Result<Vec<ExtractionResult>, Box<dyn std::error::Error>> {
+    // Reuse most of the existing output_doc logic but modify the return format
+    let content_outputs =
+        output_doc_with_ocr_telemetry(doc, ocr_handler, max_tokens, laparams, ocr_telemetry)?;
+    content_outputs_to_results(
+        content_outputs,
+        max_tokens,
+        source_id,
+        source_type,
+        clean_text,
+    )
+}
+
+fn content_outputs_to_results(
+    content_outputs: Vec<ContentOutput>,
+    max_tokens: Option<usize>,
+    source_id: i64,
+    source_type: &str,
+    clean_text: bool,
+) -> Result<Vec<ExtractionResult>, Box<dyn std::error::Error>> {
     let mut results = Vec::new();
 
-    for output in content_outputs {
-        // Clean text if requested (default behavior for better indexing)
-        let cleaned_paragraph = if clean_text {
-            clean_text_for_indexing(&output.paragraph)
+    for (output_idx, output) in content_outputs.into_iter().enumerate() {
+        let located_base = if clean_text {
+            output
+                .located_text
+                .as_ref()
+                .map(clean_located_text_for_indexing)
         } else {
-            output.paragraph.clone()
+            output.located_text.clone()
         };
+        let cleaned_paragraph = located_base
+            .as_ref()
+            .map(|located| located.text.clone())
+            .unwrap_or_else(|| {
+                if clean_text {
+                    clean_text_for_indexing(&output.paragraph)
+                } else {
+                    output.paragraph.clone()
+                }
+            });
+        let split_total_chars = cleaned_paragraph.chars().count().max(1);
+        let paragraphs =
+            if let (Some(limit), Some(tokenizer)) = (max_tokens, OUTPUT_TOKENIZER.as_ref()) {
+                if tokenizer.encode_ordinary(&cleaned_paragraph).len() > limit {
+                    split_text_hard_capped(&cleaned_paragraph, limit, tokenizer)
+                } else {
+                    vec![cleaned_paragraph.clone()]
+                }
+            } else {
+                vec![cleaned_paragraph.clone()]
+            };
 
-        // Create ContentCore with cleaned text
-        let content_core =
-            create_content_core(&cleaned_paragraph, &output.headings, source_id, source_type);
+        let mut split_char_cursor = 0usize;
+        let mut split_search_byte = 0usize;
+        let split_count = paragraphs.len();
 
-        // Create PDF location metadata from page positions
-        // Note: positions are based on ORIGINAL text before cleaning
-        let format_location = create_pdf_location_from_positions(
-            output.page,
-            output.end_page,
-            &output.page_positions,
-            output.paragraph.len(), // Use original length for position mapping
-        );
+        for (split_idx, paragraph) in paragraphs.into_iter().enumerate() {
+            if paragraph.trim().is_empty() {
+                continue;
+            }
+            let paragraph_chars = paragraph.chars().count();
+            let split_start_chars = locate_split_start_chars(
+                &cleaned_paragraph,
+                &paragraph,
+                &mut split_search_byte,
+                split_char_cursor,
+            );
+            let page_positions = if split_count > 1 {
+                approximate_split_positions(
+                    &output.page_positions,
+                    split_start_chars,
+                    paragraph_chars,
+                    split_total_chars,
+                )
+            } else {
+                output.page_positions.clone()
+            };
+            split_char_cursor = split_start_chars + paragraph_chars;
+            let mut located_output = output.clone();
+            located_output.located_text = located_base.as_ref().map(|located| {
+                located.slice_chars(split_start_chars, paragraph_chars, paragraph.clone())
+            });
+            apply_split_location_metadata(&mut located_output, page_positions.clone());
 
-        // Create ContentExt with compressed metadata
-        let content_ext = create_content_ext(
-            &content_core.chunk_id,
-            &format_location,
-            output.page_char_start,
-            output.page_char_end,
-            output.bbox.as_ref(),
-        )?;
+            let content_core = create_content_core_with_identity(
+                &paragraph,
+                &located_output.headings,
+                source_id,
+                source_type,
+                Some(located_output.page),
+                located_output.page_char_start,
+                output_idx * 10_000 + split_idx,
+            );
 
-        results.push(ExtractionResult {
-            content_core,
-            content_ext,
-        });
+            let format_location = located_output
+                .located_text
+                .as_ref()
+                .map(|located| create_pdf_location_from_output_spans(located, &page_positions))
+                .unwrap_or_else(|| {
+                    create_pdf_location_from_positions(
+                        located_output.page,
+                        located_output.end_page,
+                        &page_positions,
+                        paragraph.len(),
+                    )
+                });
+
+            let content_ext = create_content_ext_with_spans(
+                &content_core.chunk_id,
+                &format_location,
+                located_output.page_char_start,
+                located_output.page_char_end,
+                located_output.bbox.as_ref(),
+                located_output.located_text.as_ref(),
+            )?;
+
+            results.push(ExtractionResult {
+                content_core,
+                content_ext,
+            });
+        }
     }
 
     Ok(results)
@@ -1495,7 +2169,18 @@ pub fn parse_pdf(
     laparams: Option<crate::LAParams>,
     clean_text: Option<bool>, // Clean text for indexing (default: true)
 ) -> Result<Vec<ExtractionResult>, Box<dyn std::error::Error>> {
+    let _ = ocr_cache;
     let doc = Document::load(file_path)?;
+    let layout_policy = laparams
+        .as_ref()
+        .map(|params| params.layout_fallback_policy)
+        .unwrap_or(crate::LayoutFallbackPolicy::Disabled);
+    let layout_requested = laparams.is_some();
+    let all_texts_enabled = laparams
+        .as_ref()
+        .map(|params| params.all_texts)
+        .unwrap_or(false);
+    let ocr_telemetry = crate::OcrImageTelemetry::default();
 
     // Initialize OCR handler if config is provided
     let ocr_handler = if let Some(config) = ocr_config {
@@ -1504,7 +2189,7 @@ pub fn parse_pdf(
         None
     };
 
-    output_doc_new_schema(
+    let layout_results = output_doc_new_schema_with_ocr_telemetry(
         &doc,
         ocr_handler.as_ref(),
         max_tokens,
@@ -1512,5 +2197,489 @@ pub fn parse_pdf(
         source_type,
         laparams.as_ref(),
         clean_text.unwrap_or(true), // Default to cleaning enabled
-    )
+        Some(&ocr_telemetry),
+    )?;
+    let layout_chars = normalized_extraction_chars(&layout_results);
+
+    if layout_requested && layout_policy != crate::LayoutFallbackPolicy::Disabled {
+        let no_layout_results = output_doc_new_schema_with_ocr_telemetry(
+            &doc,
+            ocr_handler.as_ref(),
+            max_tokens,
+            source_id,
+            source_type,
+            None,
+            clean_text.unwrap_or(true),
+            Some(&ocr_telemetry),
+        )?;
+        let no_layout_chars = normalized_extraction_chars(&no_layout_results);
+        let layout_duplicate_ratio = duplicate_line_ratio_from_results(&layout_results);
+        let use_fallback = match layout_policy {
+            crate::LayoutFallbackPolicy::Disabled => false,
+            crate::LayoutFallbackPolicy::OnTextLoss => {
+                should_use_no_layout_fallback(layout_chars, no_layout_chars)
+            }
+            crate::LayoutFallbackPolicy::OnSuspiciousVolume => {
+                should_use_no_layout_fallback(layout_chars, no_layout_chars)
+                    || should_use_no_layout_inflation_fallback(
+                        layout_chars,
+                        no_layout_chars,
+                        layout_duplicate_ratio,
+                        laparams
+                            .as_ref()
+                            .map(|params| params.all_texts)
+                            .unwrap_or(false),
+                    )
+            }
+        };
+        if use_fallback {
+            log::warn!(
+                "layout extraction for {} kept {} normalized chars vs {} without layout; using no-layout fallback",
+                file_path,
+                layout_chars,
+                no_layout_chars
+            );
+            log_production_telemetry(
+                file_path,
+                &doc,
+                &no_layout_results,
+                max_tokens,
+                layout_requested,
+                all_texts_enabled,
+                true,
+                Some(layout_chars),
+                Some(no_layout_chars),
+                &ocr_telemetry,
+            );
+            return Ok(no_layout_results);
+        }
+
+        log_production_telemetry(
+            file_path,
+            &doc,
+            &layout_results,
+            max_tokens,
+            layout_requested,
+            all_texts_enabled,
+            false,
+            Some(layout_chars),
+            Some(no_layout_chars),
+            &ocr_telemetry,
+        );
+        return Ok(layout_results);
+    }
+
+    log_production_telemetry(
+        file_path,
+        &doc,
+        &layout_results,
+        max_tokens,
+        layout_requested,
+        all_texts_enabled,
+        false,
+        Some(layout_chars),
+        None,
+        &ocr_telemetry,
+    );
+    Ok(layout_results)
+}
+
+fn log_production_telemetry(
+    file_path: &str,
+    doc: &Document,
+    results: &[ExtractionResult],
+    max_tokens: Option<usize>,
+    layout_enabled: bool,
+    all_texts_enabled: bool,
+    layout_fallback_used: bool,
+    layout_normalized_chars: Option<usize>,
+    no_layout_normalized_chars: Option<usize>,
+    ocr_telemetry: &crate::OcrImageTelemetry,
+) {
+    let page_dimensions = crate::pdf_page_dimensions(doc);
+    let telemetry = crate::production_telemetry_for_results(
+        results,
+        max_tokens,
+        layout_enabled,
+        all_texts_enabled,
+        layout_fallback_used,
+        layout_normalized_chars,
+        no_layout_normalized_chars,
+        &page_dimensions,
+        &ocr_telemetry.snapshot(),
+    );
+    let payload = serde_json::json!({
+        "event": "pdf_extraction_telemetry",
+        "file_path": file_path,
+        "metrics": telemetry,
+    });
+    info!("{}", payload);
+}
+
+fn normalized_extraction_chars(results: &[ExtractionResult]) -> usize {
+    results
+        .iter()
+        .flat_map(|doc| doc.content_core.content.split_whitespace())
+        .collect::<Vec<_>>()
+        .join(" ")
+        .chars()
+        .count()
+}
+
+fn should_use_no_layout_fallback(layout_chars: usize, no_layout_chars: usize) -> bool {
+    const MIN_ABSOLUTE_LOSS: usize = 512;
+    const MIN_LAYOUT_TO_NO_LAYOUT_RATIO: f64 = 0.95;
+
+    if no_layout_chars == 0 || no_layout_chars <= layout_chars {
+        return false;
+    }
+    let lost_chars = no_layout_chars - layout_chars;
+    if lost_chars < MIN_ABSOLUTE_LOSS {
+        return false;
+    }
+    (layout_chars as f64 / no_layout_chars as f64) < MIN_LAYOUT_TO_NO_LAYOUT_RATIO
+}
+
+fn should_use_no_layout_inflation_fallback(
+    layout_chars: usize,
+    no_layout_chars: usize,
+    duplicate_line_ratio: f64,
+    all_texts: bool,
+) -> bool {
+    if no_layout_chars == 0 || layout_chars <= no_layout_chars {
+        return false;
+    }
+    let ratio = layout_chars as f64 / no_layout_chars as f64;
+    if !all_texts {
+        return ratio > 1.25;
+    }
+    ratio > 1.25 && duplicate_line_ratio >= 0.20
+}
+
+fn duplicate_line_ratio_from_results(results: &[ExtractionResult]) -> f64 {
+    let lines: Vec<String> = results
+        .iter()
+        .flat_map(|doc| doc.content_core.content.lines())
+        .map(|line| line.split_whitespace().collect::<Vec<_>>().join(" "))
+        .filter(|line| !line.is_empty())
+        .collect();
+    if lines.is_empty() {
+        return 0.0;
+    }
+    let unique = lines.iter().collect::<std::collections::HashSet<_>>().len();
+    1.0 - unique as f64 / lines.len() as f64
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        apply_split_location_metadata, approximate_split_positions,
+        clean_located_text_for_indexing, clean_text_for_indexing,
+        duplicate_line_ratio_from_results, normalized_extraction_chars, positioned_split_segments,
+        should_use_no_layout_fallback, should_use_no_layout_inflation_fallback, ContentOutput,
+    };
+    use crate::document::{LocatedText, OutputSpan, SpanSource, SyntheticKind};
+    use crate::{BoundingBox, ContentExt, ExtractionResult, FontWeight, PagePosition, TextSegment};
+
+    #[test]
+    fn clean_text_for_indexing_strips_controls() {
+        let cleaned = clean_text_for_indexing("A \0\0\0 B");
+        assert_eq!(cleaned, "A B");
+    }
+
+    #[test]
+    fn clean_located_text_keeps_letters_source_backed_and_synthetic_spaces() {
+        let source_bbox = BoundingBox {
+            x: 10.0,
+            y: 20.0,
+            width: 100.0,
+            height: 12.0,
+        };
+        let input = LocatedText {
+            text: "regu-\nlation\0  x".to_string(),
+            spans: vec![OutputSpan {
+                output_start: 0,
+                output_end: "regu-\nlation\0  x".chars().count(),
+                source: SpanSource::Pdf {
+                    page: 1,
+                    char_start: 100,
+                    char_end: 117,
+                    bbox: source_bbox,
+                },
+            }],
+        };
+
+        let cleaned = clean_located_text_for_indexing(&input);
+
+        assert_eq!(cleaned.text, "regulation x");
+        assert!(cleaned.spans.iter().any(|span| matches!(
+            span.source,
+            SpanSource::Synthetic {
+                kind: SyntheticKind::InsertedWhitespace,
+                ..
+            }
+        )));
+        assert!(
+            cleaned
+                .spans
+                .iter()
+                .filter(|span| matches!(span.source, SpanSource::Pdf { .. }))
+                .map(|span| span.output_end - span.output_start)
+                .sum::<usize>()
+                >= "regulationx".chars().count()
+        );
+    }
+
+    #[test]
+    fn clean_located_text_does_not_collapse_pdf_bboxes() {
+        let first_bbox = BoundingBox {
+            x: 10.0,
+            y: 20.0,
+            width: 50.0,
+            height: 10.0,
+        };
+        let second_bbox = BoundingBox {
+            x: 10.0,
+            y: 40.0,
+            width: 50.0,
+            height: 10.0,
+        };
+        let input = LocatedText {
+            text: "ab".to_string(),
+            spans: vec![
+                OutputSpan {
+                    output_start: 0,
+                    output_end: 1,
+                    source: SpanSource::Pdf {
+                        page: 1,
+                        char_start: 10,
+                        char_end: 11,
+                        bbox: first_bbox.clone(),
+                    },
+                },
+                OutputSpan {
+                    output_start: 1,
+                    output_end: 2,
+                    source: SpanSource::Pdf {
+                        page: 1,
+                        char_start: 11,
+                        char_end: 12,
+                        bbox: second_bbox.clone(),
+                    },
+                },
+            ],
+        };
+
+        let cleaned = clean_located_text_for_indexing(&input);
+        let pdf_bboxes = cleaned
+            .spans
+            .iter()
+            .filter_map(|span| match &span.source {
+                SpanSource::Pdf { bbox, .. } => Some(bbox),
+                SpanSource::Synthetic { .. } => None,
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(pdf_bboxes.len(), 2);
+        assert_eq!(pdf_bboxes[0].y, first_bbox.y);
+        assert_eq!(pdf_bboxes[1].y, second_bbox.y);
+    }
+
+    #[test]
+    fn layout_fallback_requires_material_loss() {
+        assert_eq!(
+            crate::LAParams::default().layout_fallback_policy,
+            crate::LayoutFallbackPolicy::OnSuspiciousVolume
+        );
+        assert_eq!(
+            crate::LAParams::diagnostic_layout().layout_fallback_policy,
+            crate::LayoutFallbackPolicy::Disabled
+        );
+        assert!(should_use_no_layout_fallback(16, 80_932));
+        assert!(should_use_no_layout_fallback(36_556, 40_263));
+        assert!(!should_use_no_layout_fallback(5_086, 5_134));
+        assert!(!should_use_no_layout_fallback(15, 24));
+        assert!(should_use_no_layout_inflation_fallback(
+            130, 100, 0.0, false
+        ));
+        assert!(!should_use_no_layout_inflation_fallback(
+            130, 100, 0.0, true
+        ));
+        assert!(should_use_no_layout_inflation_fallback(
+            130, 100, 0.25, true
+        ));
+    }
+
+    #[test]
+    fn normalized_extraction_chars_collapses_whitespace() {
+        let result = ExtractionResult {
+            content_core: crate::create_content_core_with_identity(
+                "alpha\n\n beta",
+                &[],
+                1,
+                "file",
+                Some(1),
+                Some(0),
+                0,
+            ),
+            content_ext: ContentExt {
+                chunk_id: String::new(),
+                ext_json: Vec::new(),
+            },
+        };
+
+        assert_eq!(
+            normalized_extraction_chars(&[result]),
+            "alpha beta".chars().count()
+        );
+    }
+
+    #[test]
+    fn split_location_metadata_uses_child_range_and_bbox() {
+        let output = ContentOutput {
+            headings: Vec::new(),
+            paragraph: "abcdefghij".to_string(),
+            page: 1,
+            end_page: None,
+            page_char_start: Some(10),
+            page_char_end: Some(20),
+            bbox: Some(BoundingBox {
+                x: 0.0,
+                y: 10.0,
+                width: 100.0,
+                height: 10.0,
+            }),
+            page_positions: vec![PagePosition {
+                page: 1,
+                char_start: 10,
+                char_end: 20,
+                bbox: BoundingBox {
+                    x: 0.0,
+                    y: 10.0,
+                    width: 100.0,
+                    height: 10.0,
+                },
+            }],
+            located_text: None,
+        };
+
+        let first_positions = approximate_split_positions(&output.page_positions, 0, 5, 10);
+        let second_positions = approximate_split_positions(&output.page_positions, 5, 5, 10);
+        let mut first = output.clone();
+        let mut second = output;
+
+        apply_split_location_metadata(&mut first, first_positions);
+        apply_split_location_metadata(&mut second, second_positions);
+
+        assert_eq!(first.page_char_start, Some(10));
+        assert_eq!(first.page_char_end, Some(15));
+        assert_eq!(second.page_char_start, Some(15));
+        assert_eq!(second.page_char_end, Some(20));
+        assert_ne!(
+            first.bbox.as_ref().unwrap().x,
+            second.bbox.as_ref().unwrap().x
+        );
+    }
+
+    #[test]
+    fn positioned_large_segment_splits_advance_source_ranges_and_bbox() {
+        let segment = TextSegment {
+            content: "alpha beta gamma delta".to_string(),
+            font_size: 10.0,
+            transformed_font_size: 10.0,
+            x: 100.0,
+            y: 200.0,
+            is_bold: false,
+            font_name: "Helvetica".to_string(),
+            font_weight: FontWeight::Regular,
+            is_italic: false,
+            page_num: 1,
+            cutat: "test".to_string(),
+            fill_color: None,
+            stroke_color: None,
+            char_start: 50,
+            char_end: 72,
+            width: 220.0,
+            height: 10.0,
+            word_count: 4,
+            located_text: None,
+        };
+
+        let parts = positioned_split_segments(
+            &segment,
+            vec!["alpha beta".to_string(), "gamma delta".to_string()],
+        );
+
+        assert_eq!(parts.len(), 2);
+        assert_eq!((parts[0].char_start, parts[0].char_end), (50, 60));
+        assert_eq!((parts[1].char_start, parts[1].char_end), (61, 72));
+        assert!(parts[1].x > parts[0].x);
+        assert!(parts[0].width > 0.0);
+        assert!(parts[1].width > 0.0);
+    }
+
+    #[test]
+    fn positioned_large_segment_splits_slice_located_text() {
+        let content = "alpha beta gamma delta";
+        let segment = TextSegment {
+            content: content.to_string(),
+            font_size: 10.0,
+            transformed_font_size: 10.0,
+            x: 100.0,
+            y: 200.0,
+            is_bold: false,
+            font_name: "Helvetica".to_string(),
+            font_weight: FontWeight::Regular,
+            is_italic: false,
+            page_num: 1,
+            cutat: "test".to_string(),
+            fill_color: None,
+            stroke_color: None,
+            char_start: 50,
+            char_end: 72,
+            width: 220.0,
+            height: 10.0,
+            word_count: 4,
+            located_text: Some(LocatedText {
+                text: content.to_string(),
+                spans: vec![OutputSpan {
+                    output_start: 0,
+                    output_end: content.chars().count(),
+                    source: SpanSource::Pdf {
+                        page: 1,
+                        char_start: 50,
+                        char_end: 72,
+                        bbox: BoundingBox {
+                            x: 100.0,
+                            y: 200.0,
+                            width: 220.0,
+                            height: 10.0,
+                        },
+                    },
+                }],
+            }),
+        };
+
+        let parts = positioned_split_segments(
+            &segment,
+            vec!["alpha beta".to_string(), "gamma delta".to_string()],
+        );
+
+        assert_eq!(
+            parts[0].located_text.as_ref().expect("first located").text,
+            "alpha beta"
+        );
+        assert_eq!(
+            parts[1].located_text.as_ref().expect("second located").text,
+            "gamma delta"
+        );
+        assert_ne!(
+            parts[0].located_text.as_ref().unwrap().spans[0].output_end,
+            parts[1].located_text.as_ref().unwrap().spans[0].output_end
+        );
+        assert_eq!(
+            parts[1].located_text.as_ref().unwrap().spans[0].output_start,
+            0
+        );
+    }
 }
