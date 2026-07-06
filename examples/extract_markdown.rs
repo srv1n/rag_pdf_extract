@@ -54,6 +54,7 @@ fn main() {
         max_tokens,     // max_tokens
         Some(laparams), // Enable layout analysis
         None,           // clean_text (default: true)
+        Default::default(),
     ) {
         Ok(docs) => docs,
         Err(e) => {

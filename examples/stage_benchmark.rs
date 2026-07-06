@@ -1,6 +1,6 @@
 use pdf_extract::{
     decompress_content_ext, decompress_content_ext_bytes, extract_pdf_location, parse_pdf,
-    ExtractionResult, LAParams,
+    ExtractionOptions, ExtractionResult, LAParams,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -351,6 +351,9 @@ fn timed_parse(
         Some(max_tokens),
         laparams,
         Some(true),
+        ExtractionOptions {
+            emit_output_spans: true,
+        },
     )?;
     Ok((docs, started.elapsed().as_millis()))
 }

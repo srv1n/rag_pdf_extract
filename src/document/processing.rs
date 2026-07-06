@@ -18,8 +18,8 @@ use crate::heading_hierarchy::HeaderHierarchy;
 use crate::{
     create_content_core_with_identity, create_content_ext_with_spans,
     create_pdf_location_from_output_spans, create_pdf_location_from_positions, get_inherited,
-    get_page_rotation, BoundingBox, ExtractionResult, MediaBox, OcrHandler, OcrImageTelemetry,
-    PagePosition, Processor, TextSegment,
+    get_page_rotation, BoundingBox, ExtractionOptions, ExtractionResult, MediaBox, OcrHandler,
+    OcrImageTelemetry, PagePosition, Processor, TextSegment,
 };
 use log::{debug, error, info};
 use lopdf::{Dictionary, Document};
@@ -2013,6 +2013,7 @@ pub fn output_doc_new_schema(
     source_type: &str,
     laparams: Option<&crate::LAParams>,
     clean_text: bool, // Whether to clean text for indexing
+    options: ExtractionOptions,
 ) -> Result<Vec<ExtractionResult>, Box<dyn std::error::Error>> {
     output_doc_new_schema_with_ocr_telemetry(
         doc,
@@ -2022,6 +2023,7 @@ pub fn output_doc_new_schema(
         source_type,
         laparams,
         clean_text,
+        options,
         None,
     )
 }
@@ -2034,6 +2036,7 @@ pub(crate) fn output_doc_new_schema_with_ocr_telemetry(
     source_type: &str,
     laparams: Option<&crate::LAParams>,
     clean_text: bool,
+    options: ExtractionOptions,
     ocr_telemetry: Option<&OcrImageTelemetry>,
 ) -> Result<Vec<ExtractionResult>, Box<dyn std::error::Error>> {
     // Reuse most of the existing output_doc logic but modify the return format
@@ -2045,6 +2048,7 @@ pub(crate) fn output_doc_new_schema_with_ocr_telemetry(
         source_id,
         source_type,
         clean_text,
+        options,
     )
 }
 
@@ -2054,6 +2058,7 @@ fn content_outputs_to_results(
     source_id: i64,
     source_type: &str,
     clean_text: bool,
+    options: ExtractionOptions,
 ) -> Result<Vec<ExtractionResult>, Box<dyn std::error::Error>> {
     let mut results = Vec::new();
 
@@ -2150,6 +2155,7 @@ fn content_outputs_to_results(
                 located_output.page_char_end,
                 located_output.bbox.as_ref(),
                 located_output.located_text.as_ref(),
+                options,
             )?;
 
             results.push(ExtractionResult {
@@ -2173,6 +2179,7 @@ pub fn parse_pdf(
     max_tokens: Option<usize>,
     laparams: Option<crate::LAParams>,
     clean_text: Option<bool>, // Clean text for indexing (default: true)
+    options: ExtractionOptions,
 ) -> Result<Vec<ExtractionResult>, Box<dyn std::error::Error>> {
     let _ = ocr_cache;
     let doc = Document::load(file_path)?;
@@ -2202,6 +2209,7 @@ pub fn parse_pdf(
         source_type,
         laparams.as_ref(),
         clean_text.unwrap_or(true), // Default to cleaning enabled
+        options,
         Some(&ocr_telemetry),
     )?;
     let layout_chars = normalized_extraction_chars(&layout_results);
@@ -2215,6 +2223,7 @@ pub fn parse_pdf(
             source_type,
             None,
             clean_text.unwrap_or(true),
+            options,
             Some(&ocr_telemetry),
         )?;
         let no_layout_chars = normalized_extraction_chars(&no_layout_results);

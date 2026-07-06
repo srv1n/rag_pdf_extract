@@ -119,6 +119,7 @@ fn emitted_chunks_respect_exact_token_cap_on_repo_fixtures() {
             Some(128),
             Some(laparams),
             Some(true),
+            Default::default(),
         )
         .unwrap_or_else(|err| panic!("failed to parse {}: {}", fixture, err));
 
@@ -151,6 +152,7 @@ fn documents_stack_layout_produces_located_chunks() {
         Some(500),
         Some(LAParams::default()),
         Some(true),
+        Default::default(),
     )
     .expect("parse documents_stack");
 
@@ -178,6 +180,7 @@ fn malformed_text_operators_do_not_panic() {
         Some(128),
         None,
         Some(true),
+        Default::default(),
     )
     .expect("no-layout parser should skip malformed text operators");
 
@@ -191,6 +194,7 @@ fn malformed_text_operators_do_not_panic() {
         Some(128),
         Some(LAParams::default()),
         Some(true),
+        Default::default(),
     )
     .expect("layout parser should skip malformed text operators");
 }
@@ -209,6 +213,7 @@ fn ctm_scaled_text_uses_single_viewer_y_flip() {
         Some(128),
         Some(LAParams::default()),
         Some(true),
+        Default::default(),
     )
     .expect("ctm scaled fixture should parse");
 
@@ -251,6 +256,7 @@ fn scientific_type3_fixture_does_not_panic_in_layout_mode() {
         Some(350),
         Some(LAParams::default()),
         Some(true),
+        Default::default(),
     )
     .expect("scientific Type3 fixture should not panic or fail");
 
@@ -287,6 +293,7 @@ fn layout_fallback_prevents_legal_17_text_collapse() {
         Some(350),
         None,
         Some(true),
+        Default::default(),
     )
     .expect("no-layout parse should succeed");
 
@@ -300,6 +307,7 @@ fn layout_fallback_prevents_legal_17_text_collapse() {
         Some(350),
         Some(LAParams::default()),
         Some(true),
+        Default::default(),
     )
     .expect("layout parse should fall back instead of collapsing");
 

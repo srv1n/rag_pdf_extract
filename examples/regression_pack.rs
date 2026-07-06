@@ -377,6 +377,7 @@ fn run_case(base_dir: &Path, case: &RegressionCase) -> DocumentReport {
         source_type,
         Some(&lp),
         clean_text,
+        Default::default(),
     ) {
         Ok(chunks) => {
             let chunk_count = chunks.len();

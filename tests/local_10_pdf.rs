@@ -26,6 +26,7 @@ fn layout_extracts_more_than_four_chunks_on_10_pdf() {
         Some(500),
         Some(lp),
         None, // clean_text (default: true)
+        Default::default(),
     )
     .expect("parse_pdf should succeed");
 

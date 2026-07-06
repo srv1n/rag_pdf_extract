@@ -89,6 +89,7 @@ fn legal_supreme_court_pdf_quality() {
             Some(500),
             Some(LAParams::product_layout()),
             Some(true),
+            Default::default(),
         )
         .unwrap_or_else(|err| panic!("parse {}: {}", case.id, err));
         let metrics = assess_parse_quality(&docs);

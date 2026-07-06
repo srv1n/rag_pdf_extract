@@ -16,7 +16,8 @@ pub use header_footer::{
 };
 pub use processing::{clean_text_for_indexing, output_doc, output_doc_new_schema, parse_pdf};
 pub use span_map::{
-    compact_output_spans, LocatedText, OutputSpan, SourceRef, SpanSource, SyntheticKind,
+    chunk_locations_from_output_spans, compact_output_spans, LocatedText, OutputSpan, SourceRef,
+    SpanSource, SyntheticKind,
 };
 pub use stats::{
     calculate_heading_thresholds, calculate_mode, DocumentStats, FontStats, LineSegmentInfo,

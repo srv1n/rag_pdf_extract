@@ -1,4 +1,4 @@
-use crate::{extract_pdf_location, ExtractionResult};
+use crate::{extract_chunk_locations, ExtractionResult};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -42,8 +42,8 @@ pub fn assess_parse_quality(results: &[ExtractionResult]) -> ParseQualityMetrics
     let chunks_with_location = results
         .iter()
         .filter(|doc| {
-            extract_pdf_location(&doc.content_ext)
-                .map(|location| !location.fragments.is_empty())
+            extract_chunk_locations(&doc.content_ext)
+                .map(|locations| !locations.is_empty())
                 .unwrap_or(false)
         })
         .count();

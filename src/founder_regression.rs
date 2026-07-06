@@ -214,6 +214,7 @@ fn evaluate_case(
         Some(500),
         Some(laparams),
         Some(true),
+        Default::default(),
     )?;
 
     let extracted_chunks = docs

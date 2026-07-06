@@ -69,6 +69,7 @@ fn main() {
         Some(500), // Max tokens per chunk
         None,      // LAParams
         None,      // clean_text (default: true)
+        Default::default(),
     ) {
         Ok(docs) => docs,
         Err(e) => {

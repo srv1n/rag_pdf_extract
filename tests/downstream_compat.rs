@@ -1,4 +1,7 @@
-use pdf_extract::{decompress_content_ext, extract_pdf_location, parse_pdf, LAParams, OcrConfig};
+use pdf_extract::{
+    decompress_content_ext, extract_chunk_locations, extract_pdf_location, parse_pdf,
+    ExtractionOptions, LAParams, OcrConfig,
+};
 
 fn fixture(path: &str) -> String {
     format!("{}/{}", env!("CARGO_MANIFEST_DIR"), path)
@@ -16,6 +19,7 @@ fn basic_parse_pdf_example_compiles_and_runs() {
         Some(500),
         None,
         Some(true),
+        Default::default(),
     )
     .expect("parse fixture");
 
@@ -38,6 +42,7 @@ fn product_layout_parse_pdf_example_compiles_and_runs() {
         Some(500),
         Some(laparams),
         Some(true),
+        Default::default(),
     )
     .expect("parse layout fixture");
 
@@ -45,7 +50,7 @@ fn product_layout_parse_pdf_example_compiles_and_runs() {
 }
 
 #[test]
-fn location_and_output_spans_are_copy_paste_usable() {
+fn chunk_locations_are_emitted_by_default_without_output_spans() {
     let docs = parse_pdf(
         &fixture("eval/fixtures/pdfs/span_bbox_two_lines.pdf"),
         1,
@@ -56,6 +61,7 @@ fn location_and_output_spans_are_copy_paste_usable() {
         Some(500),
         None,
         Some(true),
+        Default::default(),
     )
     .expect("parse fixture");
     let first = docs.first().expect("at least one chunk");
@@ -68,6 +74,36 @@ fn location_and_output_spans_are_copy_paste_usable() {
         .all(|fragment| fragment.char_range.end <= first.content_core.content.chars().count()));
 
     let metadata = decompress_content_ext(&first.content_ext).expect("content ext");
+    assert!(metadata.get("output_spans").is_none());
+    let chunk_locations = extract_chunk_locations(&first.content_ext).expect("chunk locations");
+    assert!(!chunk_locations.is_empty());
+    assert!(metadata
+        .get("chunk_locations")
+        .and_then(|value| value.as_array())
+        .map(|locations| !locations.is_empty())
+        .unwrap_or(false));
+}
+
+#[test]
+fn output_spans_are_emitted_when_opted_in() {
+    let docs = parse_pdf(
+        &fixture("eval/fixtures/pdfs/span_bbox_two_lines.pdf"),
+        1,
+        "file",
+        None,
+        None,
+        None,
+        Some(500),
+        None,
+        Some(true),
+        ExtractionOptions {
+            emit_output_spans: true,
+        },
+    )
+    .expect("parse fixture");
+    let first = docs.first().expect("at least one chunk");
+    let metadata = decompress_content_ext(&first.content_ext).expect("content ext");
+
     assert!(metadata
         .get("output_spans")
         .and_then(|value| value.as_array())
@@ -87,6 +123,7 @@ fn repeated_content_has_distinct_chunk_id_and_content_hash_semantics() {
         Some(20),
         None,
         Some(true),
+        Default::default(),
     )
     .expect("parse fixture");
 

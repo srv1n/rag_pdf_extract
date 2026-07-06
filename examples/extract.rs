@@ -104,6 +104,7 @@ fn main() {
         max_tokens,
         laparams,
         Some(clean_text),
+        Default::default(),
     ) {
         Ok(docs) => docs,
         Err(e) => {

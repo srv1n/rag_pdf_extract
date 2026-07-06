@@ -1,4 +1,6 @@
-use pdf_extract::{decompress_content_ext_bytes, extract_pdf_location, parse_pdf, LAParams};
+use pdf_extract::{
+    decompress_content_ext_bytes, extract_pdf_location, parse_pdf, ExtractionOptions, LAParams,
+};
 use std::env;
 use std::time::Instant;
 
@@ -22,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!(
-        "path\tstatus\twall_ms\tchunks\tchars\tcompressed_ext_bytes\tuncompressed_ext_bytes\tfragments\toutput_spans"
+        "path\tstatus\twall_ms\tchunks\tchars\tcompressed_ext_bytes\tuncompressed_ext_bytes\tfragments\toutput_spans\tchunk_location_boxes\tspan_location_bytes\tchunk_location_bytes"
     );
 
     for (idx, path) in paths.iter().enumerate() {
@@ -40,6 +42,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some(max_tokens),
             Some(laparams),
             Some(true),
+            ExtractionOptions {
+                emit_output_spans: true,
+            },
         );
         let wall_ms = started.elapsed().as_millis();
 
@@ -56,6 +61,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let mut uncompressed_ext_bytes = 0usize;
                 let mut fragments = 0usize;
                 let mut output_spans = 0usize;
+                let mut chunk_location_boxes = 0usize;
+                let mut span_location_bytes = 0usize;
+                let mut chunk_location_bytes = 0usize;
                 for doc in &docs {
                     fragments += extract_pdf_location(&doc.content_ext)
                         .map(|location| location.fragments.len())
@@ -72,14 +80,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .and_then(|value| value.as_array())
                         .map(|items| items.len())
                         .unwrap_or(0);
+                    if let Some(spans) = value.get("output_spans") {
+                        span_location_bytes += serde_json::to_vec(spans)
+                            .map(|bytes| bytes.len())
+                            .unwrap_or(0);
+                    }
+                    if let Some(locations) = value.get("chunk_locations") {
+                        chunk_location_bytes += serde_json::to_vec(locations)
+                            .map(|bytes| bytes.len())
+                            .unwrap_or(0);
+                        chunk_location_boxes += locations
+                            .as_array()
+                            .map(|items| {
+                                items
+                                    .iter()
+                                    .filter_map(|item| {
+                                        item.get("bboxes").and_then(|b| b.as_array())
+                                    })
+                                    .map(|bboxes| bboxes.len())
+                                    .sum::<usize>()
+                            })
+                            .unwrap_or(0);
+                    }
                 }
                 println!(
-                    "{path}\tok\t{wall_ms}\t{}\t{chars}\t{compressed_ext_bytes}\t{uncompressed_ext_bytes}\t{fragments}\t{output_spans}",
+                    "{path}\tok\t{wall_ms}\t{}\t{chars}\t{compressed_ext_bytes}\t{uncompressed_ext_bytes}\t{fragments}\t{output_spans}\t{chunk_location_boxes}\t{span_location_bytes}\t{chunk_location_bytes}",
                     docs.len()
                 );
             }
             Err(err) => {
-                println!("{path}\terr:{err}\t{wall_ms}\t0\t0\t0\t0\t0\t0");
+                println!("{path}\terr:{err}\t{wall_ms}\t0\t0\t0\t0\t0\t0\t0\t0\t0");
             }
         }
     }

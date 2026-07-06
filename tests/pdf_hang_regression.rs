@@ -16,6 +16,7 @@ fn parse_fixture(path: &str, min_chars: usize) {
         Some(350),
         Some(laparams),
         Some(true),
+        Default::default(),
     )
     .unwrap_or_else(|err| panic!("parse failed for {path}: {err}"));
     let elapsed = started.elapsed();

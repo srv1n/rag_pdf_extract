@@ -120,8 +120,9 @@ pub struct PdfLocation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PageFragment {
     pub page: u32,
-    /// Character offsets in the emitted chunk text. Source-PDF offsets are stored
-    /// in `ContentExt.output_spans[].source.Pdf`.
+    /// Character offsets in the emitted chunk text. When output spans are
+    /// opted in, source-PDF offsets are stored in
+    /// `ContentExt.output_spans[].source.Pdf`.
     pub char_range: CharRange,
     pub bbox: BoundingBox, // Renamed from bbox_union for clarity
 }
@@ -5931,8 +5932,8 @@ mod reconstruction_tests {
         create_content_core_with_identity, create_content_ext_with_spans,
         create_pdf_location_from_output_spans, decompress_content_ext,
         looks_like_symbol_glyph_soup, normalize_display_spaced_text,
-        production_telemetry_for_results, BoundingBox, CharRange, ExtractionResult, FormatLocation,
-        OcrImageTelemetrySnapshot, PageFragment, PdfLocation,
+        production_telemetry_for_results, BoundingBox, CharRange, ExtractionOptions,
+        ExtractionResult, FormatLocation, OcrImageTelemetrySnapshot, PageFragment, PdfLocation,
     };
     use crate::document::{LocatedText, OutputSpan, SpanSource};
     use std::collections::HashMap;
@@ -6008,12 +6009,16 @@ mod reconstruction_tests {
             Some(14),
             None,
             Some(&located),
+            ExtractionOptions {
+                emit_output_spans: true,
+            },
         )
         .expect("content ext");
         let value = decompress_content_ext(&ext).expect("decompress");
 
         assert_eq!(value["output_text_len"], 4);
         assert_eq!(value["output_spans"].as_array().unwrap().len(), 1);
+        assert_eq!(value["chunk_locations"].as_array().unwrap().len(), 1);
         assert_eq!(
             value["location_model"]["source_span_granularity"],
             "output_span"
@@ -6127,6 +6132,9 @@ mod reconstruction_tests {
             Some(14),
             None,
             Some(&located),
+            ExtractionOptions {
+                emit_output_spans: true,
+            },
         )
         .expect("content ext");
         let result = ExtractionResult {
@@ -6555,6 +6563,31 @@ pub struct BoundingBox {
     pub height: f64,
 }
 
+/// Compact per-chunk PDF location summary.
+///
+/// Extraction emits `Vec<ChunkLocation>` with one entry per page touched by
+/// PDF-sourced spans. Each entry carries one to three union boxes for that
+/// chunk on the page. Synthetic-only chunks, and chunks with no valid
+/// PDF-sourced bounding boxes, emit an empty vector.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChunkLocation {
+    pub page: u32,
+    pub bboxes: Vec<BoundingBox>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExtractionOptions {
+    pub emit_output_spans: bool,
+}
+
+impl Default for ExtractionOptions {
+    fn default() -> Self {
+        Self {
+            emit_output_spans: false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PagePosition {
     pub page: u32,
@@ -6824,6 +6857,7 @@ pub fn create_content_ext(
         page_char_end,
         bbox,
         None,
+        ExtractionOptions::default(),
     )
 }
 
@@ -6834,6 +6868,7 @@ pub fn create_content_ext_with_spans(
     page_char_end: Option<usize>,
     bbox: Option<&BoundingBox>,
     located_text: Option<&crate::document::LocatedText>,
+    options: ExtractionOptions,
 ) -> Result<ContentExt, Box<dyn std::error::Error>> {
     #[derive(serde::Serialize)]
     struct ContentExtPayload<'a> {
@@ -6841,6 +6876,8 @@ pub fn create_content_ext_with_spans(
         page_char_start: Option<usize>,
         page_char_end: Option<usize>,
         bbox: Option<&'a BoundingBox>,
+        chunk_locations: &'a [ChunkLocation],
+        #[serde(skip_serializing_if = "Option::is_none")]
         output_spans: Option<&'a [crate::document::OutputSpan]>,
         output_text_len: Option<usize>,
         location_model: ContentExtLocationModel<'a>,
@@ -6860,25 +6897,45 @@ pub fn create_content_ext_with_spans(
             crate::document::compact_output_spans(&located.spans)
         }
     });
+    let chunk_locations = located_text
+        .map(|located| crate::document::chunk_locations_from_output_spans(&located.spans))
+        .unwrap_or_default();
+    let output_spans = if options.emit_output_spans {
+        compacted_spans.as_deref()
+    } else {
+        None
+    };
+    let source_span_granularity = if options.emit_output_spans && located_text.is_some() {
+        "output_span"
+    } else if located_text.is_some() {
+        "chunk_location"
+    } else {
+        "segment"
+    };
+    let synthetic_spans = if options.emit_output_spans && located_text.is_some() {
+        "typed"
+    } else if located_text.is_some() {
+        "omitted"
+    } else {
+        "coarse"
+    };
+    let notes = if options.emit_output_spans {
+        "chunk_locations summarize PDF-backed fragments; output_spans preserve PDF-backed fragments plus typed synthetic spans"
+    } else {
+        "chunk_locations summarize PDF-backed fragments; synthetic spans do not contribute bboxes"
+    };
     let ext_data = ContentExtPayload {
         format_location,
         page_char_start,
         page_char_end,
         bbox,
-        output_spans: compacted_spans.as_deref(),
+        chunk_locations: &chunk_locations,
+        output_spans,
         output_text_len: located_text.map(|located| located.text.chars().count()),
         location_model: ContentExtLocationModel {
-            source_span_granularity: if located_text.is_some() {
-                "output_span"
-            } else {
-                "segment"
-            },
-            synthetic_spans: if located_text.is_some() {
-                "typed"
-            } else {
-                "coarse"
-            },
-            notes: "location spans preserve PDF-backed fragments plus typed synthetic spans",
+            source_span_granularity,
+            synthetic_spans,
+            notes,
         },
     };
 
@@ -7043,6 +7100,16 @@ pub fn decompress_content_ext(
     Ok(json_value)
 }
 
+pub fn extract_chunk_locations(
+    content_ext: &ContentExt,
+) -> Result<Vec<ChunkLocation>, Box<dyn std::error::Error>> {
+    let json_data = decompress_content_ext(content_ext)?;
+    let Some(chunk_locations) = json_data.get("chunk_locations") else {
+        return Err("No chunk_locations data found in ContentExt".into());
+    };
+    Ok(serde_json::from_value(chunk_locations.clone())?)
+}
+
 pub fn pdf_page_dimensions(doc: &Document) -> HashMap<u32, (f64, f64)> {
     let mut dimensions = HashMap::new();
     for (page_num, object_id) in doc.get_pages() {
@@ -7132,22 +7199,22 @@ pub fn production_telemetry_for_results(
             out.over_cap_chunks += 1;
         }
 
-        let fragments = extract_pdf_location(&result.content_ext)
-            .map(|location| location.fragments)
-            .unwrap_or_default();
-        if fragments.is_empty() {
+        let chunk_locations = extract_chunk_locations(&result.content_ext).unwrap_or_default();
+        if chunk_locations.is_empty() {
             out.chunks_without_location += 1;
         }
-        for fragment in &fragments {
-            if !valid_bbox(&fragment.bbox) {
-                out.invalid_bbox_count += 1;
-            }
-            if page_dimensions
-                .get(&fragment.page)
-                .map(|dimensions| bbox_outside_page(&fragment.bbox, *dimensions))
-                .unwrap_or(false)
-            {
-                out.out_of_page_bbox_count += 1;
+        for location in &chunk_locations {
+            for bbox in &location.bboxes {
+                if !valid_bbox(bbox) {
+                    out.invalid_bbox_count += 1;
+                }
+                if page_dimensions
+                    .get(&location.page)
+                    .map(|dimensions| bbox_outside_page(bbox, *dimensions))
+                    .unwrap_or(false)
+                {
+                    out.out_of_page_bbox_count += 1;
+                }
             }
         }
 
@@ -7219,8 +7286,6 @@ pub fn production_telemetry_for_results(
                         .iter()
                         .filter(|covered| **covered)
                         .count();
-                } else {
-                    out.chars_without_span += output_chars;
                 }
             }
         }
