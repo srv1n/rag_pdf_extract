@@ -68,7 +68,10 @@ pub use document::{
 
 // Re-export LAParams configuration
 pub use layout_params::{LAParams, LayoutFallbackPolicy};
-pub use quality::{assess_parse_quality, ParseQualityMetrics, ParseQualityStatus, RepeatedLine};
+pub use quality::{
+    assess_decode_quality, assess_parse_quality, DecodeQualityMetrics, ParseQualityMetrics,
+    ParseQualityStatus, RepeatedLine,
+};
 
 use crate::chunk_accumulator::count_words as unicode_count_words;
 use crate::document::visibility::{PageTextLayerStats, TextVisibilityInput, TextVisibilityPolicy};
@@ -253,6 +256,11 @@ pub struct ProductionTelemetry {
     pub unique_token_ratio: f64,
     pub parse_quality_status: String,
     pub parse_quality_score: f64,
+    pub decode_confidence: f64,
+    pub mojibake_char_ratio: f64,
+    pub symbol_char_ratio: f64,
+    pub non_ascii_symbol_char_ratio: f64,
+    pub suspicious_chunk_ratio: f64,
     pub chars_without_span: usize,
     pub chars_with_overlapping_spans: usize,
     pub pdf_backed_nonsynthetic_char_ratio: f64,
@@ -2922,8 +2930,15 @@ pub(crate) struct TextSegment {
     pub word_count: usize,
     pub located_text: Option<crate::document::LocatedText>,
 }
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct FontCacheKey {
+    resource_name: Vec<u8>,
+    object_id: Option<ObjectId>,
+    inline_dict_addr: usize,
+}
+
 struct Processor<'a> {
-    font_table: HashMap<Vec<u8>, Rc<dyn PdfFont + 'a>>,
+    font_table: HashMap<FontCacheKey, Rc<dyn PdfFont + 'a>>,
     _none: PhantomData<&'a ()>,
 }
 
@@ -2989,6 +3004,35 @@ impl<'a> Processor<'a> {
             font_table: HashMap::new(),
             _none: PhantomData,
         }
+    }
+
+    fn resolve_font(
+        &mut self,
+        doc: &'a Document,
+        fonts: &'a Dictionary,
+        name: &[u8],
+    ) -> Rc<dyn PdfFont + 'a> {
+        let font_obj = fonts
+            .get(name)
+            .unwrap_or_else(|_| panic!("missing font resource {:?}", pdf_to_utf8(name)));
+        let object_id = match font_obj {
+            Object::Reference(id) => Some(*id),
+            _ => None,
+        };
+        let font_dict = maybe_deref(doc, font_obj).as_dict().expect("font dict");
+        let key = FontCacheKey {
+            resource_name: name.to_vec(),
+            object_id,
+            inline_dict_addr: if object_id.is_some() {
+                0
+            } else {
+                font_dict as *const Dictionary as usize
+            },
+        };
+        self.font_table
+            .entry(key)
+            .or_insert_with(|| make_font(doc, font_dict))
+            .clone()
     }
 
     // Helper: previously added a trailing space; now only trims to avoid double spaces
@@ -3567,11 +3611,7 @@ impl<'a> Processor<'a> {
                         );
                         continue;
                     };
-                    let font = self
-                        .font_table
-                        .entry(name.to_owned())
-                        .or_insert_with(|| make_font(doc, get::<&Dictionary>(doc, fonts, name)))
-                        .clone();
+                    let font = self.resolve_font(doc, fonts, name);
 
                     let new_font_size =
                         (as_num(&operation.operands[1]) * 100.0_f64).round() / 100.0;
@@ -6880,6 +6920,8 @@ pub fn create_content_ext_with_spans(
         #[serde(skip_serializing_if = "Option::is_none")]
         output_spans: Option<&'a [crate::document::OutputSpan]>,
         output_text_len: Option<usize>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        decode_quality: Option<&'a DecodeQualityMetrics>,
         location_model: ContentExtLocationModel<'a>,
     }
 
@@ -6924,6 +6966,7 @@ pub fn create_content_ext_with_spans(
     } else {
         "chunk_locations summarize PDF-backed fragments; synthetic spans do not contribute bboxes"
     };
+    let decode_quality = located_text.map(|located| assess_decode_quality(&located.text));
     let ext_data = ContentExtPayload {
         format_location,
         page_char_start,
@@ -6932,6 +6975,7 @@ pub fn create_content_ext_with_spans(
         chunk_locations: &chunk_locations,
         output_spans,
         output_text_len: located_text.map(|located| located.text.chars().count()),
+        decode_quality: decode_quality.as_ref(),
         location_model: ContentExtLocationModel {
             source_span_granularity,
             synthetic_spans,
@@ -7172,6 +7216,11 @@ pub fn production_telemetry_for_results(
             .and_then(|value| value.as_str().map(str::to_string))
             .unwrap_or_else(|| "unknown".to_string()),
         parse_quality_score: quality.score,
+        decode_confidence: quality.decode_confidence,
+        mojibake_char_ratio: quality.mojibake_char_ratio,
+        symbol_char_ratio: quality.symbol_char_ratio,
+        non_ascii_symbol_char_ratio: quality.non_ascii_symbol_char_ratio,
+        suspicious_chunk_ratio: quality.suspicious_chunk_ratio,
         ocr_images_seen: ocr.images_seen,
         ocr_images_converted: ocr.images_converted,
         ocr_images_skipped: ocr.images_skipped,

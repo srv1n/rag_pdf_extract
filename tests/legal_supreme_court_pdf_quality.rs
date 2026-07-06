@@ -175,6 +175,7 @@ fn quality_status_name(status: &ParseQualityStatus) -> &'static str {
         ParseQualityStatus::Empty => "empty",
         ParseQualityStatus::TooShort => "too_short",
         ParseQualityStatus::MostlyBoilerplate => "mostly_boilerplate",
+        ParseQualityStatus::LikelyGarbled => "likely_garbled",
     }
 }
 
