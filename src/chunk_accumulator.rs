@@ -97,19 +97,79 @@ fn split_by_graphemes(text: &str, max_tokens: usize, tokenizer: &CoreBPE) -> Vec
     chunks
 }
 
-fn split_at_token_boundary(text: &str, max_tokens: usize, tokenizer: &CoreBPE) -> (String, String) {
+fn floor_char_boundary(text: &str, mut idx: usize) -> usize {
+    idx = idx.min(text.len());
+    while idx > 0 && !text.is_char_boundary(idx) {
+        idx -= 1;
+    }
+    idx
+}
+
+fn next_char_boundary_after(text: &str, idx: usize) -> usize {
+    if idx >= text.len() {
+        return text.len();
+    }
+
+    let mut next = idx.saturating_add(1).min(text.len());
+    while next < text.len() && !text.is_char_boundary(next) {
+        next += 1;
+    }
+    next
+}
+
+fn initial_token_probe_len(text: &str, max_tokens: usize) -> usize {
+    let target = max_tokens.saturating_mul(8).clamp(64, 64 * 1024);
+    let probe = floor_char_boundary(text, target.min(text.len()));
+    if probe == 0 {
+        next_char_boundary_after(text, 0)
+    } else {
+        probe
+    }
+}
+
+fn split_at_token_boundary<'a>(
+    text: &'a str,
+    max_tokens: usize,
+    tokenizer: &CoreBPE,
+) -> (String, &'a str) {
     if text.is_empty() {
-        return (String::new(), String::new());
+        return (String::new(), "");
     }
 
     let mut low = 0usize;
-    let mut high = text.len();
+    let mut high = initial_token_probe_len(text, max_tokens);
     let mut best = 0usize;
+
+    loop {
+        let candidate = text[..high].trim_end();
+        let tokens = tokenizer.encode_ordinary(candidate).len();
+        if tokens > max_tokens {
+            break;
+        }
+
+        best = high;
+        if high == text.len() {
+            return (text.trim().to_string(), "");
+        }
+
+        low = high.saturating_add(1);
+        let next_probe = high.saturating_mul(2).max(high.saturating_add(1));
+        high = floor_char_boundary(text, next_probe.min(text.len()));
+        if high <= best {
+            high = next_char_boundary_after(text, best);
+        }
+    }
 
     while low <= high {
         let mut mid = (low + high) / 2;
         while mid > 0 && !text.is_char_boundary(mid) {
             mid -= 1;
+        }
+        if mid < low {
+            mid = next_char_boundary_after(text, low.saturating_sub(1));
+            if mid > high {
+                break;
+            }
         }
 
         let candidate = text[..mid].trim_end();
@@ -127,10 +187,10 @@ fn split_at_token_boundary(text: &str, max_tokens: usize, tokenizer: &CoreBPE) -
     if best == 0 {
         let mut pieces = split_by_graphemes(text, max_tokens, tokenizer);
         if pieces.is_empty() {
-            return (String::new(), String::new());
+            return (String::new(), "");
         }
         let head = pieces.remove(0);
-        let tail = text[head.len()..].trim_start().to_string();
+        let tail = text[head.len()..].trim_start();
         return (head, tail);
     }
 
@@ -147,7 +207,7 @@ fn split_at_token_boundary(text: &str, max_tokens: usize, tokenizer: &CoreBPE) -
     }
 
     let head = text[..cut].trim().to_string();
-    let tail = text[cut..].trim_start().to_string();
+    let tail = text[cut..].trim_start();
     (head, tail)
 }
 
@@ -251,21 +311,22 @@ pub fn split_long_sentence(text: &str, max_tokens: usize, tokenizer: &CoreBPE) -
 
 pub fn split_text_hard_capped(text: &str, max_tokens: usize, tokenizer: &CoreBPE) -> Vec<String> {
     let mut chunks = Vec::new();
-    let mut remaining = text.trim().to_string();
+    let mut remaining = text.trim();
 
     while !remaining.is_empty() {
-        if tokenizer.encode_ordinary(&remaining).len() <= max_tokens {
-            chunks.push(remaining);
-            break;
-        }
-
+        let previous_len = remaining.len();
         let (head, tail) = split_at_token_boundary(&remaining, max_tokens, tokenizer);
         if head.is_empty() {
+            chunks.extend(split_by_graphemes(remaining, max_tokens, tokenizer));
             break;
         }
 
         chunks.push(head);
         remaining = tail;
+        if remaining.len() >= previous_len {
+            chunks.extend(split_by_graphemes(remaining, max_tokens, tokenizer));
+            break;
+        }
     }
 
     if chunks.is_empty() {
@@ -1461,6 +1522,22 @@ mod tests {
         assert!(chunks
             .iter()
             .all(|chunk| tokenizer.encode_ordinary(chunk).len() <= 64));
+    }
+
+    #[test]
+    fn split_text_hard_capped_handles_large_layout_tail() {
+        let tokenizer = tiktoken_rs::cl100k_base().unwrap();
+        let text = "2022 INSC 49 REPORTABLE CIVIL APPEAL NO.5766 of 2021 ".repeat(1_000);
+        let chunks = split_text_hard_capped(&text, 350, &tokenizer);
+
+        assert!(chunks.len() > 2);
+        assert!(chunks
+            .iter()
+            .all(|chunk| tokenizer.encode_ordinary(chunk).len() <= 350));
+        assert_eq!(
+            chunks.join(" ").split_whitespace().count(),
+            text.split_whitespace().count()
+        );
     }
 
     #[test]

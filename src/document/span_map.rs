@@ -42,6 +42,84 @@ impl LocatedText {
     }
 }
 
+pub fn compact_output_spans(spans: &[OutputSpan]) -> Vec<OutputSpan> {
+    let mut compacted: Vec<OutputSpan> = Vec::with_capacity(spans.len());
+    for span in spans {
+        if let Some(last) = compacted.last_mut() {
+            if try_merge_output_span(last, span) {
+                continue;
+            }
+        }
+        compacted.push(span.clone());
+    }
+    compacted
+}
+
+pub fn try_merge_output_span(last: &mut OutputSpan, next: &OutputSpan) -> bool {
+    if last.output_end != next.output_start {
+        return false;
+    }
+
+    match (&mut last.source, &next.source) {
+        (
+            SpanSource::Pdf {
+                page: last_page,
+                char_end: last_char_end,
+                bbox: last_bbox,
+                ..
+            },
+            SpanSource::Pdf {
+                page: next_page,
+                char_start: next_char_start,
+                char_end: next_char_end,
+                bbox: next_bbox,
+            },
+        ) if last_page == next_page
+            && *last_char_end == *next_char_start
+            && same_bbox(last_bbox, next_bbox) =>
+        {
+            last.output_end = next.output_end;
+            *last_char_end = *next_char_end;
+            true
+        }
+        (
+            SpanSource::Synthetic {
+                kind: last_kind,
+                parent_refs: last_refs,
+            },
+            SpanSource::Synthetic {
+                kind: next_kind,
+                parent_refs: next_refs,
+            },
+        ) if last_kind == next_kind => {
+            last.output_end = next.output_end;
+            extend_unique_source_refs(last_refs, next_refs);
+            true
+        }
+        _ => false,
+    }
+}
+
+fn same_bbox(a: &BoundingBox, b: &BoundingBox) -> bool {
+    const EPSILON: f64 = 1e-6;
+    (a.x - b.x).abs() <= EPSILON
+        && (a.y - b.y).abs() <= EPSILON
+        && (a.width - b.width).abs() <= EPSILON
+        && (a.height - b.height).abs() <= EPSILON
+}
+
+fn extend_unique_source_refs(target: &mut Vec<SourceRef>, refs: &[SourceRef]) {
+    for source_ref in refs {
+        if !target.iter().any(|existing| {
+            existing.page == source_ref.page
+                && existing.char_start == source_ref.char_start
+                && existing.char_end == source_ref.char_end
+        }) {
+            target.push(source_ref.clone());
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OutputSpan {
     pub output_start: usize,
@@ -154,6 +232,51 @@ mod tests {
             } => {
                 assert_eq!((*char_start, *char_end), (103, 107));
             }
+            other => panic!("unexpected source: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn compact_output_spans_merges_adjacent_pdf_runs_with_same_bbox() {
+        let bbox = BoundingBox {
+            x: 10.0,
+            y: 20.0,
+            width: 100.0,
+            height: 10.0,
+        };
+        let spans = vec![
+            OutputSpan {
+                output_start: 0,
+                output_end: 1,
+                source: SpanSource::Pdf {
+                    page: 1,
+                    char_start: 100,
+                    char_end: 101,
+                    bbox: bbox.clone(),
+                },
+            },
+            OutputSpan {
+                output_start: 1,
+                output_end: 2,
+                source: SpanSource::Pdf {
+                    page: 1,
+                    char_start: 101,
+                    char_end: 102,
+                    bbox,
+                },
+            },
+        ];
+
+        let compacted = compact_output_spans(&spans);
+
+        assert_eq!(compacted.len(), 1);
+        assert_eq!((compacted[0].output_start, compacted[0].output_end), (0, 2));
+        match &compacted[0].source {
+            SpanSource::Pdf {
+                char_start,
+                char_end,
+                ..
+            } => assert_eq!((*char_start, *char_end), (100, 102)),
             other => panic!("unexpected source: {:?}", other),
         }
     }

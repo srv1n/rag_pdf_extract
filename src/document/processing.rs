@@ -10,7 +10,9 @@ use crate::chunk_accumulator::{
     contains_sentence_end, count_words as unicode_count_words, split_long_sentence,
     split_text_hard_capped, ChunkAccumulator,
 };
-use crate::document::{LocatedText, OutputSpan, SourceRef, SpanSource, SyntheticKind};
+use crate::document::{
+    compact_output_spans, LocatedText, OutputSpan, SourceRef, SpanSource, SyntheticKind,
+};
 use crate::form::form_fields;
 use crate::heading_hierarchy::HeaderHierarchy;
 use crate::{
@@ -1935,7 +1937,10 @@ fn clean_located_text_for_indexing(located: &LocatedText) -> LocatedText {
         idx += 1;
     }
 
-    LocatedText { text: out, spans }
+    LocatedText {
+        text: out,
+        spans: compact_output_spans(&spans),
+    }
 }
 
 fn collect_source_refs(located: &LocatedText, idx: usize, refs: &mut Vec<SourceRef>) {

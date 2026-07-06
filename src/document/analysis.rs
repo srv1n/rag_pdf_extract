@@ -270,3 +270,136 @@ pub fn classify_all_lines(lines: &[VisualLine], doc_stats: &DocumentStats) -> Ve
 
     classifications
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::document::stats::LineSegmentInfo;
+    use std::collections::HashMap;
+
+    fn doc_stats() -> DocumentStats {
+        DocumentStats {
+            font_stats: HashMap::new(),
+            body_font: "Test".to_string(),
+            body_size: 10.0,
+            body_transformed_size: 10.0,
+            transformed_thresholds: Vec::new(),
+            font_heading_thresholds: HashMap::<String, Vec<f64>>::new(),
+            body_line_height: 10.0,
+            body_line_width: 400.0,
+            left_margin: 50.0,
+            right_margin: 450.0,
+            line_height_tolerance: 2.0,
+        }
+    }
+
+    fn line(text: &str, height: f64, width: f64, y: f64, is_bold: bool) -> VisualLine {
+        VisualLine {
+            segments: vec![LineSegmentInfo {
+                content: text.to_string(),
+                x: 50.0,
+                width,
+                height,
+                font_size: height,
+                is_bold,
+                font_name: "Test".to_string(),
+            }],
+            y,
+            min_x: 50.0,
+            max_x: 50.0 + width,
+            max_height: height,
+            total_width: width,
+            page_num: 1,
+        }
+    }
+
+    fn mixed_font_line(text: &str) -> VisualLine {
+        VisualLine {
+            segments: vec![
+                LineSegmentInfo {
+                    content: text.to_string(),
+                    x: 50.0,
+                    width: 70.0,
+                    height: 10.0,
+                    font_size: 10.0,
+                    is_bold: false,
+                    font_name: "Test".to_string(),
+                },
+                LineSegmentInfo {
+                    content: "inline".to_string(),
+                    x: 125.0,
+                    width: 40.0,
+                    height: 10.0,
+                    font_size: 12.0,
+                    is_bold: true,
+                    font_name: "Test-Bold".to_string(),
+                },
+            ],
+            y: 100.0,
+            min_x: 50.0,
+            max_x: 165.0,
+            max_height: 10.0,
+            total_width: 115.0,
+            page_num: 1,
+        }
+    }
+
+    #[test]
+    fn classify_line_uses_geometric_heading_signals() {
+        let stats = doc_stats();
+        let next = line("The body starts here", 10.0, 360.0, 84.0, false);
+
+        let cases = [
+            (
+                line("JUDGMENT", 13.0, 120.0, 100.0, false),
+                Some(&next),
+                TextLevel::H1,
+            ),
+            (
+                line("Brief reasons", 11.0, 160.0, 100.0, false),
+                Some(&next),
+                TextLevel::H2,
+            ),
+            (
+                line("Issues", 10.0, 100.0, 100.0, true),
+                Some(&next),
+                TextLevel::H2,
+            ),
+            (
+                line("INTERIM ORDER", 10.0, 170.0, 100.0, false),
+                None,
+                TextLevel::H2,
+            ),
+        ];
+
+        for (line, next_line, expected) in cases {
+            assert_eq!(classify_line(&line, next_line, &stats), expected);
+        }
+    }
+
+    #[test]
+    fn classify_line_rejects_body_and_numeric_false_positives() {
+        let stats = doc_stats();
+        let next = line("continues away from margin", 10.0, 360.0, 84.0, false);
+
+        let long_heading_like =
+            "This Heading Has Far Too Many Words To Be A Safe Heading Candidate";
+        let cases = [
+            (
+                line("lowercase continuation", 13.0, 120.0, 100.0, true),
+                TextLevel::Body,
+            ),
+            (
+                line(long_heading_like, 13.0, 260.0, 100.0, true),
+                TextLevel::Body,
+            ),
+            (line("1.", 13.0, 40.0, 100.0, true), TextLevel::Body),
+            (line("Clause:", 13.0, 80.0, 100.0, true), TextLevel::Body),
+            (mixed_font_line("Mixed"), TextLevel::Body),
+        ];
+
+        for (line, expected) in cases {
+            assert_eq!(classify_line(&line, Some(&next), &stats), expected);
+        }
+    }
+}

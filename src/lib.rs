@@ -6835,19 +6835,52 @@ pub fn create_content_ext_with_spans(
     bbox: Option<&BoundingBox>,
     located_text: Option<&crate::document::LocatedText>,
 ) -> Result<ContentExt, Box<dyn std::error::Error>> {
-    let ext_data = serde_json::json!({
-        "format_location": format_location,
-        "page_char_start": page_char_start,
-        "page_char_end": page_char_end,
-        "bbox": bbox,
-        "output_spans": located_text.map(|located| &located.spans),
-        "output_text_len": located_text.map(|located| located.text.chars().count()),
-        "location_model": {
-            "source_span_granularity": if located_text.is_some() { "output_span" } else { "segment" },
-            "synthetic_spans": if located_text.is_some() { "typed" } else { "coarse" },
-            "notes": "location spans preserve PDF-backed fragments plus typed synthetic spans"
+    #[derive(serde::Serialize)]
+    struct ContentExtPayload<'a> {
+        format_location: &'a FormatLocation,
+        page_char_start: Option<usize>,
+        page_char_end: Option<usize>,
+        bbox: Option<&'a BoundingBox>,
+        output_spans: Option<&'a [crate::document::OutputSpan]>,
+        output_text_len: Option<usize>,
+        location_model: ContentExtLocationModel<'a>,
+    }
+
+    #[derive(serde::Serialize)]
+    struct ContentExtLocationModel<'a> {
+        source_span_granularity: &'a str,
+        synthetic_spans: &'a str,
+        notes: &'a str,
+    }
+
+    let compacted_spans = located_text.map(|located| {
+        if located.spans.is_empty() {
+            Vec::new()
+        } else {
+            crate::document::compact_output_spans(&located.spans)
         }
     });
+    let ext_data = ContentExtPayload {
+        format_location,
+        page_char_start,
+        page_char_end,
+        bbox,
+        output_spans: compacted_spans.as_deref(),
+        output_text_len: located_text.map(|located| located.text.chars().count()),
+        location_model: ContentExtLocationModel {
+            source_span_granularity: if located_text.is_some() {
+                "output_span"
+            } else {
+                "segment"
+            },
+            synthetic_spans: if located_text.is_some() {
+                "typed"
+            } else {
+                "coarse"
+            },
+            notes: "location spans preserve PDF-backed fragments plus typed synthetic spans",
+        },
+    };
 
     // Serialize to JSON and compress with zstd
     let json_bytes = serde_json::to_vec(&ext_data)?;
