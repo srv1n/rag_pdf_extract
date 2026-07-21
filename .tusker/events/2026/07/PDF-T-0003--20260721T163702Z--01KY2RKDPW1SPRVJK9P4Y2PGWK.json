@@ -1,0 +1,16 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-07-21T16:37:02Z",
+  "event_kind": "verification_added",
+  "id": "01KY2RKDPW1SPRVJK9P4Y2PGWK",
+  "object": "PDF-T-0003",
+  "object_kind": "task",
+  "payload": {
+    "blocked_by": "",
+    "check": "command: target/release/examples/diagnose_bbox \u003c21-doc corpus 20260721\u003e",
+    "covers": "A3",
+    "result": "pass"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

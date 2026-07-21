@@ -1,0 +1,16 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-07-21T16:37:02Z",
+  "event_kind": "verification_added",
+  "id": "01KY2RKDR54B91KPNMFVW5MYWT",
+  "object": "PDF-T-0004",
+  "object_kind": "task",
+  "payload": {
+    "blocked_by": "",
+    "check": "command: target/release/examples/diagnose_bbox '7. Puttaswamy v UoI.pdf'",
+    "covers": "A1",
+    "result": "pass"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

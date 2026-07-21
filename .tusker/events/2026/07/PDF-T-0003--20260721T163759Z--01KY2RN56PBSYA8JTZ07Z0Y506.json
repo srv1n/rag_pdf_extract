@@ -1,0 +1,15 @@
+{
+  "actor": "reviewer:agent-review",
+  "at": "2026-07-21T16:37:59Z",
+  "event_kind": "status_changed",
+  "id": "01KY2RN56PBSYA8JTZ07Z0Y506",
+  "object": "PDF-T-0003",
+  "object_kind": "task",
+  "payload": {
+    "from": "review",
+    "reason": "",
+    "to": "review"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}
