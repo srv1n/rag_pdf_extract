@@ -1,0 +1,16 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-07-21T16:49:39Z",
+  "event_kind": "verification_added",
+  "id": "01KY2SAGX95DM50794NNXH429F",
+  "object": "PDF-T-0005",
+  "object_kind": "task",
+  "payload": {
+    "blocked_by": "",
+    "check": "inspect benchmark report fetch/cache and parse columns",
+    "covers": "A3",
+    "result": "pass"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

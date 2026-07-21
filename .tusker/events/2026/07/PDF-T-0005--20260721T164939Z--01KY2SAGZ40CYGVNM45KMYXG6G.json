@@ -1,0 +1,16 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-07-21T16:49:39Z",
+  "event_kind": "verification_added",
+  "id": "01KY2SAGZ40CYGVNM45KMYXG6G",
+  "object": "PDF-T-0005",
+  "object_kind": "task",
+  "payload": {
+    "blocked_by": "",
+    "check": "run bench-corpus twice and inspect Stability check",
+    "covers": "A4",
+    "result": "pass"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

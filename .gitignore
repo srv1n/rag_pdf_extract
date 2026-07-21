@@ -11,3 +11,8 @@ pdfminer
 pdfminer/*
 AGENTS.md
 .DS_Store
+
+# Standing Supreme Court corpus and generated benchmark runs/reports.
+# The fetch script and checksum manifest are intentionally tracked separately.
+/benchmarks/corpus/
+/benchmarks/runs/
