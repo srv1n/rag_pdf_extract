@@ -3494,13 +3494,17 @@ impl<'a> Processor<'a> {
         let mut mc_stack = Vec::new();
         let mut tlm = Transform2D::<f64, Space, Space>::identity();
         let mut path = Path::new();
+        // Emit page-relative viewer coordinates. PDF user space may place the
+        // MediaBox away from (0, 0); translating by its lower-left corner
+        // preserves geometry while satisfying consumers' nonnegative page
+        // coordinate contract.
         let flip_ctm = Transform2D::<f64, Space, Space>::row_major(
             1.,
             0.,
             0.,
             -1.,
-            0.,
-            media_box.ury - media_box.lly,
+            -media_box.llx,
+            media_box.ury,
         );
         dlog!("MediaBox {:?}", media_box);
         let layout_analyzer = LayoutAnalyzer::new(media_box.ury - media_box.lly);
@@ -5897,7 +5901,7 @@ impl<'a> OutputDev for HTMLOutput<'a> {
         write!(self.file, "<meta charset='utf-8' /> ")?;
         write!(self.file, "<!-- page {} -->", page_num)?;
         write!(self.file, "<div id='page{}' style='position: relative; height: {}px; width: {}px; border: 1px black solid'>", page_num, media_box.ury - media_box.lly, media_box.urx - media_box.llx)?;
-        self.flip_ctm = Transform::row_major(1., 0., 0., -1., 0., media_box.ury - media_box.lly);
+        self.flip_ctm = Transform::row_major(1., 0., 0., -1., -media_box.llx, media_box.ury);
         Ok(())
     }
     fn end_page(&mut self) -> Result<(), OutputError> {

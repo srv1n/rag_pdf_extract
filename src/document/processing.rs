@@ -436,11 +436,13 @@ impl PostProcessor {
 
                     // Note: Y coordinates are flipped (0 at top, increases downward)
                     // Check if current segment is at TOP of page (small Y value)
+                    let page_height = page.media_box.ury - page.media_box.lly;
+                    let prev_page_height = prev_page.media_box.ury - prev_page.media_box.lly;
                     let at_top_of_page =
-                        segment.y < page.media_box.ury * (1.0 - self.continuation_threshold);
+                        segment.y < page_height * (1.0 - self.continuation_threshold);
                     // Check if previous segment was at BOTTOM of previous page (large Y value)
                     let prev_at_bottom =
-                        prev_segment.y > prev_page.media_box.ury * self.continuation_threshold;
+                        prev_segment.y > prev_page_height * self.continuation_threshold;
 
                     at_top_of_page
                         && prev_at_bottom
@@ -642,17 +644,71 @@ impl PostProcessor {
     }
 
     fn find_header_candidate(&self, page: &PageText) -> Option<String> {
+        let page_height = page.media_box.ury - page.media_box.lly;
         page.segments
             .iter()
-            .find(|seg| seg.y > page.media_box.ury * self.header_threshold)
+            .find(|seg| seg.y > page_height * self.header_threshold)
             .map(|seg| seg.content.clone())
     }
 
     fn find_footer_candidate(&self, page: &PageText) -> Option<String> {
+        let page_height = page.media_box.ury - page.media_box.lly;
         page.segments
             .iter()
-            .find(|seg| seg.y < page.media_box.lly * self.footer_threshold)
+            .find(|seg| seg.y < page_height * self.footer_threshold)
             .map(|seg| seg.content.clone())
+    }
+}
+
+/// Translate a page's extracted geometry into a nonnegative page-relative
+/// coordinate space. The parser may receive text/form geometry whose local
+/// origin is outside the declared page box. Moving the whole page by its
+/// negative minimum preserves every distance and size; clamping individual
+/// boxes would distort the geometry and break highlighting.
+fn page_relative_origin(segments: &[TextSegment]) -> (f64, f64) {
+    let mut origin_x = 0.0_f64;
+    let mut origin_y = 0.0_f64;
+
+    for segment in segments.iter() {
+        origin_x = origin_x.min(segment.x);
+        origin_y = origin_y.min(segment.y);
+        if let Some(located) = &segment.located_text {
+            for span in &located.spans {
+                if let SpanSource::Pdf { bbox, .. } = &span.source {
+                    origin_x = origin_x.min(bbox.x);
+                    origin_y = origin_y.min(bbox.y);
+                }
+            }
+        }
+    }
+
+    (origin_x, origin_y)
+}
+
+fn normalize_output_coordinates(
+    outputs: &mut [ContentOutput],
+    page_origins: &HashMap<u32, (f64, f64)>,
+) {
+    for output in outputs {
+        for position in &mut output.page_positions {
+            if let Some((origin_x, origin_y)) = page_origins.get(&position.page) {
+                position.bbox.x -= origin_x;
+                position.bbox.y -= origin_y;
+            }
+        }
+
+        if let Some(located) = &mut output.located_text {
+            for span in &mut located.spans {
+                if let SpanSource::Pdf { page, bbox, .. } = &mut span.source {
+                    if let Some((origin_x, origin_y)) = page_origins.get(page) {
+                        bbox.x -= origin_x;
+                        bbox.y -= origin_y;
+                    }
+                }
+            }
+        }
+
+        output.bbox = bbox_union_from_positions(&output.page_positions);
     }
 }
 
@@ -1098,6 +1154,11 @@ pub(crate) fn output_doc_with_ocr_telemetry(
     // Sort by page number and flatten while maintaining order
     let mut page_results_vec: Vec<_> = page_results.into_iter().collect();
     page_results_vec.sort_by_key(|(page_num, _, _)| *page_num);
+
+    let page_origins: HashMap<u32, (f64, f64)> = page_results_vec
+        .iter()
+        .map(|(page_num, _, segments)| (*page_num, page_relative_origin(segments)))
+        .collect();
 
     let page_heights: HashMap<u32, f64> = page_results_vec
         .iter()
@@ -1748,6 +1809,8 @@ pub(crate) fn output_doc_with_ocr_telemetry(
             max_tokens,
         );
     }
+
+    normalize_output_coordinates(&mut document_structure, &page_origins);
 
     // Return the document structure directly - no post-processing needed
     // Dump font decode summary if enabled

@@ -140,11 +140,9 @@ impl TextVisibilityPolicy {
 
         if self.enforce_cropbox {
             let point = input.transform.transform_point(Point2D::new(0.0, 0.0));
-            if point.x < input.media_box.llx
-                || point.x > input.media_box.urx
-                || point.y < input.media_box.lly
-                || point.y > input.media_box.ury
-            {
+            let page_width = input.media_box.urx - input.media_box.llx;
+            let page_height = input.media_box.ury - input.media_box.lly;
+            if point.x < 0.0 || point.x > page_width || point.y < 0.0 || point.y > page_height {
                 return VisibilityDecision::Drop {
                     reason: VisibilityDropReason::OutsideCropBox,
                 };
