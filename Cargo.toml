@@ -21,10 +21,10 @@ ocr-tesseract = ["dep:ocrs", "dep:rten", "dep:rten-imageproc", "dep:rten-tensor"
 debug = true
 
 [dependencies]
-adobe-cmap-parser = "0.4.0"
 encoding_rs = "0.8.34"
 euclid = "0.20.5"
-lopdf = {version = "0.36", default-features = false}
+lopdf = {version = "0.38", default-features = false}
+pom = "1.0.1"
 postscript = "0.14"
 type1-encoding-parser = "0.1.0"
 unicode-normalization = "0.1.19"

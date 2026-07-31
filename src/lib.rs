@@ -7,7 +7,7 @@
     mismatched_lifetime_syntaxes
 )]
 
-use adobe_cmap_parser::{ByteMapping, CIDRange, CodeRange};
+use cmap::{ByteMapping, CIDRange, CodeRange};
 use encoding_rs::UTF_16BE;
 use euclid::*;
 use log::{debug, error, info, trace, warn};
@@ -42,6 +42,7 @@ mod core_fonts;
 mod encodings;
 
 mod chunk_accumulator;
+mod cmap;
 pub mod document;
 mod form;
 pub mod founder_regression;
@@ -1584,7 +1585,7 @@ fn get_unicode_map<'a>(doc: &'a Document, font: &'a Dictionary) -> Option<HashMa
             let contents = get_contents(stream);
             dlog!("Stream: {}", String::from_utf8(contents.clone()).unwrap());
 
-            let cmap = adobe_cmap_parser::get_unicode_map(&contents).unwrap();
+            let cmap = crate::cmap::get_unicode_map(&contents).unwrap();
             let mut unicode = HashMap::new();
             // "It must use the beginbfchar, endbfchar, beginbfrange, and endbfrange operators to
             // define the mapping from character codes to Unicode character sequences expressed in
@@ -1663,7 +1664,7 @@ impl<'a> PdfCIDFont<'a> {
             &Object::Stream(ref stream) => {
                 let contents = get_contents(stream);
                 dlog!("Stream: {}", String::from_utf8(contents.clone()).unwrap());
-                adobe_cmap_parser::get_byte_mapping(&contents).unwrap()
+                crate::cmap::get_byte_mapping(&contents).unwrap()
             }
             _ => {
                 panic!("unsupported encoding {:?}", encoding)
