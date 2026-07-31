@@ -6501,6 +6501,32 @@ pub fn extract_text<P: std::convert::AsRef<std::path::Path>>(
     Ok(result.trim().to_string())
 }
 
+/// Number of pages in the PDF at `path`, without extracting any text.
+///
+/// This exists so a caller that got zero characters back can tell the two cases
+/// apart: a document with no pages has nothing to extract, while a document with
+/// pages that yielded no text means either a scan with no text layer or a parse
+/// failure on our side. Both of those are worth reporting; "empty" on its own is
+/// not actionable.
+///
+/// Intended to be called only on the zero-character path, where re-reading the
+/// file is cheap relative to having lost the document. Do not call it for every
+/// document — it parses the cross-reference table and page tree again.
+pub fn page_count<P: std::convert::AsRef<std::path::Path>>(path: P) -> Result<usize, OutputError> {
+    let mut doc = Document::load(path)?;
+    maybe_decrypt(&mut doc)?;
+    Ok(doc.get_pages().len())
+}
+
+/// Number of pages in an in-memory PDF, without extracting any text.
+///
+/// See [`page_count`].
+pub fn page_count_from_mem(buffer: &[u8]) -> Result<usize, OutputError> {
+    let mut doc = Document::load_mem(buffer)?;
+    maybe_decrypt(&mut doc)?;
+    Ok(doc.get_pages().len())
+}
+
 fn maybe_decrypt(doc: &mut Document) -> Result<(), OutputError> {
     if !doc.is_encrypted() {
         return Ok(());
