@@ -1,10 +1,27 @@
 use pdf_extract::{
-    decompress_content_ext, extract_chunk_locations, extract_pdf_location, parse_pdf,
-    ExtractionOptions, LAParams, OcrConfig,
+    decompress_content_ext, extract_chunk_locations, extract_pdf_location, extract_text_from_mem,
+    parse_pdf, ExtractionOptions, LAParams, OcrConfig, OutputError, PdfPassword,
 };
 
 fn fixture(path: &str) -> String {
     format!("{}/{}", env!("CARGO_MANIFEST_DIR"), path)
+}
+
+#[test]
+fn downstream_sees_typed_errors_and_runtime_only_passwords() {
+    assert!(matches!(
+        extract_text_from_mem(b"not a PDF", None),
+        Err(OutputError::NotAPdf { .. })
+    ));
+
+    let options = ExtractionOptions {
+        password: Some(PdfPassword::new("runtime-secret")),
+        ..ExtractionOptions::default()
+    };
+    let json = serde_json::to_string(&options).expect("serialize options");
+    assert!(!json.contains("runtime-secret"));
+    let round_trip: ExtractionOptions = serde_json::from_str(&json).expect("deserialize options");
+    assert!(round_trip.password.is_none());
 }
 
 #[test]
@@ -98,6 +115,7 @@ fn output_spans_are_emitted_when_opted_in() {
         Some(true),
         ExtractionOptions {
             emit_output_spans: true,
+            ..ExtractionOptions::default()
         },
     )
     .expect("parse fixture");

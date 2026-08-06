@@ -7,7 +7,7 @@ keywords = ["pdf2text", "text", "pdf", "pdf2txt"]
 license = "MIT"
 name = "pdf-extract"
 repository = "https://github.com/jrmuizel/pdf-extract"
-version = "0.8.0"
+version = "0.9.0"
 include = ["src/**/*", "README.md", "INTEGRATION.md", "MIGRATION.md"]
 
 [features]
@@ -23,7 +23,7 @@ debug = true
 [dependencies]
 encoding_rs = "0.8.34"
 euclid = "0.20.5"
-lopdf = {version = "0.38", default-features = false}
+lopdf = {version = ">=0.42, <0.43", default-features = false}
 pom = "1.0.1"
 postscript = "0.14"
 type1-encoding-parser = "0.1.0"
@@ -41,6 +41,8 @@ fastrand = "2.3.0"
 image = { version = "0.25.5", default-features = false, features = ["png", "jpeg", "webp", "tiff", "bmp"] }
 lexopt = "0.3.1"
 miniz_oxide = "0.8.0"
+flate2 = "1.1.2"
+weezl = "0.1.10"
 regex = "1.11.1"
 lazy_static = "1.5.0"
 text-splitter = { version = "0.27.0", features = ["tiktoken-rs"] }

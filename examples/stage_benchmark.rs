@@ -353,6 +353,7 @@ fn timed_parse(
         Some(true),
         ExtractionOptions {
             emit_output_spans: true,
+            ..ExtractionOptions::default()
         },
     )?;
     Ok((docs, started.elapsed().as_millis()))

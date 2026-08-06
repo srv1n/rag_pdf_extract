@@ -19,9 +19,9 @@ use crate::{
     create_content_core_with_identity, create_content_ext_with_spans,
     create_pdf_location_from_output_spans, create_pdf_location_from_positions, get_inherited,
     get_page_rotation, BoundingBox, ExtractionOptions, ExtractionResult, MediaBox, OcrHandler,
-    OcrImageTelemetry, PagePosition, Processor, TextSegment,
+    OcrImageTelemetry, OutputError, PagePosition, Processor, TextSegment,
 };
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use lopdf::{Dictionary, Document};
 use rayon::prelude::*;
 use regex::Regex;
@@ -992,8 +992,66 @@ pub fn output_doc(
     ocr_handler: Option<&OcrHandler>,
     max_tokens: Option<usize>,
     laparams: Option<&crate::LAParams>,
-) -> Result<Vec<ContentOutput>, Box<dyn std::error::Error>> {
-    output_doc_with_ocr_telemetry(doc, ocr_handler, max_tokens, laparams, None)
+) -> Result<Vec<ContentOutput>, OutputError> {
+    let ocr_assessments = ocr_assessments_for_extraction(doc, ocr_handler.is_some());
+    output_doc_with_ocr_telemetry(
+        doc,
+        ocr_handler,
+        max_tokens,
+        laparams,
+        None,
+        ExtractionOptions::default(),
+        ocr_assessments.as_ref(),
+        None,
+    )
+    .map_err(OutputError::boxed_error)
+}
+
+/// Extract only the requested pages for bounded attribution work such as the
+/// classifier. The full extraction path remains unchanged for public callers.
+pub(crate) fn output_doc_for_pages(
+    doc: &Document,
+    pages: &[u32],
+) -> Result<Vec<ContentOutput>, OutputError> {
+    let page_filter = pages.iter().copied().collect::<HashSet<_>>();
+    output_doc_with_ocr_telemetry(
+        doc,
+        None,
+        None,
+        None,
+        None,
+        ExtractionOptions::default(),
+        None,
+        Some(&page_filter),
+    )
+    .map_err(OutputError::boxed_error)
+}
+
+fn ocr_assessments_for_extraction(
+    doc: &Document,
+    enabled: bool,
+) -> Option<HashMap<u32, crate::PageAssessment>> {
+    if !enabled {
+        return None;
+    }
+    match catch_unwind(AssertUnwindSafe(|| {
+        crate::classifier::full_page_assessments(doc)
+    })) {
+        Ok(Ok(assessments)) => Some(assessments),
+        Ok(Err(error)) => {
+            warn!(
+                "PDF classifier page assessment failed; continuing extraction without OCR routing hints: {:?}",
+                error
+            );
+            None
+        }
+        Err(_) => {
+            warn!(
+                "PDF classifier page assessment panicked; continuing extraction without OCR routing hints"
+            );
+            None
+        }
+    }
 }
 
 pub(crate) fn output_doc_with_ocr_telemetry(
@@ -1002,16 +1060,33 @@ pub(crate) fn output_doc_with_ocr_telemetry(
     max_tokens: Option<usize>,
     laparams: Option<&crate::LAParams>,
     ocr_telemetry: Option<&OcrImageTelemetry>,
+    options: ExtractionOptions,
+    ocr_assessments: Option<&HashMap<u32, crate::PageAssessment>>,
+    page_filter: Option<&HashSet<u32>>,
 ) -> Result<Vec<ContentOutput>, Box<dyn std::error::Error>> {
     let mut document_structure: Vec<ContentOutput> = Vec::new();
 
     // debug!("Shaata");
     if doc.is_encrypted() {
         error!("Encrypted documents must be decrypted with a password using {{extract_text|extract_text_from_mem|output_doc}}_encrypted");
+        return Err(Box::new(OutputError::Encrypted {
+            reason: crate::EncryptionFailure::PasswordRequired,
+            context: crate::ErrorContext {
+                phase: Some("extraction".to_string()),
+                ..crate::ErrorContext::default()
+            },
+        }));
     }
     let empty_resources = &Dictionary::new();
 
     let pages = doc.get_pages();
+    let pages = match page_filter {
+        Some(page_filter) => pages
+            .into_iter()
+            .filter(|(page, _)| page_filter.contains(page))
+            .collect(),
+        None => pages,
+    };
     // trim to only first page
     // let pages: BTreeMap<u32, (u32, u16)> = pages
     //     .iter()
@@ -1034,9 +1109,9 @@ pub(crate) fn output_doc_with_ocr_telemetry(
 
     // Process pages in parallel with error handling
     // Change from flat_map to map to preserve page boundaries
-    let page_results: Vec<(u32, f64, Vec<TextSegment>)> = pages
+    let page_results: Result<Vec<(u32, f64, Vec<TextSegment>)>, OutputError> = pages
         .par_iter()
-        .filter_map(|dict| {
+        .map(|dict| {
             let page_num = dict.0;
 
             // Try to get page dictionary
@@ -1045,12 +1120,12 @@ pub(crate) fn output_doc_with_ocr_telemetry(
                     Ok(dict) => dict,
                     Err(e) => {
                         error!("Failed to get page {} dictionary: {:?}", page_num, e);
-                        return Some((*page_num, 792.0, Vec::new())); // Return empty segments for this page
+                        return Ok((*page_num, 792.0, Vec::new())); // Return empty segments for this page
                     }
                 },
                 Err(e) => {
                     error!("Failed to get page {} object: {:?}", page_num, e);
-                    return Some((*page_num, 792.0, Vec::new())); // Return empty segments for this page
+                    return Ok((*page_num, 792.0, Vec::new())); // Return empty segments for this page
                 }
             };
 
@@ -1093,6 +1168,10 @@ pub(crate) fn output_doc_with_ocr_telemetry(
                         &doc,
                         ocr_handler,
                         ocr_telemetry,
+                        ocr_route_for_page(
+                            ocr_handler.is_some(),
+                            ocr_assessments.and_then(|pages| pages.get(page_num)),
+                        ),
                         content,
                         resources,
                         &media_box,
@@ -1101,7 +1180,9 @@ pub(crate) fn output_doc_with_ocr_telemetry(
                         page_rotate,
                         laparams,
                         None,
-                        crate::StreamContext::page(),
+                        crate::StreamContext::page_with_limit(
+                            options.max_recursion_depth.unwrap_or(8),
+                        ),
                         )
                     }));
                     match process_result {
@@ -1115,6 +1196,9 @@ pub(crate) fn output_doc_with_ocr_telemetry(
                             );
                         }
                         Ok(Err(e)) => {
+                            if matches!(e, OutputError::ResourceLimit { .. }) {
+                                return Err(e);
+                            }
                             error!("Error processing page {} content: {:?}. Returning partial results.", page_num, e);
                             // page_segments may contain partial results
                         }
@@ -1147,9 +1231,12 @@ pub(crate) fn output_doc_with_ocr_telemetry(
                 reorder_by_columns(&mut page_segments, &column_layout);
             }
 
-            Some((*dict.0, media_box.ury - media_box.lly, page_segments))
+            Ok((*dict.0, media_box.ury - media_box.lly, page_segments))
         })
         .collect();
+
+    let page_results =
+        page_results.map_err(|error| Box::new(error) as Box<dyn std::error::Error>)?;
 
     // Sort by page number and flatten while maintaining order
     let mut page_results_vec: Vec<_> = page_results.into_iter().collect();
@@ -1818,6 +1905,13 @@ pub(crate) fn output_doc_with_ocr_telemetry(
     Ok(document_structure)
 }
 
+fn ocr_route_for_page(
+    ocr_handler_present: bool,
+    assessment: Option<&crate::PageAssessment>,
+) -> bool {
+    ocr_handler_present && assessment.map_or(true, crate::PageAssessment::should_route_ocr)
+}
+
 fn approximate_split_positions(
     source_positions: &[PagePosition],
     split_start_chars: usize,
@@ -2077,7 +2171,9 @@ pub fn output_doc_new_schema(
     laparams: Option<&crate::LAParams>,
     clean_text: bool, // Whether to clean text for indexing
     options: ExtractionOptions,
-) -> Result<Vec<ExtractionResult>, Box<dyn std::error::Error>> {
+) -> Result<Vec<ExtractionResult>, OutputError> {
+    crate::validate_document_budgets(doc, &options)?;
+    let ocr_assessments = ocr_assessments_for_extraction(doc, ocr_handler.is_some());
     output_doc_new_schema_with_ocr_telemetry(
         doc,
         ocr_handler,
@@ -2088,7 +2184,9 @@ pub fn output_doc_new_schema(
         clean_text,
         options,
         None,
+        ocr_assessments.as_ref(),
     )
+    .map_err(OutputError::boxed_error)
 }
 
 pub(crate) fn output_doc_new_schema_with_ocr_telemetry(
@@ -2101,10 +2199,19 @@ pub(crate) fn output_doc_new_schema_with_ocr_telemetry(
     clean_text: bool,
     options: ExtractionOptions,
     ocr_telemetry: Option<&OcrImageTelemetry>,
+    ocr_assessments: Option<&HashMap<u32, crate::PageAssessment>>,
 ) -> Result<Vec<ExtractionResult>, Box<dyn std::error::Error>> {
     // Reuse most of the existing output_doc logic but modify the return format
-    let content_outputs =
-        output_doc_with_ocr_telemetry(doc, ocr_handler, max_tokens, laparams, ocr_telemetry)?;
+    let content_outputs = output_doc_with_ocr_telemetry(
+        doc,
+        ocr_handler,
+        max_tokens,
+        laparams,
+        ocr_telemetry,
+        options.clone(),
+        ocr_assessments,
+        None,
+    )?;
     content_outputs_to_results(
         content_outputs,
         max_tokens,
@@ -2124,6 +2231,7 @@ fn content_outputs_to_results(
     options: ExtractionOptions,
 ) -> Result<Vec<ExtractionResult>, Box<dyn std::error::Error>> {
     let mut results = Vec::new();
+    let mut output_bytes = 0usize;
 
     for (output_idx, output) in content_outputs.into_iter().enumerate() {
         let located_base = if clean_text {
@@ -2144,6 +2252,16 @@ fn content_outputs_to_results(
                     output.paragraph.clone()
                 }
             });
+        output_bytes = output_bytes.saturating_add(cleaned_paragraph.len());
+        if let Some(limit) = options.max_output_bytes {
+            if output_bytes > limit {
+                return Err(Box::new(OutputError::resource_limit(
+                    crate::ResourceLimitKind::OutputBytes,
+                    limit,
+                    Some(output_bytes),
+                )));
+            }
+        }
         let split_total_chars = cleaned_paragraph.chars().count().max(1);
         let paragraphs =
             if let (Some(limit), Some(tokenizer)) = (max_tokens, OUTPUT_TOKENIZER.as_ref()) {
@@ -2218,12 +2336,13 @@ fn content_outputs_to_results(
                 located_output.page_char_end,
                 located_output.bbox.as_ref(),
                 located_output.located_text.as_ref(),
-                options,
+                options.clone(),
             )?;
 
             results.push(ExtractionResult {
                 content_core,
                 content_ext,
+                repairs: Vec::new(),
             });
         }
     }
@@ -2243,9 +2362,11 @@ pub fn parse_pdf(
     laparams: Option<crate::LAParams>,
     clean_text: Option<bool>, // Clean text for indexing (default: true)
     options: ExtractionOptions,
-) -> Result<Vec<ExtractionResult>, Box<dyn std::error::Error>> {
+) -> Result<Vec<ExtractionResult>, OutputError> {
     let _ = ocr_cache;
-    let doc = Document::load(file_path)?;
+    let loaded = crate::load_pdf_from_path(file_path, &options)?;
+    let doc = loaded.document;
+    let repairs = loaded.repairs;
     let layout_policy = laparams
         .as_ref()
         .map(|params| params.layout_fallback_policy)
@@ -2259,12 +2380,13 @@ pub fn parse_pdf(
 
     // Initialize OCR handler if config is provided
     let ocr_handler = if let Some(config) = ocr_config {
-        Some(crate::OcrHandler::new(&config)?)
+        Some(crate::OcrHandler::new(&config).map_err(OutputError::boxed_error)?)
     } else {
         None
     };
+    let ocr_assessments = ocr_assessments_for_extraction(&doc, ocr_handler.is_some());
 
-    let layout_results = output_doc_new_schema_with_ocr_telemetry(
+    let mut layout_results = output_doc_new_schema_with_ocr_telemetry(
         &doc,
         ocr_handler.as_ref(),
         max_tokens,
@@ -2272,13 +2394,18 @@ pub fn parse_pdf(
         source_type,
         laparams.as_ref(),
         clean_text.unwrap_or(true), // Default to cleaning enabled
-        options,
+        options.clone(),
         Some(&ocr_telemetry),
-    )?;
+        ocr_assessments.as_ref(),
+    )
+    .map_err(OutputError::boxed_error)?;
+    for result in &mut layout_results {
+        result.repairs = repairs.clone();
+    }
     let layout_chars = normalized_extraction_chars(&layout_results);
 
     if layout_requested && layout_policy != crate::LayoutFallbackPolicy::Disabled {
-        let no_layout_results = output_doc_new_schema_with_ocr_telemetry(
+        let mut no_layout_results = output_doc_new_schema_with_ocr_telemetry(
             &doc,
             ocr_handler.as_ref(),
             max_tokens,
@@ -2286,9 +2413,14 @@ pub fn parse_pdf(
             source_type,
             None,
             clean_text.unwrap_or(true),
-            options,
+            options.clone(),
             Some(&ocr_telemetry),
-        )?;
+            ocr_assessments.as_ref(),
+        )
+        .map_err(OutputError::boxed_error)?;
+        for result in &mut no_layout_results {
+            result.repairs = repairs.clone();
+        }
         let no_layout_chars = normalized_extraction_chars(&no_layout_results);
         let layout_duplicate_ratio = duplicate_line_ratio_from_results(&layout_results);
         let use_fallback = match layout_policy {
@@ -2452,11 +2584,35 @@ mod tests {
     use super::{
         apply_split_location_metadata, approximate_split_positions,
         clean_located_text_for_indexing, clean_text_for_indexing,
-        duplicate_line_ratio_from_results, normalized_extraction_chars, positioned_split_segments,
-        should_use_no_layout_fallback, should_use_no_layout_inflation_fallback, ContentOutput,
+        duplicate_line_ratio_from_results, normalized_extraction_chars, ocr_route_for_page,
+        positioned_split_segments, should_use_no_layout_fallback,
+        should_use_no_layout_inflation_fallback, ContentOutput,
     };
     use crate::document::{LocatedText, OutputSpan, SpanSource, SyntheticKind};
-    use crate::{BoundingBox, ContentExt, ExtractionResult, FontWeight, PagePosition, TextSegment};
+    use crate::{
+        BoundingBox, ContentExt, ExtractionResult, FontWeight, PageAssessment, PagePosition,
+        TextSegment,
+    };
+
+    #[test]
+    fn missing_ocr_assessment_fails_open_to_ocr_routing() {
+        assert!(ocr_route_for_page(true, None));
+        assert!(!ocr_route_for_page(false, None));
+
+        let text_page = PageAssessment {
+            page: 1,
+            sampled: true,
+            text_operator_count: 4,
+            text_char_count: 40,
+            path_operator_count: 0,
+            image_operator_count: 0,
+            image_area: 0,
+            needs_ocr: false,
+            ocr_reason: None,
+            garble_signals: Vec::new(),
+        };
+        assert!(!ocr_route_for_page(true, Some(&text_page)));
+    }
 
     #[test]
     fn clean_text_for_indexing_strips_controls() {
@@ -2603,6 +2759,7 @@ mod tests {
                 chunk_id: String::new(),
                 ext_json: Vec::new(),
             },
+            repairs: Vec::new(),
         };
 
         assert_eq!(

@@ -21,6 +21,7 @@ fn parse_fixture(name: &str) -> Vec<pdf_extract::ExtractionResult> {
         Some(true),
         ExtractionOptions {
             emit_output_spans: true,
+            ..ExtractionOptions::default()
         },
     )
     .expect("parse fixture")

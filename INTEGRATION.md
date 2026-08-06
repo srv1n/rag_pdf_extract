@@ -1,20 +1,20 @@
 # PDF Extract Integration Guide
 
-This guide covers `pdf-extract` `0.8.0`, the lopdf-only API, schema version `2`,
-and the current 9-argument `parse_pdf(...)` entry point.
+This guide covers `pdf-extract` `0.9.0`, the lopdf-only API, schema version `2`,
+and the current 10-argument `parse_pdf(...)` entry point.
 
 ## Install
 
 ```toml
 [dependencies]
-pdf-extract = "0.8.0"
+pdf-extract = "0.9.0"
 ```
 
 OCR is off by default. Enable OCRS/RTen OCR with:
 
 ```toml
 [dependencies]
-pdf-extract = { version = "0.8.0", features = ["ocr"] }
+pdf-extract = { version = "0.9.0", features = ["ocr"] }
 ```
 
 `ocr-ocrs` is the explicit feature name. `ocr-tesseract` remains as a legacy
@@ -23,9 +23,9 @@ alias for compatibility only; this crate does not bundle or call Tesseract.
 ## Basic Parse
 
 ```rust
-use pdf_extract::{parse_pdf, ExtractionResult};
+use pdf_extract::{parse_pdf, ExtractionResult, OutputError};
 
-fn extract_pdf(path: &str) -> Result<Vec<ExtractionResult>, Box<dyn std::error::Error>> {
+fn extract_pdf(path: &str) -> Result<Vec<ExtractionResult>, OutputError> {
     parse_pdf(
         path,
         1,
@@ -36,6 +36,7 @@ fn extract_pdf(path: &str) -> Result<Vec<ExtractionResult>, Box<dyn std::error::
         Some(500),
         None,
         Some(true),
+        Default::default(),
     )
 }
 ```
@@ -58,6 +59,7 @@ let chunks = parse_pdf(
     Some(500),
     Some(laparams),
     Some(true),
+    Default::default(),
 )?;
 ```
 
@@ -154,6 +156,7 @@ let chunks = parse_pdf(
     Some(500),
     None,
     Some(true),
+    Default::default(),
 )?;
 ```
 
@@ -163,5 +166,5 @@ is part of the workload.
 
 ## Migration
 
-`0.8.0` is a breaking release. See [MIGRATION.md](MIGRATION.md) for removed API
+`0.9.0` is a breaking release. See [MIGRATION.md](MIGRATION.md) for removed API
 replacements and downstream examples.

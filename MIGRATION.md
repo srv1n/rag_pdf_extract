@@ -1,6 +1,19 @@
-# Migrating to 0.8.0
+# Migrating to 0.9.0
 
-`0.8.0` is a breaking release that removes the experimental backend-selection
+`0.9.0` is a breaking release that adds typed extraction errors, bounded PDF
+parsing, encrypted-PDF password handling, and OCR classification metadata.
+
+The old string-only error variants are replaced by `OutputError`. Configure
+passwords with `PdfPassword::new(...)`; the password is runtime-only and is
+intentionally omitted from serde configuration. `ExtractionOptions` retains
+its serializable, cloneable, equality-comparable configuration surface, but it
+is no longer `Copy` because it owns an optional secret.
+
+The release also upgrades `lopdf` to 0.42 and applies original-first bounded
+container repairs. Callers that previously matched parser strings should match
+the typed variants and inspect `ErrorContext` instead.
+
+`0.8.0` was the prior breaking release that removed the experimental backend-selection
 surface and standardizes on the lopdf parser path.
 
 ## Removed APIs
@@ -8,7 +21,7 @@ surface and standardizes on the lopdf parser path.
 | Removed | Replacement |
 | --- | --- |
 | `ParserBackend` | No replacement. Backend selection is gone; the crate uses the lopdf path. |
-| `parse_pdf_with_backend(...)` | Use `parse_pdf(...)` with the current 9-argument signature. |
+| `parse_pdf_with_backend(...)` | Use `parse_pdf(...)` with the current 10-argument signature, ending in `ExtractionOptions`. |
 | `backend-lopdf` / `backend-pdfium` features | Remove these feature flags. No PDFium runtime is required. |
 | `SpanSource::Pdf { backend, ... }` | Use `SpanSource::Pdf { page, char_start, char_end, bbox }`. |
 | Internal processing exports from `document::processing` | Use the public `parse_pdf`, `output_doc_new_schema`, `extract_pdf_location`, and `decompress_content_ext` APIs. |
@@ -26,6 +39,7 @@ let chunks = pdf_extract::parse_pdf(
     Some(500),
     None,
     Some(true),
+    Default::default(),
 )?;
 ```
 
@@ -45,8 +59,14 @@ let chunks = pdf_extract::parse_pdf(
     Some(500),
     Some(laparams),
     Some(true),
+    Default::default(),
 )?;
 ```
+
+The final `ExtractionOptions` argument carries parse budgets, bounded repair
+policy, output-span settings, and the runtime-only `PdfPassword`. Public PDF
+and ContentExt helpers return `OutputError`; callers should match its typed
+variants and inspect `ErrorContext` rather than parse display strings.
 
 ## Identity and location changes
 

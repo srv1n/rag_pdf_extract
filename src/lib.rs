@@ -42,6 +42,7 @@ mod core_fonts;
 mod encodings;
 
 mod chunk_accumulator;
+pub mod classifier;
 mod cmap;
 pub mod document;
 mod form;
@@ -53,6 +54,11 @@ mod ocrs;
 mod pdf_image;
 pub mod quality;
 pub mod text_splitting;
+
+pub use classifier::{
+    classify_pdf, classify_pdf_from_mem, ClassifierOptions, DocumentClassification, DocumentType,
+    OcrReason, PageAssessment,
+};
 mod zapfglyphnames;
 
 // Re-export OCR types
@@ -390,44 +396,318 @@ fn is_new_line(current_x: f64, last_end: f64, current_y: f64, last_y: f64, font_
     false
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ErrorContext {
+    pub phase: Option<String>,
+    pub page: Option<u32>,
+    pub repair_attempted: bool,
+    pub estimated_pages: Option<usize>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ResourceLimitKind {
+    Pages,
+    Objects,
+    RecursionDepth,
+    DecompressedStreamBytes,
+    OutputBytes,
+}
+
+impl std::fmt::Display for ResourceLimitKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        let name = match self {
+            Self::Pages => "max_pages",
+            Self::Objects => "max_objects",
+            Self::RecursionDepth => "max_recursion_depth",
+            Self::DecompressedStreamBytes => "max_decompressed_stream_bytes",
+            Self::OutputBytes => "max_output_bytes",
+        };
+        f.write_str(name)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EncryptionFailure {
+    PasswordRequired,
+    IncorrectPassword,
+    UnsupportedHandler,
+    InvalidDictionary,
+}
+
+#[derive(Debug, Clone)]
 pub enum OutputError {
-    FormatError(std::fmt::Error),
-    IoError(std::io::Error),
-    PdfError(lopdf::Error),
-    Custom(String),
-    Other(String), // Add this variant if it doesn't exist
+    NotAPdf {
+        context: ErrorContext,
+    },
+    Encrypted {
+        reason: EncryptionFailure,
+        context: ErrorContext,
+    },
+    InvalidStructure {
+        message: String,
+        context: ErrorContext,
+    },
+    ResourceLimit {
+        kind: ResourceLimitKind,
+        limit: usize,
+        observed: Option<usize>,
+        context: ErrorContext,
+    },
+    Parse {
+        message: String,
+        context: ErrorContext,
+    },
+    Io {
+        message: String,
+        context: ErrorContext,
+    },
+    Format {
+        message: String,
+        context: ErrorContext,
+    },
+}
+
+impl OutputError {
+    pub fn context(&self) -> &ErrorContext {
+        match self {
+            Self::NotAPdf { context }
+            | Self::Encrypted { context, .. }
+            | Self::InvalidStructure { context, .. }
+            | Self::ResourceLimit { context, .. }
+            | Self::Parse { context, .. }
+            | Self::Io { context, .. }
+            | Self::Format { context, .. } => context,
+        }
+    }
+
+    pub fn resource_limit(kind: ResourceLimitKind, limit: usize, observed: Option<usize>) -> Self {
+        Self::ResourceLimit {
+            kind,
+            limit,
+            observed,
+            context: ErrorContext {
+                phase: Some("preflight".to_string()),
+                ..ErrorContext::default()
+            },
+        }
+    }
+
+    fn parse_message(message: impl Into<String>) -> Self {
+        Self::Parse {
+            message: message.into(),
+            context: ErrorContext::default(),
+        }
+    }
+
+    fn boxed_error(error: Box<dyn std::error::Error>) -> Self {
+        if let Some(error) = error.downcast_ref::<Self>() {
+            return error.clone();
+        }
+        Self::parse_message(error.to_string())
+    }
+
+    fn with_repair_attempted(self, repair_attempted: bool) -> Self {
+        if !repair_attempted {
+            return self;
+        }
+        match self {
+            Self::NotAPdf { mut context } => {
+                context.repair_attempted = true;
+                Self::NotAPdf { context }
+            }
+            Self::Encrypted {
+                reason,
+                mut context,
+            } => {
+                context.repair_attempted = true;
+                Self::Encrypted { reason, context }
+            }
+            Self::InvalidStructure {
+                message,
+                mut context,
+            } => {
+                context.repair_attempted = true;
+                Self::InvalidStructure { message, context }
+            }
+            Self::ResourceLimit {
+                kind,
+                limit,
+                observed,
+                mut context,
+            } => {
+                context.repair_attempted = true;
+                Self::ResourceLimit {
+                    kind,
+                    limit,
+                    observed,
+                    context,
+                }
+            }
+            Self::Parse {
+                message,
+                mut context,
+            } => {
+                context.repair_attempted = true;
+                Self::Parse { message, context }
+            }
+            Self::Io {
+                message,
+                mut context,
+            } => {
+                context.repair_attempted = true;
+                Self::Io { message, context }
+            }
+            Self::Format {
+                message,
+                mut context,
+            } => {
+                context.repair_attempted = true;
+                Self::Format { message, context }
+            }
+        }
+    }
+
+    fn with_estimated_pages(self, estimated_pages: usize) -> Self {
+        let mut context = self.context().clone();
+        context.estimated_pages = Some(estimated_pages);
+        match self {
+            Self::NotAPdf { .. } => Self::NotAPdf { context },
+            Self::Encrypted { reason, .. } => Self::Encrypted { reason, context },
+            Self::InvalidStructure { message, .. } => Self::InvalidStructure { message, context },
+            Self::ResourceLimit {
+                kind,
+                limit,
+                observed,
+                ..
+            } => Self::ResourceLimit {
+                kind,
+                limit,
+                observed,
+                context,
+            },
+            Self::Parse { message, .. } => Self::Parse { message, context },
+            Self::Io { message, .. } => Self::Io { message, context },
+            Self::Format { message, .. } => Self::Format { message, context },
+        }
+    }
 }
 
 impl std::fmt::Display for OutputError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
-            OutputError::FormatError(e) => write!(f, "Formating error: {}", e),
-            OutputError::IoError(e) => write!(f, "IO error: {}", e),
-            OutputError::PdfError(e) => write!(f, "PDF error: {}", e),
-            OutputError::Custom(e) => write!(f, "Custom error: {}", e),
-            OutputError::Other(e) => write!(f, "Other error: {}", e),
+            Self::NotAPdf { context } => {
+                write!(f, "input is not a PDF")?;
+                write_estimate(f, context)
+            }
+            Self::Encrypted { reason, context } => {
+                write!(f, "encrypted PDF: {:?}", reason)?;
+                write_estimate(f, context)
+            }
+            Self::InvalidStructure { message, context } => {
+                write!(f, "invalid PDF structure: {message}")?;
+                write_estimate(f, context)
+            }
+            Self::ResourceLimit {
+                kind,
+                limit,
+                observed,
+                context,
+            } => {
+                write!(
+                    f,
+                    "PDF resource limit {kind} exceeded (limit={limit}, observed={:?})",
+                    observed
+                )?;
+                write_estimate(f, context)
+            }
+            Self::Parse { message, context } => {
+                write!(f, "PDF parse error: {message}")?;
+                write_estimate(f, context)
+            }
+            Self::Io { message, context } => {
+                write!(f, "PDF I/O error: {message}")?;
+                write_estimate(f, context)
+            }
+            Self::Format { message, context } => {
+                write!(f, "PDF output formatting error: {message}")?;
+                write_estimate(f, context)
+            }
         }
     }
+}
+
+fn write_estimate(f: &mut Formatter<'_>, context: &ErrorContext) -> Result<(), std::fmt::Error> {
+    if let Some(pages) = context.estimated_pages {
+        write!(f, " (estimated_pages={pages})")?;
+    }
+    Ok(())
 }
 
 impl std::error::Error for OutputError {}
 
 impl From<std::fmt::Error> for OutputError {
-    fn from(e: std::fmt::Error) -> Self {
-        OutputError::FormatError(e)
+    fn from(error: std::fmt::Error) -> Self {
+        Self::Format {
+            message: error.to_string(),
+            context: ErrorContext::default(),
+        }
     }
 }
 
 impl From<std::io::Error> for OutputError {
-    fn from(e: std::io::Error) -> Self {
-        OutputError::IoError(e)
+    fn from(error: std::io::Error) -> Self {
+        Self::Io {
+            message: error.to_string(),
+            context: ErrorContext::default(),
+        }
     }
 }
 
 impl From<lopdf::Error> for OutputError {
-    fn from(e: lopdf::Error) -> Self {
-        OutputError::PdfError(e)
+    fn from(error: lopdf::Error) -> Self {
+        match error {
+            lopdf::Error::IO(error) => Self::Io {
+                message: error.to_string(),
+                context: ErrorContext::default(),
+            },
+            lopdf::Error::Parse(error) if error.to_string() == "invalid file header" => {
+                Self::NotAPdf {
+                    context: ErrorContext {
+                        phase: Some("header".to_string()),
+                        ..ErrorContext::default()
+                    },
+                }
+            }
+            lopdf::Error::Parse(error) => Self::InvalidStructure {
+                message: error.to_string(),
+                context: ErrorContext::default(),
+            },
+            lopdf::Error::InvalidPassword => Self::Encrypted {
+                reason: EncryptionFailure::IncorrectPassword,
+                context: ErrorContext {
+                    phase: Some("decrypt".to_string()),
+                    ..ErrorContext::default()
+                },
+            },
+            lopdf::Error::Decryption(error) => Self::Encrypted {
+                reason: match error {
+                    DecryptionError::IncorrectPassword => EncryptionFailure::IncorrectPassword,
+                    DecryptionError::UnsupportedEncryption
+                    | DecryptionError::UnsupportedVersion
+                    | DecryptionError::UnsupportedRevision => EncryptionFailure::UnsupportedHandler,
+                    _ => EncryptionFailure::InvalidDictionary,
+                },
+                context: ErrorContext::default(),
+            },
+            lopdf::Error::UnsupportedSecurityHandler(_) => Self::Encrypted {
+                reason: EncryptionFailure::UnsupportedHandler,
+                context: ErrorContext::default(),
+            },
+            error => Self::Parse {
+                message: error.to_string(),
+                context: ErrorContext::default(),
+            },
+        }
     }
 }
 
@@ -2968,6 +3248,7 @@ fn add_visibility_count(stats: &mut PageTextLayerStats, rendering_mode: i32, byt
 #[derive(Debug, Clone)]
 pub(crate) struct StreamContext {
     depth: usize,
+    max_depth: usize,
     source_kind: StreamSourceKind,
     xobject_name: Option<String>,
     xobject_stack: Vec<String>,
@@ -2975,8 +3256,13 @@ pub(crate) struct StreamContext {
 
 impl StreamContext {
     pub(crate) fn page() -> Self {
+        Self::page_with_limit(8)
+    }
+
+    pub(crate) fn page_with_limit(max_depth: usize) -> Self {
         Self {
             depth: 0,
+            max_depth,
             source_kind: StreamSourceKind::Page,
             xobject_name: None,
             xobject_stack: Vec::new(),
@@ -2988,6 +3274,7 @@ impl StreamContext {
         xobject_stack.push(name.clone());
         Self {
             depth: self.depth + 1,
+            max_depth: self.max_depth,
             source_kind: StreamSourceKind::FormXObject,
             xobject_name: Some(name),
             xobject_stack,
@@ -3362,6 +3649,7 @@ impl<'a> Processor<'a> {
         doc: &'a Document,
         ocr_handler: Option<&OcrHandler>,
         ocr_telemetry: Option<&OcrImageTelemetry>,
+        ocr_route: bool,
         content: Vec<u8>,
         resources: &'a Dictionary,
         media_box: &MediaBox,
@@ -3372,7 +3660,7 @@ impl<'a> Processor<'a> {
         initial_ctm_override: Option<Transform>,
         stream_context: StreamContext,
     ) -> Result<(), OutputError> {
-        if stream_context.depth > 8 {
+        if stream_context.depth > stream_context.max_depth {
             warn!(
                 "Skipping nested PDF stream on page {} at depth {} ({:?})",
                 page_num, stream_context.depth, stream_context.xobject_name
@@ -4521,60 +4809,68 @@ impl<'a> Processor<'a> {
                     let xf: &Stream = get(&doc, xobject, name);
 
                     // Only process XObject if OCR handler is available
-                    if let Some(handler) = ocr_handler {
-                        let device_trm = gs.ctm.post_transform(&gs.ts.tm).post_transform(&flip_ctm);
-                        let (x, y) = (device_trm.m31, device_trm.m32);
+                    if ocr_route {
+                        if let Some(handler) = ocr_handler {
+                            let device_trm =
+                                gs.ctm.post_transform(&gs.ts.tm).post_transform(&flip_ctm);
+                            let (x, y) = (device_trm.m31, device_trm.m32);
 
-                        // Extract dimensions if this is an image
-                        let size = if let Ok(subtype) = xf.dict.get(b"Subtype") {
-                            if let Ok(subtype_name) = subtype.as_name() {
-                                if subtype_name == b"Image" {
-                                    if let (Ok(width), Ok(height)) = (
-                                        xf.dict.get(b"Width").and_then(|w| w.as_i64()),
-                                        xf.dict.get(b"Height").and_then(|h| h.as_i64()),
-                                    ) {
-                                        (width as f64, height as f64)
+                            // Extract dimensions if this is an image
+                            let size = if let Ok(subtype) = xf.dict.get(b"Subtype") {
+                                if let Ok(subtype_name) = subtype.as_name() {
+                                    if subtype_name == b"Image" {
+                                        if let (Ok(width), Ok(height)) = (
+                                            xf.dict.get(b"Width").and_then(|w| w.as_i64()),
+                                            xf.dict.get(b"Height").and_then(|h| h.as_i64()),
+                                        ) {
+                                            (width as f64, height as f64)
+                                        } else {
+                                            (100.0, 100.0) // Fallback if dimensions not found
+                                        }
                                     } else {
-                                        (100.0, 100.0) // Fallback if dimensions not found
+                                        (100.0, 100.0) // Not an image
                                     }
                                 } else {
-                                    (100.0, 100.0) // Not an image
+                                    (100.0, 100.0) // Invalid subtype
                                 }
                             } else {
-                                (100.0, 100.0) // Invalid subtype
+                                (100.0, 100.0) // No subtype
+                            };
+
+                            // Debug: Log the current CTM to understand what transformations are applied
+                            debug!(
+                                "Current graphics state CTM: [{:.3} {:.3} {:.3} {:.3} {:.1} {:.1}]",
+                                gs.ctm.m11,
+                                gs.ctm.m12,
+                                gs.ctm.m21,
+                                gs.ctm.m22,
+                                gs.ctm.m31,
+                                gs.ctm.m32
+                            );
+
+                            // The PDF coordinate system and image coordinate system may differ
+                            // We need to detect the correct orientation based on the CTM
+                            // For now, pass the current CTM to let the image processor figure it out
+                            let image_transform = gs.ctm.clone();
+
+                            if let Err(e) = process_xobject(
+                                &doc,
+                                resources,
+                                name,
+                                Some(handler),
+                                ocr_telemetry,
+                                text_segments,
+                                (x, y),
+                                size,
+                                page_num,
+                                current_font_size,
+                                current_transformed_font_size,
+                                &mut page_char_counter,
+                                &image_transform, // Use CTM without Y-flip for images
+                            ) {
+                                // Log error but continue processing
+                                eprintln!("Failed to process image in PDF: {}", e);
                             }
-                        } else {
-                            (100.0, 100.0) // No subtype
-                        };
-
-                        // Debug: Log the current CTM to understand what transformations are applied
-                        debug!(
-                            "Current graphics state CTM: [{:.3} {:.3} {:.3} {:.3} {:.1} {:.1}]",
-                            gs.ctm.m11, gs.ctm.m12, gs.ctm.m21, gs.ctm.m22, gs.ctm.m31, gs.ctm.m32
-                        );
-
-                        // The PDF coordinate system and image coordinate system may differ
-                        // We need to detect the correct orientation based on the CTM
-                        // For now, pass the current CTM to let the image processor figure it out
-                        let image_transform = gs.ctm.clone();
-
-                        if let Err(e) = process_xobject(
-                            &doc,
-                            resources,
-                            name,
-                            Some(handler),
-                            ocr_telemetry,
-                            text_segments,
-                            (x, y),
-                            size,
-                            page_num,
-                            current_font_size,
-                            current_transformed_font_size,
-                            &mut page_char_counter,
-                            &image_transform, // Use CTM without Y-flip for images
-                        ) {
-                            // Log error but continue processing
-                            eprintln!("Failed to process image in PDF: {}", e);
                         }
                     }
 
@@ -4632,17 +4928,18 @@ impl<'a> Processor<'a> {
                                     continue;
                                 }
                                 let child_initial_ctm = gs.ctm.pre_transform(&form_matrix);
-                                let child_context = stream_context.form_child(child_name);
+                                let child_context = stream_context.form_child(child_name.clone());
 
                                 // Process the Form's content stream
                                 let form_resources = maybe_get_obj(&doc, &xf.dict, b"Resources")
                                     .and_then(|n| n.as_dict().ok())
                                     .unwrap_or(resources);
                                 let contents = get_contents(xf);
-                                self.process_stream(
+                                if let Err(error) = self.process_stream(
                                     &doc,
                                     ocr_handler,
                                     ocr_telemetry,
+                                    ocr_route,
                                     contents,
                                     form_resources,
                                     &media_box,
@@ -4652,7 +4949,12 @@ impl<'a> Processor<'a> {
                                     laparams,
                                     Some(child_initial_ctm),
                                     child_context,
-                                )?;
+                                ) {
+                                    warn!(
+                                        "Skipping Form XObject {} on page {} after stream error: {:?}",
+                                        child_name, page_num, error
+                                    );
+                                }
                             }
                         }
                     }
@@ -6056,6 +6358,7 @@ mod reconstruction_tests {
             Some(&located),
             ExtractionOptions {
                 emit_output_spans: true,
+                ..ExtractionOptions::default()
             },
         )
         .expect("content ext");
@@ -6179,12 +6482,14 @@ mod reconstruction_tests {
             Some(&located),
             ExtractionOptions {
                 emit_output_spans: true,
+                ..ExtractionOptions::default()
             },
         )
         .expect("content ext");
         let result = ExtractionResult {
             content_core,
             content_ext,
+            repairs: Vec::new(),
         };
 
         let telemetry = production_telemetry_for_results(
@@ -6482,10 +6787,9 @@ pub fn extract_text<P: std::convert::AsRef<std::path::Path>>(
     path: P,
     ocr_handler: Option<&OcrHandler>,
 ) -> Result<String, OutputError> {
-    let mut doc = Document::load(path)?;
-    maybe_decrypt(&mut doc)?;
-    let content_outputs =
-        output_doc(&doc, ocr_handler, None, None).map_err(|e| OutputError::Other(e.to_string()))?;
+    let loaded = load_pdf_from_path(path, &ExtractionOptions::default())?;
+    let doc = loaded.document;
+    let content_outputs = output_doc(&doc, ocr_handler, None, None)?;
 
     // Concatenate all content from the ContentOutput structs
     let mut result = String::new();
@@ -6513,8 +6817,8 @@ pub fn extract_text<P: std::convert::AsRef<std::path::Path>>(
 /// file is cheap relative to having lost the document. Do not call it for every
 /// document — it parses the cross-reference table and page tree again.
 pub fn page_count<P: std::convert::AsRef<std::path::Path>>(path: P) -> Result<usize, OutputError> {
-    let mut doc = Document::load(path)?;
-    maybe_decrypt(&mut doc)?;
+    let loaded = load_pdf_from_path(path, &ExtractionOptions::default())?;
+    let doc = loaded.document;
     Ok(doc.get_pages().len())
 }
 
@@ -6522,25 +6826,9 @@ pub fn page_count<P: std::convert::AsRef<std::path::Path>>(path: P) -> Result<us
 ///
 /// See [`page_count`].
 pub fn page_count_from_mem(buffer: &[u8]) -> Result<usize, OutputError> {
-    let mut doc = Document::load_mem(buffer)?;
-    maybe_decrypt(&mut doc)?;
+    let loaded = load_pdf_from_mem(buffer, &ExtractionOptions::default())?;
+    let doc = loaded.document;
     Ok(doc.get_pages().len())
-}
-
-fn maybe_decrypt(doc: &mut Document) -> Result<(), OutputError> {
-    if !doc.is_encrypted() {
-        return Ok(());
-    }
-
-    if let Err(e) = doc.decrypt("") {
-        if let Error::Decryption(DecryptionError::IncorrectPassword) = e {
-            eprintln!("Encrypted documents must be decrypted with a password using {{extract_text|extract_text_from_mem|output_doc}}_encrypted")
-        }
-
-        return Err(OutputError::PdfError(e));
-    }
-
-    Ok(())
 }
 
 // pub fn extract_text_encrypted<P: std::convert::AsRef<std::path::Path>, PW: AsRef<[u8]>>(
@@ -6560,10 +6848,9 @@ pub fn extract_text_from_mem(
     buffer: &[u8],
     ocr_handler: Option<&OcrHandler>,
 ) -> Result<String, OutputError> {
-    let mut doc = Document::load_mem(buffer)?;
-    maybe_decrypt(&mut doc)?;
-    let content_outputs =
-        output_doc(&doc, ocr_handler, None, None).map_err(|e| OutputError::Other(e.to_string()))?;
+    let loaded = load_pdf_from_mem(buffer, &ExtractionOptions::default())?;
+    let doc = loaded.document;
+    let content_outputs = output_doc(&doc, ocr_handler, None, None)?;
 
     // Concatenate all content from the ContentOutput structs
     let mut result = String::new();
@@ -6647,14 +6934,100 @@ pub struct ChunkLocation {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RepairKind {
+    HeaderGarbageStripped,
+    TruncatedEofRepaired,
+}
+
+/// A password whose secret value is never exposed by formatting.
+///
+/// The string remains available to the parser through a private accessor, but
+/// the wrapper prevents accidental `Debug`/`Display` logging at API seams.
+#[derive(Clone, PartialEq, Eq)]
+pub struct PdfPassword(String);
+
+impl PdfPassword {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<&str> for PdfPassword {
+    fn from(value: &str) -> Self {
+        Self::new(value)
+    }
+}
+
+impl From<String> for PdfPassword {
+    fn from(value: String) -> Self {
+        Self::new(value)
+    }
+}
+
+impl std::fmt::Debug for PdfPassword {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        f.write_str("[redacted]")
+    }
+}
+
+impl std::fmt::Display for PdfPassword {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        f.write_str("[redacted]")
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExtractionOptions {
     pub emit_output_spans: bool,
+    pub max_pages: Option<usize>,
+    pub max_objects: Option<usize>,
+    pub max_recursion_depth: Option<usize>,
+    pub max_decompressed_stream_bytes: Option<usize>,
+    pub max_output_bytes: Option<usize>,
+    /// Runtime-only secret. It is intentionally omitted from serde
+    /// serialization and deserialization; configure it in memory.
+    #[serde(skip)]
+    pub password: Option<PdfPassword>,
+    pub enable_repairs: bool,
+}
+
+impl std::fmt::Debug for ExtractionOptions {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        f.debug_struct("ExtractionOptions")
+            .field("emit_output_spans", &self.emit_output_spans)
+            .field("max_pages", &self.max_pages)
+            .field("max_objects", &self.max_objects)
+            .field("max_recursion_depth", &self.max_recursion_depth)
+            .field(
+                "max_decompressed_stream_bytes",
+                &self.max_decompressed_stream_bytes,
+            )
+            .field("max_output_bytes", &self.max_output_bytes)
+            .field("password", &self.password.as_ref().map(|_| "[redacted]"))
+            .field("enable_repairs", &self.enable_repairs)
+            .finish()
+    }
 }
 
 impl Default for ExtractionOptions {
     fn default() -> Self {
         Self {
             emit_output_spans: false,
+            max_pages: Some(10_000),
+            max_objects: Some(1_000_000),
+            max_recursion_depth: Some(8),
+            max_decompressed_stream_bytes: Some(128 * 1024 * 1024),
+            max_output_bytes: Some(128 * 1024 * 1024),
+            password: None,
+            enable_repairs: true,
         }
     }
 }
@@ -6672,6 +7045,526 @@ pub struct PagePosition {
 pub struct ExtractionResult {
     pub content_core: ContentCore,
     pub content_ext: ContentExt,
+    pub repairs: Vec<RepairKind>,
+}
+
+pub(crate) struct LoadedPdf {
+    pub document: Document,
+    pub repairs: Vec<RepairKind>,
+}
+
+fn decompression_limit_error(limit: usize, observed: Option<usize>) -> OutputError {
+    OutputError::resource_limit(ResourceLimitKind::DecompressedStreamBytes, limit, observed)
+}
+
+fn bounded_decompressed_content(stream: &Stream, remaining: usize) -> Result<Vec<u8>, OutputError> {
+    let filters = match stream.filters() {
+        Ok(filters) if !filters.is_empty() => filters,
+        _ => {
+            if stream.content.len() > remaining {
+                return Err(decompression_limit_error(
+                    remaining,
+                    Some(stream.content.len()),
+                ));
+            }
+            return Ok(stream.content.clone());
+        }
+    };
+
+    let mut input = stream.content.clone();
+    for filter in filters {
+        let output = match filter {
+            b"FlateDecode" => bounded_flate_decode(&input, remaining)?,
+            b"LZWDecode" => bounded_lzw_decode(stream, &input, remaining)?,
+            b"ASCII85Decode" => bounded_ascii85_decode(&input, remaining)?,
+            _ => {
+                // Image codecs such as DCT/JPX are intentionally opaque to
+                // text extraction and are not inflated by lopdf's content
+                // decoder. Bound their stored bytes without rejecting every
+                // ordinary JPEG-backed PDF. All filters that this crate (or
+                // lopdf) can inflate are handled above with bounded decoders.
+                if input.len() > remaining {
+                    return Err(decompression_limit_error(remaining, Some(input.len())));
+                }
+                input.clone()
+            }
+        };
+        input = output;
+    }
+    Ok(input)
+}
+
+fn bounded_flate_decode(input: &[u8], limit: usize) -> Result<Vec<u8>, OutputError> {
+    fn read_bounded<R: std::io::Read>(mut reader: R, limit: usize) -> Result<Vec<u8>, bool> {
+        let mut output = Vec::new();
+        let mut buffer = [0u8; 8192];
+        loop {
+            let read = reader.read(&mut buffer).map_err(|_| false)?;
+            if read == 0 {
+                return Ok(output);
+            }
+            if output.len().saturating_add(read) > limit {
+                return Err(true);
+            }
+            output.extend_from_slice(&buffer[..read]);
+        }
+    }
+
+    let zlib = flate2::read::ZlibDecoder::new(std::io::Cursor::new(input));
+    match read_bounded(zlib, limit) {
+        Ok(output) => Ok(output),
+        Err(true) => Err(decompression_limit_error(
+            limit,
+            Some(limit.saturating_add(1)),
+        )),
+        Err(false) => {
+            // Match lopdf's raw-deflate compatibility fallback without ever
+            // allowing the fallback decoder to allocate beyond the budget.
+            if input.len() > 2 {
+                let raw = flate2::read::DeflateDecoder::new(std::io::Cursor::new(&input[2..]));
+                match read_bounded(raw, limit) {
+                    Ok(output) => Ok(output),
+                    Err(true) => Err(decompression_limit_error(
+                        limit,
+                        Some(limit.saturating_add(1)),
+                    )),
+                    Err(false) => {
+                        if input.len() > limit {
+                            Err(decompression_limit_error(limit, Some(input.len())))
+                        } else {
+                            Ok(input.to_vec())
+                        }
+                    }
+                }
+            } else if input.len() > limit {
+                Err(decompression_limit_error(limit, Some(input.len())))
+            } else {
+                Ok(input.to_vec())
+            }
+        }
+    }
+}
+
+fn bounded_ascii85_decode(input: &[u8], limit: usize) -> Result<Vec<u8>, OutputError> {
+    let mut output = Vec::new();
+    let mut group = [0u8; 5];
+    let mut group_len = 0usize;
+    let flush = |group: &[u8; 5], count: usize, output: &mut Vec<u8>| {
+        let mut value = 0u32;
+        for digit in group.iter().take(5) {
+            value = value
+                .saturating_mul(85)
+                .saturating_add((*digit - b'!') as u32);
+        }
+        let bytes = value.to_be_bytes();
+        let count = if count == 5 {
+            4
+        } else {
+            count.saturating_sub(1)
+        };
+        output.extend_from_slice(&bytes[..count]);
+    };
+
+    let mut index = 0usize;
+    while index < input.len() {
+        let byte = input[index];
+        index += 1;
+        if byte.is_ascii_whitespace() {
+            continue;
+        }
+        if byte == b'~' && input.get(index) == Some(&b'>') {
+            break;
+        }
+        if byte == b'z' {
+            if group_len != 0 {
+                break;
+            }
+            if output.len().saturating_add(4) > limit {
+                return Err(decompression_limit_error(
+                    limit,
+                    Some(limit.saturating_add(1)),
+                ));
+            }
+            output.extend_from_slice(&[0; 4]);
+            continue;
+        }
+        if !(b'!'..=b'u').contains(&byte) {
+            break;
+        }
+        group[group_len] = byte;
+        group_len += 1;
+        if group_len == 5 {
+            if output.len().saturating_add(4) > limit {
+                return Err(decompression_limit_error(
+                    limit,
+                    Some(limit.saturating_add(1)),
+                ));
+            }
+            flush(&group, group_len, &mut output);
+            group_len = 0;
+        }
+    }
+    if group_len > 0 {
+        for digit in group.iter_mut().skip(group_len) {
+            *digit = b'u';
+        }
+        let decoded_len = group_len.saturating_sub(1);
+        if output.len().saturating_add(decoded_len) > limit {
+            return Err(decompression_limit_error(
+                limit,
+                Some(limit.saturating_add(1)),
+            ));
+        }
+        flush(&group, group_len, &mut output);
+    }
+    Ok(output)
+}
+
+struct BudgetWriter {
+    output: Vec<u8>,
+    limit: usize,
+    exceeded: bool,
+}
+
+impl std::io::Write for BudgetWriter {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        if self.output.len().saturating_add(bytes.len()) > self.limit {
+            self.exceeded = true;
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::WriteZero,
+                "decompression budget exceeded",
+            ));
+        }
+        self.output.extend_from_slice(bytes);
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+fn bounded_lzw_decode(stream: &Stream, input: &[u8], limit: usize) -> Result<Vec<u8>, OutputError> {
+    let early_change = stream
+        .dict
+        .get(b"DecodeParms")
+        .ok()
+        .and_then(|object| object.as_dict().ok())
+        .and_then(|params| params.get(b"EarlyChange").ok())
+        .and_then(|object| object.as_i64().ok())
+        .map(|value| value != 0)
+        .unwrap_or(true);
+    let mut decoder = if early_change {
+        weezl::decode::Decoder::with_tiff_size_switch(weezl::BitOrder::Msb, 8)
+    } else {
+        weezl::decode::Decoder::new(weezl::BitOrder::Msb, 8)
+    };
+    let mut writer = BudgetWriter {
+        output: Vec::new(),
+        limit,
+        exceeded: false,
+    };
+    let _ = decoder.into_stream(&mut writer).decode_all(input);
+    if writer.exceeded {
+        Err(decompression_limit_error(
+            limit,
+            Some(limit.saturating_add(1)),
+        ))
+    } else {
+        Ok(writer.output)
+    }
+}
+
+pub(crate) fn validate_document_budgets(
+    document: &Document,
+    options: &ExtractionOptions,
+) -> Result<(), OutputError> {
+    if let Some(limit) = options.max_pages {
+        let pages = document.get_pages().len();
+        if pages > limit {
+            return Err(OutputError::resource_limit(
+                ResourceLimitKind::Pages,
+                limit,
+                Some(pages),
+            ));
+        }
+    }
+    if let Some(limit) = options.max_objects {
+        let indexed_objects = document
+            .reference_table
+            .entries
+            .values()
+            .filter(|entry| {
+                matches!(
+                    entry,
+                    lopdf::xref::XrefEntry::Normal { .. }
+                        | lopdf::xref::XrefEntry::Compressed { .. }
+                )
+            })
+            .count();
+        let objects = indexed_objects.max(document.objects.len());
+        if objects > limit {
+            return Err(OutputError::resource_limit(
+                ResourceLimitKind::Objects,
+                limit,
+                Some(objects),
+            ));
+        }
+    }
+    if let Some(limit) = options.max_decompressed_stream_bytes {
+        let mut total = 0usize;
+        for object in document.objects.values() {
+            let Object::Stream(stream) = object else {
+                continue;
+            };
+            let remaining = limit.saturating_sub(total);
+            let decompressed = match bounded_decompressed_content(stream, remaining) {
+                Ok(decompressed) => decompressed,
+                Err(OutputError::ResourceLimit {
+                    kind: ResourceLimitKind::DecompressedStreamBytes,
+                    observed,
+                    ..
+                }) => {
+                    return Err(OutputError::resource_limit(
+                        ResourceLimitKind::DecompressedStreamBytes,
+                        limit,
+                        observed.map(|value| total.saturating_add(value)),
+                    ));
+                }
+                Err(error) => return Err(error),
+            };
+            total = total.saturating_add(decompressed.len());
+            if total > limit {
+                return Err(OutputError::resource_limit(
+                    ResourceLimitKind::DecompressedStreamBytes,
+                    limit,
+                    Some(total),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn pdf_name_delimiter(byte: u8) -> bool {
+    byte.is_ascii_whitespace()
+        || matches!(byte, b'/' | b'%' | b'[' | b']' | b'<' | b'>' | b'{' | b'}')
+}
+
+fn append_missing_eof(bytes: &mut Vec<u8>) {
+    if !bytes.last().is_some_and(|byte| byte.is_ascii_whitespace()) {
+        bytes.push(b'\n');
+    }
+    bytes.extend_from_slice(b"%%EOF\n");
+}
+
+/// Estimate page objects without invoking the PDF parser.
+///
+/// This is deliberately a bounded, single-pass byte scan used only to make a
+/// total parse failure actionable. It counts `/Type /Page` and excludes the
+/// plural `/Pages` node by requiring a name delimiter after `Page`.
+pub fn estimate_page_count(bytes: &[u8]) -> usize {
+    let mut count = 0usize;
+    let mut index = 0usize;
+    while index + 5 <= bytes.len() {
+        if &bytes[index..index + 5] != b"/Type" {
+            index += 1;
+            continue;
+        }
+        let mut cursor = index + 5;
+        while cursor < bytes.len() && bytes[cursor].is_ascii_whitespace() {
+            cursor += 1;
+        }
+        if cursor + 5 <= bytes.len()
+            && &bytes[cursor..cursor + 5] == b"/Page"
+            && (cursor + 5 == bytes.len() || pdf_name_delimiter(bytes[cursor + 5]))
+        {
+            count += 1;
+            index = cursor + 5;
+        } else {
+            index += 5;
+        }
+    }
+    count
+}
+
+fn decrypt_document(document: &mut Document, password: Option<&str>) -> Result<(), OutputError> {
+    if !document.is_encrypted() {
+        return Ok(());
+    }
+
+    let encrypted = document
+        .get_encrypted()
+        .map_err(|_| OutputError::Encrypted {
+            reason: EncryptionFailure::InvalidDictionary,
+            context: ErrorContext {
+                phase: Some("decrypt".to_string()),
+                ..ErrorContext::default()
+            },
+        })?;
+    match encrypted.get(b"Filter").and_then(Object::as_name) {
+        Ok(b"Standard") => {}
+        Ok(_) => {
+            return Err(OutputError::Encrypted {
+                reason: EncryptionFailure::UnsupportedHandler,
+                context: ErrorContext {
+                    phase: Some("decrypt".to_string()),
+                    ..ErrorContext::default()
+                },
+            });
+        }
+        Err(_) => {
+            return Err(OutputError::Encrypted {
+                reason: EncryptionFailure::InvalidDictionary,
+                context: ErrorContext {
+                    phase: Some("decrypt".to_string()),
+                    ..ErrorContext::default()
+                },
+            });
+        }
+    }
+
+    match document.decrypt(password.unwrap_or("")) {
+        Ok(()) => Ok(()),
+        Err(lopdf::Error::Decryption(DecryptionError::IncorrectPassword)) if password.is_none() => {
+            Err(OutputError::Encrypted {
+                reason: EncryptionFailure::PasswordRequired,
+                context: ErrorContext {
+                    phase: Some("decrypt".to_string()),
+                    ..ErrorContext::default()
+                },
+            })
+        }
+        Err(error) => {
+            let invalid_dictionary = matches!(
+                &error,
+                lopdf::Error::DictKey(_)
+                    | lopdf::Error::DictType { .. }
+                    | lopdf::Error::ObjectType { .. }
+                    | lopdf::Error::Decryption(
+                        DecryptionError::MissingEncryptDictionary
+                            | DecryptionError::MissingVersion
+                            | DecryptionError::MissingRevision
+                            | DecryptionError::MissingOwnerPassword
+                            | DecryptionError::MissingUserPassword
+                            | DecryptionError::MissingPermissions
+                            | DecryptionError::MissingFileID
+                            | DecryptionError::InvalidHashLength
+                            | DecryptionError::InvalidKeyLength
+                            | DecryptionError::InvalidCipherTextLength
+                            | DecryptionError::InvalidPermissionLength
+                            | DecryptionError::InvalidVersion
+                            | DecryptionError::InvalidRevision
+                            | DecryptionError::InvalidType
+                            | DecryptionError::NotDecryptable
+                    )
+            );
+            if invalid_dictionary {
+                Err(OutputError::Encrypted {
+                    reason: EncryptionFailure::InvalidDictionary,
+                    context: ErrorContext {
+                        phase: Some("decrypt".to_string()),
+                        ..ErrorContext::default()
+                    },
+                })
+            } else {
+                Err(OutputError::from(error))
+            }
+        }
+    }
+}
+
+fn load_pdf_bytes_once(bytes: &[u8], password: Option<&str>) -> Result<Document, OutputError> {
+    // Supplying a password to lopdf's loader is important: encrypted PDFs
+    // keep ordinary objects out of `Document::objects` until authentication
+    // succeeds. A post-load `Document::decrypt` cannot recover those raw
+    // objects because it only walks the already-materialized map.
+    let mut document = match password {
+        Some(password) => {
+            Document::load_mem_with_options(bytes, lopdf::LoadOptions::with_password(password))
+                .map_err(OutputError::from)?
+        }
+        None => Document::load_mem(bytes).map_err(OutputError::from)?,
+    };
+    // Encrypted documents intentionally do not materialize ordinary objects
+    // until authentication succeeds. Decrypt first; otherwise the catalog
+    // probe below misclassifies a missing password as a missing object.
+    decrypt_document(&mut document, password)?;
+    // lopdf 0.42 intentionally keeps ordinary objects lazy. Force the
+    // catalog path here so a deep nested object cannot hide behind a
+    // successful xref load and reach extraction later.
+    if let Ok(root) = document.trailer.get(b"Root").and_then(Object::as_reference) {
+        document.get_object(root).map_err(OutputError::from)?;
+    }
+    Ok(document)
+}
+
+pub(crate) fn load_pdf_from_mem(
+    bytes: &[u8],
+    options: &ExtractionOptions,
+) -> Result<LoadedPdf, OutputError> {
+    let estimated_pages = estimate_page_count(bytes);
+    let header_offset = bytes.windows(5).position(|window| window == b"%PDF-");
+    let should_repair_eof =
+        header_offset.is_some() && !bytes.windows(5).any(|window| window == b"%%EOF");
+
+    match load_pdf_bytes_once(bytes, options.password.as_ref().map(PdfPassword::as_str)) {
+        Ok(document) => {
+            validate_document_budgets(&document, options)?;
+            Ok(LoadedPdf {
+                document,
+                repairs: Vec::new(),
+            })
+        }
+        Err(first_error) if !options.enable_repairs => {
+            Err(first_error.with_estimated_pages(estimated_pages))
+        }
+        Err(first_error) => {
+            let first_error = first_error.with_estimated_pages(estimated_pages);
+            let mut repaired = bytes.to_vec();
+            let mut repairs = Vec::new();
+            if let Some(header) = header_offset.filter(|offset| *offset > 0) {
+                // Original bytes always get the first parse attempt. A
+                // repair is only a fallback, because a valid file may carry
+                // harmless prefix bytes while retaining self-consistent xref
+                // offsets that the parser can already handle.
+                repaired.drain(..header);
+                repairs.push(RepairKind::HeaderGarbageStripped);
+            }
+            if should_repair_eof {
+                append_missing_eof(&mut repaired);
+                repairs.push(RepairKind::TruncatedEofRepaired);
+            }
+            if repairs.is_empty() {
+                Err(first_error)
+            } else {
+                match load_pdf_bytes_once(
+                    &repaired,
+                    options.password.as_ref().map(PdfPassword::as_str),
+                ) {
+                    Ok(document) => {
+                        validate_document_budgets(&document, options)
+                            .map_err(|error| error.with_repair_attempted(true))?;
+                        Ok(LoadedPdf { document, repairs })
+                    }
+                    Err(_) => {
+                        // Preserve the semantic error from the original
+                        // bytes. In particular, a repair attempt must not
+                        // turn PasswordRequired into InvalidStructure.
+                        Err(first_error.with_repair_attempted(true))
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub(crate) fn load_pdf_from_path(
+    path: impl AsRef<std::path::Path>,
+    options: &ExtractionOptions,
+) -> Result<LoadedPdf, OutputError> {
+    let bytes = std::fs::read(path).map_err(OutputError::from)?;
+    load_pdf_from_mem(&bytes, options)
 }
 
 // Font weight enum (needed in main processing)
@@ -6920,7 +7813,7 @@ pub fn create_content_ext(
     page_char_start: Option<usize>,
     page_char_end: Option<usize>,
     bbox: Option<&BoundingBox>,
-) -> Result<ContentExt, Box<dyn std::error::Error>> {
+) -> Result<ContentExt, OutputError> {
     create_content_ext_with_spans(
         chunk_id,
         format_location,
@@ -6940,7 +7833,7 @@ pub fn create_content_ext_with_spans(
     bbox: Option<&BoundingBox>,
     located_text: Option<&crate::document::LocatedText>,
     options: ExtractionOptions,
-) -> Result<ContentExt, Box<dyn std::error::Error>> {
+) -> Result<ContentExt, OutputError> {
     #[derive(serde::Serialize)]
     struct ContentExtPayload<'a> {
         format_location: &'a FormatLocation,
@@ -7015,7 +7908,10 @@ pub fn create_content_ext_with_spans(
     };
 
     // Serialize to JSON and compress with zstd
-    let json_bytes = serde_json::to_vec(&ext_data)?;
+    let json_bytes = serde_json::to_vec(&ext_data).map_err(|error| OutputError::Format {
+        message: error.to_string(),
+        context: ErrorContext::default(),
+    })?;
     let compressed = zstd::bulk::compress(&json_bytes, 3)?;
 
     Ok(ContentExt {
@@ -7157,32 +8053,40 @@ fn bbox_union(a: &BoundingBox, b: &BoundingBox) -> BoundingBox {
 
 pub const CONTENT_EXT_DECOMPRESS_LIMIT_BYTES: usize = 16 * 1024 * 1024;
 
-pub fn decompress_content_ext_bytes(
-    content_ext: &ContentExt,
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    Ok(zstd::bulk::decompress(
-        &content_ext.ext_json,
-        CONTENT_EXT_DECOMPRESS_LIMIT_BYTES,
-    )?)
+pub fn decompress_content_ext_bytes(content_ext: &ContentExt) -> Result<Vec<u8>, OutputError> {
+    zstd::bulk::decompress(&content_ext.ext_json, CONTENT_EXT_DECOMPRESS_LIMIT_BYTES).map_err(
+        |error| OutputError::InvalidStructure {
+            message: format!("invalid ContentExt compression: {error}"),
+            context: ErrorContext::default(),
+        },
+    )
 }
 
 /// Helper function to decompress and deserialize ContentExt data.
-pub fn decompress_content_ext(
-    content_ext: &ContentExt,
-) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+pub fn decompress_content_ext(content_ext: &ContentExt) -> Result<serde_json::Value, OutputError> {
     let decompressed = decompress_content_ext_bytes(content_ext)?;
-    let json_value: serde_json::Value = serde_json::from_slice(&decompressed)?;
+    let json_value: serde_json::Value =
+        serde_json::from_slice(&decompressed).map_err(|error| OutputError::InvalidStructure {
+            message: format!("invalid ContentExt JSON: {error}"),
+            context: ErrorContext::default(),
+        })?;
     Ok(json_value)
 }
 
 pub fn extract_chunk_locations(
     content_ext: &ContentExt,
-) -> Result<Vec<ChunkLocation>, Box<dyn std::error::Error>> {
+) -> Result<Vec<ChunkLocation>, OutputError> {
     let json_data = decompress_content_ext(content_ext)?;
     let Some(chunk_locations) = json_data.get("chunk_locations") else {
-        return Err("No chunk_locations data found in ContentExt".into());
+        return Err(OutputError::InvalidStructure {
+            message: "no chunk_locations data found in ContentExt".to_string(),
+            context: ErrorContext::default(),
+        });
     };
-    Ok(serde_json::from_value(chunk_locations.clone())?)
+    serde_json::from_value(chunk_locations.clone()).map_err(|error| OutputError::InvalidStructure {
+        message: format!("invalid chunk_locations data in ContentExt: {error}"),
+        context: ErrorContext::default(),
+    })
 }
 
 pub fn pdf_page_dimensions(doc: &Document) -> HashMap<u32, (f64, f64)> {
@@ -7404,9 +8308,7 @@ fn bbox_outside_page(bbox: &BoundingBox, dimensions: (f64, f64)) -> bool {
 }
 
 /// Helper function to extract PdfLocation from ContentExt
-pub fn extract_pdf_location(
-    content_ext: &ContentExt,
-) -> Result<PdfLocation, Box<dyn std::error::Error>> {
+pub fn extract_pdf_location(content_ext: &ContentExt) -> Result<PdfLocation, OutputError> {
     let json_data = decompress_content_ext(content_ext)?;
 
     if let Some(format_location) = json_data.get("format_location") {
@@ -7416,17 +8318,31 @@ pub fn extract_pdf_location(
                 // Extract fragments directly from format_location
                 if let Some(fragments) = format_location.get("fragments") {
                     let pdf_location = PdfLocation {
-                        fragments: serde_json::from_value(fragments.clone())?,
+                        fragments: serde_json::from_value(fragments.clone()).map_err(|error| {
+                            OutputError::InvalidStructure {
+                                message: format!("invalid PDF location fragments: {error}"),
+                                context: ErrorContext::default(),
+                            }
+                        })?,
                     };
                     return Ok(pdf_location);
                 }
             }
         } else if let Some(pdf_data) = format_location.get("Pdf") {
             // Legacy format - tagged enum style
-            let pdf_location: PdfLocation = serde_json::from_value(pdf_data.clone())?;
+            let pdf_location: PdfLocation =
+                serde_json::from_value(pdf_data.clone()).map_err(|error| {
+                    OutputError::InvalidStructure {
+                        message: format!("invalid PDF location data: {error}"),
+                        context: ErrorContext::default(),
+                    }
+                })?;
             return Ok(pdf_location);
         }
     }
 
-    Err("No PDF location data found in ContentExt".into())
+    Err(OutputError::InvalidStructure {
+        message: "no PDF location data found in ContentExt".to_string(),
+        context: ErrorContext::default(),
+    })
 }

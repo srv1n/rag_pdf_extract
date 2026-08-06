@@ -320,6 +320,7 @@ fn run_once(
                 Some(true),
                 ExtractionOptions {
                     emit_output_spans: true,
+                    ..ExtractionOptions::default()
                 },
             );
             let wall_ms = started.elapsed().as_secs_f64() * 1_000.0;

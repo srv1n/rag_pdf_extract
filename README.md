@@ -17,7 +17,7 @@ A Rust library for extracting structured content from PDF files with precise pos
 
 ```toml
 [dependencies]
-pdf-extract = "0.8.0"
+pdf-extract = "0.9.0"
 ```
 
 ## Quick Start
@@ -38,6 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(500),      // max tokens per chunk
         None,           // LAParams (no layout analysis)
         Some(true),     // clean text for indexing
+        Default::default(), // parse budgets, repairs, and runtime options
     )?;
 
     for result in results {
@@ -70,6 +71,7 @@ let results = parse_pdf(
     Some(500),
     Some(laparams),
     Some(true),
+    Default::default(),
 )?;
 ```
 
@@ -208,7 +210,7 @@ coverage, span overlap, synthetic span ratio, invalid/out-of-page boxes,
 
 ## Migration
 
-`0.8.0` is a breaking release. See [MIGRATION.md](MIGRATION.md) for removed API
+`0.9.0` is a breaking release. See [MIGRATION.md](MIGRATION.md) for removed API
 replacements and downstream update examples.
 
 ## Configuration

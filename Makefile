@@ -1,4 +1,4 @@
-.PHONY: codebasezip codebase-zip warning-budget production-broad-report bench-corpus bench-corpus-2core bench-corpus-ecores
+.PHONY: codebasezip codebase-zip warning-budget production-broad-report bench-corpus bench-corpus-2core bench-corpus-ecores paired-regression paired-regression-self-test
 
 codebasezip:
 	@./scripts/codebasezip.sh
@@ -20,3 +20,20 @@ bench-corpus-2core:
 
 bench-corpus-ecores:
 	@BENCHMARK_LABEL=efficiency-cores BENCHMARK_STABILITY_RUNS=1 BENCH_SCHEDULER='taskpolicy -c background' taskpolicy -c background -- ./scripts/bench_corpus.sh
+
+paired-regression-self-test:
+	@python3 scripts/paired_regression.py --self-test
+
+paired-regression:
+	@test -n "$(PDF_BASELINE_REV)" -a -n "$(PDF_BASELINE_CMD)" -a -n "$(PDF_CANDIDATE_REV)" -a -n "$(PDF_CANDIDATE_CMD)" || (echo "set PDF_BASELINE_REV, PDF_BASELINE_CMD, PDF_CANDIDATE_REV, and PDF_CANDIDATE_CMD" >&2; exit 2)
+	@python3 scripts/paired_regression.py \
+		--corpus-dir tests/fixtures/harness_corpus \
+		--baseline-rev "$(PDF_BASELINE_REV)" \
+		--baseline-cmd "$(PDF_BASELINE_CMD)" \
+		--candidate-rev "$(PDF_CANDIDATE_REV)" \
+		--candidate-cmd "$(PDF_CANDIDATE_CMD)" \
+		--adversarial-dir tests/fixtures/adversarial \
+		--require-adversarial \
+		--require-document-bound-commands \
+		--output target/paired-regression/report.json \
+		--markdown-output target/paired-regression/report.md

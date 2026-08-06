@@ -15,6 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some(true),
             ExtractionOptions {
                 emit_output_spans: true,
+                ..ExtractionOptions::default()
             },
         )?;
         let mut count = 0usize;
