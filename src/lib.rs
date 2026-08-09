@@ -468,6 +468,32 @@ pub enum OutputError {
 }
 
 impl OutputError {
+    /// Stable machine-readable reason suitable for worker protocols and job reports.
+    pub fn reason_code(&self) -> &'static str {
+        match self {
+            Self::NotAPdf { .. } => "pdf_not_a_pdf",
+            Self::Encrypted { reason, .. } => match reason {
+                EncryptionFailure::PasswordRequired => "pdf_password_required",
+                EncryptionFailure::IncorrectPassword => "pdf_incorrect_password",
+                EncryptionFailure::UnsupportedHandler => "pdf_unsupported_encryption",
+                EncryptionFailure::InvalidDictionary => "pdf_invalid_encryption_dictionary",
+            },
+            Self::InvalidStructure { .. } => "pdf_invalid_structure",
+            Self::ResourceLimit { kind, .. } => match kind {
+                ResourceLimitKind::Pages => "pdf_resource_limit_pages",
+                ResourceLimitKind::Objects => "pdf_resource_limit_objects",
+                ResourceLimitKind::RecursionDepth => "pdf_resource_limit_recursion_depth",
+                ResourceLimitKind::DecompressedStreamBytes => {
+                    "pdf_resource_limit_decompressed_stream_bytes"
+                }
+                ResourceLimitKind::OutputBytes => "pdf_resource_limit_output_bytes",
+            },
+            Self::Parse { .. } => "pdf_parse_error",
+            Self::Io { .. } => "pdf_io_error",
+            Self::Format { .. } => "pdf_output_format_error",
+        }
+    }
+
     pub fn context(&self) -> &ErrorContext {
         match self {
             Self::NotAPdf { context }
@@ -7058,6 +7084,27 @@ fn decompression_limit_error(limit: usize, observed: Option<usize>) -> OutputErr
 }
 
 fn bounded_decompressed_content(stream: &Stream, remaining: usize) -> Result<Vec<u8>, OutputError> {
+    // Image XObjects are decoded one at a time by the OCR/image path, which has
+    // dimension guards and runs inside the killable worker. Charging every raw
+    // page bitmap cumulatively here rejects ordinary scanned bound volumes while
+    // saying nothing about peak memory. Charge their stored bytes instead; keep
+    // fully bounded decoding for page content, forms, fonts, and other streams.
+    if stream
+        .dict
+        .get(b"Subtype")
+        .ok()
+        .and_then(|value| value.as_name().ok())
+        == Some(b"Image".as_slice())
+    {
+        if stream.content.len() > remaining {
+            return Err(decompression_limit_error(
+                remaining,
+                Some(stream.content.len()),
+            ));
+        }
+        return Ok(stream.content.clone());
+    }
+
     let filters = match stream.filters() {
         Ok(filters) if !filters.is_empty() => filters,
         _ => {
@@ -7312,38 +7359,85 @@ pub(crate) fn validate_document_budgets(
         }
     }
     if let Some(limit) = options.max_decompressed_stream_bytes {
-        let mut total = 0usize;
-        for object in document.objects.values() {
-            let Object::Stream(stream) = object else {
-                continue;
-            };
-            let remaining = limit.saturating_sub(total);
-            let decompressed = match bounded_decompressed_content(stream, remaining) {
-                Ok(decompressed) => decompressed,
-                Err(OutputError::ResourceLimit {
-                    kind: ResourceLimitKind::DecompressedStreamBytes,
-                    observed,
-                    ..
-                }) => {
-                    return Err(OutputError::resource_limit(
-                        ResourceLimitKind::DecompressedStreamBytes,
-                        limit,
-                        observed.map(|value| total.saturating_add(value)),
-                    ));
-                }
-                Err(error) => return Err(error),
-            };
-            total = total.saturating_add(decompressed.len());
-            if total > limit {
+        accounted_stream_bytes(document, limit)?;
+    }
+    Ok(())
+}
+
+fn accounted_stream_bytes(document: &Document, limit: usize) -> Result<usize, OutputError> {
+    let mut total = 0usize;
+    for object in document.objects.values() {
+        let Object::Stream(stream) = object else {
+            continue;
+        };
+        let remaining = limit.saturating_sub(total);
+        let decompressed = match bounded_decompressed_content(stream, remaining) {
+            Ok(decompressed) => decompressed,
+            Err(OutputError::ResourceLimit {
+                kind: ResourceLimitKind::DecompressedStreamBytes,
+                observed,
+                ..
+            }) => {
                 return Err(OutputError::resource_limit(
                     ResourceLimitKind::DecompressedStreamBytes,
                     limit,
-                    Some(total),
+                    observed.map(|value| total.saturating_add(value)),
                 ));
             }
+            Err(error) => return Err(error),
+        };
+        total = total.saturating_add(decompressed.len());
+        if total > limit {
+            return Err(OutputError::resource_limit(
+                ResourceLimitKind::DecompressedStreamBytes,
+                limit,
+                Some(total),
+            ));
         }
     }
-    Ok(())
+    Ok(total)
+}
+
+/// Resource usage charged to the decompressed-stream budget during preflight.
+///
+/// Page content, forms, fonts, and other non-image Flate, LZW, and ASCII85 streams
+/// are decoded. Image XObjects are charged at stored size because extraction decodes
+/// them one at a time inside the killable worker. This is therefore the exact total
+/// enforced by [`ExtractionOptions::max_decompressed_stream_bytes`], not cumulative
+/// raw pixels or the peak memory an image renderer might allocate later.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PdfDecompressionUsage {
+    pub input_bytes: usize,
+    pub accounted_stream_bytes: usize,
+    pub expansion_ratio: f64,
+    pub pages: usize,
+    pub objects: usize,
+}
+
+/// Measure the exact stream total enforced by extraction, with a caller-supplied
+/// hard stop so this diagnostic cannot itself expand a decompression bomb without
+/// bound.
+pub fn measure_pdf_decompression<P: AsRef<std::path::Path>>(
+    path: P,
+    hard_limit: usize,
+) -> Result<PdfDecompressionUsage, OutputError> {
+    let bytes = std::fs::read(path).map_err(OutputError::from)?;
+    let mut options = ExtractionOptions::default();
+    options.max_decompressed_stream_bytes = None;
+    let loaded = load_pdf_from_mem(&bytes, &options)?;
+    let accounted = accounted_stream_bytes(&loaded.document, hard_limit)?;
+    let input_bytes = bytes.len();
+    Ok(PdfDecompressionUsage {
+        input_bytes,
+        accounted_stream_bytes: accounted,
+        expansion_ratio: if input_bytes == 0 {
+            0.0
+        } else {
+            accounted as f64 / input_bytes as f64
+        },
+        pages: loaded.document.get_pages().len(),
+        objects: loaded.document.objects.len(),
+    })
 }
 
 fn pdf_name_delimiter(byte: u8) -> bool {

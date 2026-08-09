@@ -286,6 +286,53 @@ fn decompressed_stream_budget_covers_ascii85_filter_expansion() {
 }
 
 #[test]
+fn decompressed_stream_budget_charges_image_xobjects_at_stored_size() {
+    let mut document = Document::new();
+    let mut compressed = Vec::new();
+    let mut encoder = flate2::write::ZlibEncoder::new(&mut compressed, flate2::Compression::best());
+    encoder
+        .write_all(&vec![0u8; 64 * 1024])
+        .expect("compress image fixture");
+    encoder.finish().expect("finish image fixture");
+    let stored_len = compressed.len();
+    let mut stream = Stream::new(Dictionary::new(), compressed);
+    stream
+        .dict
+        .set("Filter", Object::Name(b"FlateDecode".to_vec()));
+    stream.dict.set("Subtype", Object::Name(b"Image".to_vec()));
+    stream.dict.set("Width", Object::Integer(256));
+    stream.dict.set("Height", Object::Integer(256));
+    document.add_object(Object::Stream(stream));
+
+    output_doc_new_schema(
+        &document,
+        None,
+        None,
+        1,
+        "file",
+        None,
+        true,
+        ExtractionOptions {
+            max_pages: None,
+            max_objects: None,
+            max_decompressed_stream_bytes: Some(stored_len),
+            ..ExtractionOptions::default()
+        },
+    )
+    .expect("raw image pixels must not be charged as simultaneous stream memory");
+}
+
+#[test]
+fn resource_limit_errors_expose_stable_reason_codes() {
+    let error =
+        OutputError::resource_limit(ResourceLimitKind::DecompressedStreamBytes, 128, Some(129));
+    assert_eq!(
+        error.reason_code(),
+        "pdf_resource_limit_decompressed_stream_bytes"
+    );
+}
+
+#[test]
 fn encrypted_pdf_owner_only_auto_opens_and_bad_handlers_are_distinct() {
     let owner_only = extract_text_from_mem(&encrypted_pdf(""), None)
         .expect("owner-only PDFs with an empty user password should auto-open");

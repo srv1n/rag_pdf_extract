@@ -68,6 +68,31 @@ policy, output-span settings, and the runtime-only `PdfPassword`. Public PDF
 and ContentExt helpers return `OutputError`; callers should match its typed
 variants and inspect `ErrorContext` rather than parse display strings.
 
+### Decompressed-stream budget
+
+`max_decompressed_stream_bytes` is serde-configurable at runtime and defaults
+to 128 MiB. It bounds the cumulative bytes extraction materializes from page
+content, forms, fonts, and other non-image streams. Image XObjects are charged
+at stored size because OCR decodes them one at a time inside the caller's
+killable worker; cumulatively charging every raw page bitmap rejects legitimate
+scanned bound volumes without bounding peak memory.
+
+Use `OutputError::reason_code()` when an error crosses a process or reporting
+boundary. A refusal by this budget reports
+`pdf_resource_limit_decompressed_stream_bytes`, which must not be collapsed
+into the same reason as corrupt or low-quality input.
+
+To inspect a corpus with a bounded diagnostic:
+
+```bash
+cargo run --example decompression_report -- document.pdf corpus/*.pdf
+```
+
+The report's `accounted_stream_bytes` is the exact total enforced by the
+option. The diagnostic itself stops at 1 GiB by default; set
+`PDF_EXTRACT_MEASUREMENT_HARD_LIMIT_BYTES` to a positive byte count when an
+authorized measurement needs a different hard stop.
+
 ## Identity and location changes
 
 `ContentCore.schema_version` is `2`.
