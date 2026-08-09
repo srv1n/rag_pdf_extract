@@ -46,16 +46,11 @@ fn parse_quality(path: &PathBuf) -> pdf_extract::ParseQualityMetrics {
 }
 
 #[test]
+#[ignore = "requires the supplied external PDF regression fixtures"]
 fn supplied_large_judgment_and_garbled_control() {
     let fixtures = fixtures_dir();
     let large = fixtures.join(LARGE_NAME);
     let garbled = fixtures.join(GARBLED_NAME);
-    if !large.exists() && !garbled.exists() {
-        eprintln!(
-            "skipping local document regression; set PDF_EXTRACT_LIMIT_FIXTURES_DIR to the supplied fixture directory"
-        );
-        return;
-    }
     assert!(
         large.exists() && garbled.exists(),
         "partial fixture set in {}",

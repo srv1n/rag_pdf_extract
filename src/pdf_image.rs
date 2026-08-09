@@ -1,6 +1,7 @@
-use image::{ImageFormat, RgbImage};
+use image::{ImageFormat, ImageReader, Limits, RgbImage};
 use log::{debug, warn};
 use lopdf::Object;
+use std::convert::TryFrom;
 use std::error::Error;
 
 use crate::{apply_transform_to_image, decode_stream, PdfImage, Transform};
@@ -108,7 +109,13 @@ impl<'a> PdfImage<'a> {
         debug!("Using image format: {:?}", format);
 
         // 3. Let image crate handle ALL color space conversions
-        let dyn_img = image::load_from_memory_with_format(&bytes, format)?;
+        let mut reader = ImageReader::with_format(std::io::Cursor::new(&bytes), format);
+        let mut limits = Limits::default();
+        limits.max_image_width = u32::try_from(self.width).ok();
+        limits.max_image_height = u32::try_from(self.height).ok();
+        limits.max_alloc = u64::try_from(self.decoded_byte_limit).ok();
+        reader.limits(limits);
+        let dyn_img = reader.decode()?;
         let mut rgb_img = dyn_img.to_rgb8(); // This guarantees sRGB as per architect's advice
 
         // 4. Handle /Decode array flips - as per architect's specific fix

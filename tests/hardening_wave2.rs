@@ -294,7 +294,6 @@ fn decompressed_stream_budget_charges_image_xobjects_at_stored_size() {
         .write_all(&vec![0u8; 64 * 1024])
         .expect("compress image fixture");
     encoder.finish().expect("finish image fixture");
-    let stored_len = compressed.len();
     let mut stream = Stream::new(Dictionary::new(), compressed);
     stream
         .dict
@@ -315,11 +314,61 @@ fn decompressed_stream_budget_charges_image_xobjects_at_stored_size() {
         ExtractionOptions {
             max_pages: None,
             max_objects: None,
-            max_decompressed_stream_bytes: Some(stored_len),
+            max_decompressed_stream_bytes: Some(1024 * 1024),
             ..ExtractionOptions::default()
         },
     )
     .expect("raw image pixels must not be charged as simultaneous stream memory");
+}
+
+#[test]
+fn decompressed_stream_budget_rejects_oversized_image_working_set() {
+    let mut document = Document::new();
+    let mut compressed = Vec::new();
+    let mut encoder = flate2::write::ZlibEncoder::new(&mut compressed, flate2::Compression::best());
+    encoder
+        .write_all(&vec![0u8; 1024])
+        .expect("compress image bomb fixture");
+    encoder.finish().expect("finish image bomb fixture");
+    let mut stream = Stream::new(Dictionary::new(), compressed);
+    stream
+        .dict
+        .set("Filter", Object::Name(b"FlateDecode".to_vec()));
+    stream.dict.set("Subtype", Object::Name(b"Image".to_vec()));
+    stream.dict.set("Width", Object::Integer(10_000));
+    stream.dict.set("Height", Object::Integer(10_000));
+    stream
+        .dict
+        .set("ColorSpace", Object::Name(b"DeviceRGB".to_vec()));
+    stream.dict.set("BitsPerComponent", Object::Integer(8));
+    document.add_object(Object::Stream(stream));
+
+    let error = output_doc_new_schema(
+        &document,
+        None,
+        None,
+        1,
+        "file",
+        None,
+        true,
+        ExtractionOptions {
+            max_pages: None,
+            max_objects: None,
+            max_decompressed_stream_bytes: Some(128 * 1024 * 1024),
+            ..ExtractionOptions::default()
+        },
+    )
+    .expect_err("oversized decoded image should fail during preflight");
+
+    assert!(matches!(
+        error,
+        OutputError::ResourceLimit {
+            kind: ResourceLimitKind::DecompressedStreamBytes,
+            limit: 134_217_728,
+            observed: Some(900_000_000),
+            ..
+        }
+    ));
 }
 
 #[test]

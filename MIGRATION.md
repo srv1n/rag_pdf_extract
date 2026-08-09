@@ -73,9 +73,10 @@ variants and inspect `ErrorContext` rather than parse display strings.
 `max_decompressed_stream_bytes` is serde-configurable at runtime and defaults
 to 128 MiB. It bounds the cumulative bytes extraction materializes from page
 content, forms, fonts, and other non-image streams. Image XObjects are charged
-at stored size because OCR decodes them one at a time inside the caller's
-killable worker; cumulatively charging every raw page bitmap rejects legitimate
-scanned bound volumes without bounding peak memory.
+at stored size because OCR decodes them one at a time, while each image's
+decoded bitmap/RGB working size is checked independently against the same hard
+limit. This keeps legitimate scanned volumes below the cumulative budget without
+allowing a compact image stream to inflate past the configured ceiling.
 
 Use `OutputError::reason_code()` when an error crosses a process or reporting
 boundary. A refusal by this budget reports

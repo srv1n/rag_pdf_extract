@@ -58,8 +58,17 @@ pub fn apply_transform_to_image(img: RgbImage, transform: &Transform) -> RgbImag
         let new_width = (out.width() as f64 * scale_x).round() as u32;
         let new_height = (out.height() as f64 * scale_y).round() as u32;
 
-        // Only resize if dimensions are reasonable (avoid extreme scaling)
-        if new_width > 0 && new_width < 10000 && new_height > 0 && new_height < 10000 {
+        let current_pixels = u64::from(out.width()) * u64::from(out.height());
+        let new_pixels = u64::from(new_width) * u64::from(new_height);
+
+        // Never upscale decoded PDF images. Upscaling adds no OCR information and
+        // can allocate beyond the image working-set bound enforced at preflight.
+        if new_width > 0
+            && new_width < 10000
+            && new_height > 0
+            && new_height < 10000
+            && new_pixels <= current_pixels
+        {
             out = imageops::resize(&out, new_width, new_height, imageops::Lanczos3);
         }
     }

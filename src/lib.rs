@@ -22,6 +22,7 @@ use lazy_static::lazy_static;
 use rayon::prelude::*;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::fs::File;
 use std::marker::PhantomData;
@@ -2389,6 +2390,48 @@ struct PdfImage<'a> {
     pub origin_dict: &'a Dictionary,
     pub components: Option<usize>, // 1 for gray, 3 for RGB, 4 for CMYK
     pub decode_predictor: Option<i32>, // From /DecodeParms /Predictor
+    /// Upper bound for decoded bitmap bytes and the RGB conversion buffer.
+    pub decoded_byte_limit: usize,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ImageMemoryBounds {
+    decoded_bytes: usize,
+    working_set_bytes: usize,
+}
+
+fn image_memory_bounds(
+    width: usize,
+    height: usize,
+    components: usize,
+    bits_per_component: usize,
+    predictor: bool,
+    stored_bytes: usize,
+) -> Option<ImageMemoryBounds> {
+    let row_bits = width
+        .checked_mul(components)?
+        .checked_mul(bits_per_component)?;
+    let row_bytes = row_bits.checked_add(7)?.checked_div(8)?;
+    let raw_bytes = row_bytes.checked_mul(height)?;
+    let predictor_bytes = if predictor {
+        raw_bytes.checked_add(height)?
+    } else {
+        raw_bytes
+    };
+    let rgb_bytes = width.checked_mul(height)?.checked_mul(3)?;
+    let inflate_peak = stored_bytes.checked_add(predictor_bytes)?;
+    let predictor_peak = if predictor {
+        predictor_bytes.checked_add(raw_bytes)?
+    } else {
+        predictor_bytes
+    };
+    // The decoded bitmap remains live while RGB conversion runs, and a flip,
+    // rotation, or downscale can briefly hold both RGB buffers.
+    let render_peak = raw_bytes.checked_add(rgb_bytes.checked_mul(2)?)?;
+    Some(ImageMemoryBounds {
+        decoded_bytes: predictor_bytes,
+        working_set_bytes: inflate_peak.max(predictor_peak).max(render_peak),
+    })
 }
 
 /// Get the page rotation from the page dictionary (inheritable)
@@ -2432,8 +2475,6 @@ fn build_image_ctm(page_rotate: i32) -> Transform {
 
 /// Decode PDF stream data, handling compression and PNG predictors
 fn decode_stream(img: &PdfImage) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    use miniz_oxide::inflate::decompress_to_vec_zlib;
-
     let mut data = img.content.to_vec();
 
     // 1. Handle compression filters
@@ -2442,13 +2483,12 @@ fn decode_stream(img: &PdfImage) -> Result<Vec<u8>, Box<dyn std::error::Error>> 
             match filter.as_str() {
                 "FlateDecode" => {
                     debug!("Decompressing FlateDecode filter");
-                    data = decompress_to_vec_zlib(&data)
-                        .map_err(|e| format!("FlateDecode decompression failed: {:?}", e))?;
+                    data = bounded_flate_decode(&data, img.decoded_byte_limit)?;
                 }
                 "LZWDecode" => {
                     // For now, treat LZW same as Flate (many PDFs mislabel)
                     debug!("Decompressing LZWDecode filter (treating as FlateDecode)");
-                    match decompress_to_vec_zlib(&data) {
+                    match bounded_flate_decode(&data, img.decoded_byte_limit) {
                         Ok(decompressed) => data = decompressed,
                         Err(_) => {
                             warn!("LZWDecode failed, keeping original data");
@@ -2773,6 +2813,19 @@ fn process_xobject(
         origin_dict: &xvalue.dict,
         components,
         decode_predictor,
+        decoded_byte_limit: image_memory_bounds(
+            width.try_into().unwrap_or(usize::MAX),
+            height.try_into().unwrap_or(usize::MAX),
+            components.unwrap_or(4),
+            bits_per_component
+                .unwrap_or(8)
+                .try_into()
+                .unwrap_or(usize::MAX),
+            decode_predictor.is_some_and(|predictor| (10..=15).contains(&predictor)),
+            xvalue.content.len(),
+        )
+        .map(|bounds| bounds.decoded_bytes)
+        .unwrap_or(usize::MAX),
     };
 
     debug!("OCR handler check before");
@@ -7083,12 +7136,15 @@ fn decompression_limit_error(limit: usize, observed: Option<usize>) -> OutputErr
     OutputError::resource_limit(ResourceLimitKind::DecompressedStreamBytes, limit, observed)
 }
 
-fn bounded_decompressed_content(stream: &Stream, remaining: usize) -> Result<Vec<u8>, OutputError> {
-    // Image XObjects are decoded one at a time by the OCR/image path, which has
-    // dimension guards and runs inside the killable worker. Charging every raw
-    // page bitmap cumulatively here rejects ordinary scanned bound volumes while
-    // saying nothing about peak memory. Charge their stored bytes instead; keep
-    // fully bounded decoding for page content, forms, fonts, and other streams.
+fn bounded_decompressed_content(
+    stream: &Stream,
+    remaining: usize,
+    image_limit: usize,
+) -> Result<Vec<u8>, OutputError> {
+    // Image XObjects are decoded one at a time, so charging every raw bitmap
+    // cumulatively rejects ordinary scanned volumes. Enforce the configured
+    // limit against each image's decoded working size, then charge its stored
+    // bytes to the cumulative document budget.
     if stream
         .dict
         .get(b"Subtype")
@@ -7096,6 +7152,66 @@ fn bounded_decompressed_content(stream: &Stream, remaining: usize) -> Result<Vec
         .and_then(|value| value.as_name().ok())
         == Some(b"Image".as_slice())
     {
+        let width = stream
+            .dict
+            .get(b"Width")
+            .ok()
+            .and_then(|value| value.as_i64().ok())
+            .and_then(|value| usize::try_from(value).ok())
+            .unwrap_or(usize::MAX);
+        let height = stream
+            .dict
+            .get(b"Height")
+            .ok()
+            .and_then(|value| value.as_i64().ok())
+            .and_then(|value| usize::try_from(value).ok())
+            .unwrap_or(usize::MAX);
+        let bits_per_component = stream
+            .dict
+            .get(b"BitsPerComponent")
+            .ok()
+            .and_then(|value| value.as_i64().ok())
+            .and_then(|value| usize::try_from(value).ok())
+            .unwrap_or(8);
+        let color_space_name = stream.dict.get(b"ColorSpace").ok().and_then(|value| {
+            value.as_name().ok().or_else(|| {
+                value
+                    .as_array()
+                    .ok()
+                    .and_then(|values| values.first())
+                    .and_then(|value| value.as_name().ok())
+            })
+        });
+        let components = match color_space_name {
+            Some(b"DeviceGray") | Some(b"Indexed") => 1,
+            Some(b"DeviceRGB") => 3,
+            Some(b"DeviceCMYK") => 4,
+            _ => 4,
+        };
+        let predictor = stream
+            .dict
+            .get(b"DecodeParms")
+            .ok()
+            .and_then(|value| value.as_dict().ok())
+            .and_then(|params| params.get(b"Predictor").ok())
+            .and_then(|value| value.as_i64().ok())
+            .is_some_and(|value| (10..=15).contains(&value));
+        let working_set_bytes = image_memory_bounds(
+            width,
+            height,
+            components,
+            bits_per_component,
+            predictor,
+            stream.content.len(),
+        )
+        .map(|bounds| bounds.working_set_bytes)
+        .unwrap_or(usize::MAX);
+        if working_set_bytes > image_limit {
+            return Err(decompression_limit_error(
+                image_limit,
+                Some(working_set_bytes),
+            ));
+        }
         if stream.content.len() > remaining {
             return Err(decompression_limit_error(
                 remaining,
@@ -7371,7 +7487,7 @@ fn accounted_stream_bytes(document: &Document, limit: usize) -> Result<usize, Ou
             continue;
         };
         let remaining = limit.saturating_sub(total);
-        let decompressed = match bounded_decompressed_content(stream, remaining) {
+        let decompressed = match bounded_decompressed_content(stream, remaining, limit) {
             Ok(decompressed) => decompressed,
             Err(OutputError::ResourceLimit {
                 kind: ResourceLimitKind::DecompressedStreamBytes,
@@ -7402,9 +7518,9 @@ fn accounted_stream_bytes(document: &Document, limit: usize) -> Result<usize, Ou
 ///
 /// Page content, forms, fonts, and other non-image Flate, LZW, and ASCII85 streams
 /// are decoded. Image XObjects are charged at stored size because extraction decodes
-/// them one at a time inside the killable worker. This is therefore the exact total
-/// enforced by [`ExtractionOptions::max_decompressed_stream_bytes`], not cumulative
-/// raw pixels or the peak memory an image renderer might allocate later.
+/// them one at a time, but each image's decoded bitmap/RGB working size must also fit
+/// the hard limit. This is therefore the cumulative stream total; image working-set
+/// limits are enforced independently rather than summed across every scanned page.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PdfDecompressionUsage {
     pub input_bytes: usize,
