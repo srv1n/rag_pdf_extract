@@ -2507,7 +2507,15 @@ pub fn parse_pdf(
     }
     let layout_chars = normalized_extraction_chars(&layout_results);
 
-    if layout_requested && layout_policy != crate::LayoutFallbackPolicy::Disabled {
+    let should_probe_no_layout = match layout_policy {
+        crate::LayoutFallbackPolicy::Disabled => false,
+        crate::LayoutFallbackPolicy::OnTextLoss => true,
+        crate::LayoutFallbackPolicy::OnSuspiciousVolume => {
+            layout_needs_fallback_probe(&layout_results, layout_chars)
+        }
+    };
+
+    if layout_requested && should_probe_no_layout {
         let mut no_layout_results = output_doc_new_schema_with_ocr_telemetry(
             &doc,
             ocr_handler.as_ref(),
@@ -2638,6 +2646,17 @@ fn normalized_extraction_chars(results: &[ExtractionResult]) -> usize {
         .count()
 }
 
+fn layout_needs_fallback_probe(results: &[ExtractionResult], normalized_chars: usize) -> bool {
+    if results.is_empty() || normalized_chars == 0 {
+        return true;
+    }
+
+    let quality = crate::assess_parse_quality(results);
+    !matches!(quality.status, crate::ParseQualityStatus::Usable)
+        || quality.repeated_line_ratio >= 0.20
+        || quality.suspicious_chunk_ratio >= 0.20
+}
+
 fn should_use_no_layout_fallback(layout_chars: usize, no_layout_chars: usize) -> bool {
     const MIN_ABSOLUTE_LOSS: usize = 512;
     const MIN_LAYOUT_TO_NO_LAYOUT_RATIO: f64 = 0.95;
@@ -2687,9 +2706,9 @@ mod tests {
     use super::{
         apply_split_location_metadata, approximate_split_positions,
         clean_located_text_for_indexing, clean_text_for_indexing,
-        duplicate_line_ratio_from_results, normalized_extraction_chars, ocr_route_for_page,
-        positioned_split_segments, should_use_no_layout_fallback,
-        should_use_no_layout_inflation_fallback, ContentOutput,
+        duplicate_line_ratio_from_results, layout_needs_fallback_probe,
+        normalized_extraction_chars, ocr_route_for_page, positioned_split_segments,
+        should_use_no_layout_fallback, should_use_no_layout_inflation_fallback, ContentOutput,
     };
     use crate::document::{LocatedText, OutputSpan, SpanSource, SyntheticKind};
     use crate::{
@@ -2844,6 +2863,42 @@ mod tests {
         assert!(should_use_no_layout_inflation_fallback(
             130, 100, 0.25, true
         ));
+    }
+
+    #[test]
+    fn suspicious_volume_probe_skips_healthy_layout_results() {
+        assert!(layout_needs_fallback_probe(&[], 0));
+
+        let results = (0..5)
+            .map(|chunk_index| {
+                let content = (0..100)
+                    .map(|sentence_index| {
+                        format!(
+                            "This is paragraph {chunk_index}-{sentence_index}, with ordinary legal text and context."
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                ExtractionResult {
+                    content_core: crate::create_content_core_with_identity(
+                        &content,
+                        &[],
+                        1,
+                        "file",
+                        Some(chunk_index + 1),
+                        Some(0),
+                        chunk_index as usize,
+                    ),
+                    content_ext: ContentExt {
+                        chunk_id: String::new(),
+                        ext_json: Vec::new(),
+                    },
+                    repairs: Vec::new(),
+                }
+            })
+            .collect::<Vec<_>>();
+
+        assert!(!layout_needs_fallback_probe(&results, 30_000));
     }
 
     #[test]
