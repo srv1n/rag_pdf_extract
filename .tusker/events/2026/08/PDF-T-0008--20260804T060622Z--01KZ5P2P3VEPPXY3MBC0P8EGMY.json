@@ -1,0 +1,15 @@
+{
+  "actor": "agent:codex",
+  "at": "2026-08-04T06:06:22Z",
+  "event_kind": "claimed",
+  "id": "01KZ5P2P3VEPPXY3MBC0P8EGMY",
+  "object": "PDF-T-0008",
+  "object_kind": "task",
+  "payload": {
+    "branch": "main",
+    "compatibility": "single_user_local",
+    "hand_run": true
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

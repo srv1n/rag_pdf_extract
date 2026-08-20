@@ -1,0 +1,16 @@
+{
+  "actor": "tusker:reconcile",
+  "at": "2026-08-04T06:07:30Z",
+  "event_kind": "updated",
+  "id": "01KZ5P4RCTX1ZD309XE84R8G9F",
+  "object": "PDF-T-0008",
+  "object_kind": "task",
+  "payload": {
+    "path": "work/tasks/PDF-T-0008.md",
+    "previous_state_rev": "sha256:cfb9da29c25f75e6c67fa1879c4d2daaba68ab6512d153e82795f54ba6912954",
+    "source": "state_rev_repair",
+    "state_rev": "sha256:84c557c884b43d2336c8601eb5281f64575652f1f66161e70ef994619659c901"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

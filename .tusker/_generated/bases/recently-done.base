@@ -9,6 +9,8 @@ properties:
     displayName: Title
   epic:
     displayName: Epic
+  wave:
+    displayName: Wave
   status:
     displayName: Status
   readiness:
@@ -25,4 +27,4 @@ views:
     filters:
       and:
         - 'status == "done"'
-    order: [id, title, epic, accepted_by, closed_at]
+    order: [id, title, wave, epic, accepted_by, closed_at]

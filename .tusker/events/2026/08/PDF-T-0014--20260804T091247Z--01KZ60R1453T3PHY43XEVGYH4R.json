@@ -1,0 +1,16 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-08-04T09:12:47Z",
+  "event_kind": "verification_added",
+  "id": "01KZ60R1453T3PHY43XEVGYH4R",
+  "object": "PDF-T-0014",
+  "object_kind": "task",
+  "payload": {
+    "blocked_by": "",
+    "check": "cargo test --test api_compat_rework --test downstream_compat",
+    "covers": "A1,A2,A3,A4",
+    "result": "pass"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

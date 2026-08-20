@@ -1,0 +1,23 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-07-21T16:50:01Z",
+  "event_kind": "updated",
+  "id": "01KY2SB6FFN32VNBRA3MKEKKVG",
+  "object": "PDF-T-0007",
+  "object_kind": "task",
+  "payload": {
+    "changes": {
+      "next_action": {
+        "from": "Wait for dependency PDF-T-0005 to reach review with satisfied proof or done.",
+        "to": "Wait for dependency PDF-T-0006 to reach review with satisfied proof or done."
+      },
+      "next_ref": {
+        "from": "PDF-T-0005",
+        "to": "PDF-T-0006"
+      }
+    },
+    "source": "task:PDF-T-0005"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

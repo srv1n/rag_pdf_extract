@@ -16,3 +16,8 @@ AGENTS.md
 # The fetch script and checksum manifest are intentionally tracked separately.
 /benchmarks/corpus/
 /benchmarks/runs/
+# ChatGPT browser handoff local state
+.chatgpt-handoff/*
+!.chatgpt-handoff/
+!.chatgpt-handoff/profile.md
+.chatgpt-handoff.json

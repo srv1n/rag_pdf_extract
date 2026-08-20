@@ -1,0 +1,13 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-08-04T06:08:05Z",
+  "event_kind": "attempt_handoff",
+  "id": "01KZ5P5V0JH4GDXR8QM6NDZZSC",
+  "object": "PDF-T-0009",
+  "object_kind": "task",
+  "payload": {
+    "attempt": "PDF-T-0009-A-0001"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

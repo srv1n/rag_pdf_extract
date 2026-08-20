@@ -1,0 +1,13 @@
+{
+  "schema": "tusker.lease/v1",
+  "id": "PDF-T-0017",
+  "project": "rag_pdf_extract",
+  "task": "PDF-T-0017",
+  "owner": "agent:codex",
+  "workspace": "",
+  "branch": "srv1nc/pdf-hardening-20260806",
+  "status": "active",
+  "claimed_at": "2026-08-09T05:15:12Z",
+  "expires_at": "2026-08-09T07:15:12Z",
+  "heartbeat_at": "2026-08-09T05:15:12Z"
+}

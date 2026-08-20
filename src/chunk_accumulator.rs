@@ -1,11 +1,22 @@
 use crate::document::processing::ContentOutput;
 use crate::document::{LocatedText, OutputSpan, SourceRef, SpanSource, SyntheticKind};
-use crate::{BoundingBox, PagePosition, TextSegment};
+use crate::{BoundingBox, PagePosition, TextSegment, TokenCountMode};
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::sync::Arc;
 use tiktoken_rs::CoreBPE;
 use unicode_segmentation::UnicodeSegmentation;
+
+const APPROX_TOKEN_RATIO: f64 = 1.3;
+const APPROX_LIMIT_FRACTION: usize = 85;
+
+fn approximate_tokens(words: usize) -> usize {
+    ((words as f64) * APPROX_TOKEN_RATIO).ceil() as usize
+}
+
+fn approximate_limit(max_tokens: usize) -> usize {
+    max_tokens.saturating_mul(APPROX_LIMIT_FRACTION) / 100
+}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum BoundaryKind {
@@ -307,6 +318,81 @@ pub fn split_long_sentence(text: &str, max_tokens: usize, tokenizer: &CoreBPE) -
     }
 
     chunks
+}
+
+/// Cheap word-boundary splitter used by the approximate structured path.
+/// Exact hard-cap splitting remains available at the final output boundary.
+pub fn split_long_sentence_approximate(text: &str, max_tokens: usize) -> Vec<String> {
+    let capacity = approximate_limit(max_tokens).max(1);
+    let mut chunks = Vec::new();
+    let mut start = 0usize;
+    let mut last_fit = 0usize;
+
+    for (idx, word) in text.unicode_word_indices() {
+        let end = idx + word.len();
+        if approximate_tokens(count_words(&text[start..end])) > capacity && last_fit > start {
+            chunks.push(text[start..last_fit].trim().to_string());
+            start = last_fit;
+        }
+        last_fit = end;
+    }
+    if start < text.len() {
+        chunks.push(text[start..].trim().to_string());
+    }
+    if chunks.is_empty() {
+        vec![text.trim().to_string()]
+    } else {
+        chunks
+    }
+}
+
+/// Split a segment without invoking BPE. Sentence punctuation is preferred,
+/// then the last whitespace boundary that fits the estimated capacity.
+pub fn split_to_fit_approximate(text: &str, sep: &str, capacity_tokens: usize) -> (String, String) {
+    if approximate_tokens(count_words(text)) <= capacity_tokens {
+        return (text.trim().to_string(), String::new());
+    }
+
+    let mut best = 0usize;
+    for (idx, character) in text.char_indices() {
+        if !matches!(character, '.' | '!' | '?' | ';' | ':') {
+            continue;
+        }
+        let end = idx + character.len_utf8();
+        if end == text.len()
+            || text[end..]
+                .chars()
+                .next()
+                .is_some_and(|next| next.is_whitespace())
+        {
+            let candidate = text[..end].trim_end();
+            if !candidate.is_empty()
+                && approximate_tokens(count_words(candidate)) <= capacity_tokens
+            {
+                best = end;
+            }
+        }
+    }
+
+    if best == 0 {
+        for (idx, word) in text.unicode_word_indices() {
+            let end = idx + word.len();
+            let candidate = text[..end].trim_end();
+            if approximate_tokens(count_words(candidate)) <= capacity_tokens {
+                best = end;
+            } else {
+                break;
+            }
+        }
+    }
+
+    if best == 0 {
+        return (String::new(), text.trim().to_string());
+    }
+    let head = text[..best].trim().to_string();
+    let tail = text[best..].trim_start().to_string();
+    let _ = sep;
+    (head, tail)
 }
 
 pub fn split_text_hard_capped(text: &str, max_tokens: usize, tokenizer: &CoreBPE) -> Vec<String> {
@@ -629,7 +715,8 @@ pub struct ChunkAccumulator {
     max_tokens: usize,
     word_threshold: usize,
     max_overshoot: usize,
-    tokenizer: Arc<CoreBPE>,
+    tokenizer: Option<Arc<CoreBPE>>,
+    token_count_mode: TokenCountMode,
     token_stats: TokenStats,
 
     // Current heading hierarchy
@@ -643,6 +730,14 @@ pub struct ChunkAccumulator {
 
 impl ChunkAccumulator {
     pub fn new(max_tokens: usize, tokenizer: Arc<CoreBPE>) -> Self {
+        Self::new_with_mode(max_tokens, Some(tokenizer), TokenCountMode::Approximate)
+    }
+
+    pub fn new_with_mode(
+        max_tokens: usize,
+        tokenizer: Option<Arc<CoreBPE>>,
+        token_count_mode: TokenCountMode,
+    ) -> Self {
         let word_threshold = ((max_tokens as f64 * 0.6) / 1.5) as usize;
         Self {
             segments: Vec::new(),
@@ -654,6 +749,7 @@ impl ChunkAccumulator {
             word_threshold,
             max_overshoot: max_tokens, // Enforce strict cap: no overshoot beyond max_tokens
             tokenizer,
+            token_count_mode,
             token_stats: TokenStats::default(),
             current_headings: Vec::new(),
             boundaries: Vec::new(),
@@ -683,8 +779,24 @@ impl ChunkAccumulator {
 
     /// Check if we can add a segment without exceeding token limit
     pub fn can_add_segment(&mut self, segment: &TextSegment) -> bool {
+        match self.token_count_mode {
+            TokenCountMode::Approximate => self.can_add_segment_approximate(segment),
+            TokenCountMode::Exact => self.can_add_segment_exact(segment),
+        }
+    }
+
+    fn can_add_segment_approximate(&self, segment: &TextSegment) -> bool {
+        let estimated = approximate_tokens(self.word_count.saturating_add(segment.word_count));
+        estimated <= approximate_limit(self.max_tokens)
+    }
+
+    fn can_add_segment_exact(&mut self, segment: &TextSegment) -> bool {
         // Always compute tokens for the incoming segment to prevent silent overshoot
-        let segment_tokens = self.tokenizer.encode_ordinary(&segment.content).len();
+        let tokenizer = self
+            .tokenizer
+            .as_ref()
+            .expect("exact token mode requires a tokenizer");
+        let segment_tokens = tokenizer.encode_ordinary(&segment.content).len();
         let space_token = if !self.text.is_empty()
             && !self.text.ends_with(' ')
             && !self.text.ends_with('\n')
@@ -706,7 +818,7 @@ impl ChunkAccumulator {
         if self.token_count.is_none()
             && base_tokens + space_token + segment_tokens > (self.max_tokens / 2)
         {
-            let tokens = self.tokenizer.encode_ordinary(&self.text);
+            let tokens = tokenizer.encode_ordinary(&self.text);
             self.token_count = Some(tokens.len());
             // Update stats so future estimates are better
             self.token_stats.update(self.word_count, tokens.len());
@@ -751,7 +863,7 @@ impl ChunkAccumulator {
         // Need precise token count
         if self.token_count.is_none() {
             // First tokenization of accumulated text
-            let tokens = self.tokenizer.encode_ordinary(&self.text);
+            let tokens = tokenizer.encode_ordinary(&self.text);
             self.token_count = Some(tokens.len());
 
             // Update statistics
@@ -759,7 +871,7 @@ impl ChunkAccumulator {
         }
 
         // Tokenize the new segment
-        let segment_tokens = self.tokenizer.encode_ordinary(&segment.content).len();
+        let segment_tokens = tokenizer.encode_ordinary(&segment.content).len();
 
         // Account for potential space token when joining
         let space_token = if !self.text.is_empty()
@@ -931,16 +1043,32 @@ impl ChunkAccumulator {
             }
         }
 
-        // Update token count if we're tracking it
-        if let Some(count) = self.token_count {
-            let segment_tokens = self.tokenizer.encode_ordinary(&segment.content).len();
-            // Account for the space token if one was added
-            let space_token = if space_added { 1 } else { 0 };
-            self.token_count = Some(count + segment_tokens + space_token);
-        } else if self.word_count >= self.word_threshold {
-            // Start tracking tokens if we're approaching the threshold
-            let tokens = self.tokenizer.encode_ordinary(&self.text);
-            self.token_count = Some(tokens.len());
+        // Approximate counting stays entirely word-based. Exact mode retains
+        // the old incremental BPE accounting for callers that opt in.
+        match self.token_count_mode {
+            TokenCountMode::Approximate => {
+                self.token_count = Some(approximate_tokens(self.word_count));
+            }
+            TokenCountMode::Exact => {
+                if let Some(count) = self.token_count {
+                    let tokenizer = self
+                        .tokenizer
+                        .as_ref()
+                        .expect("exact token mode requires a tokenizer");
+                    let segment_tokens = tokenizer.encode_ordinary(&segment.content).len();
+                    // Account for the space token if one was added
+                    let space_token = if space_added { 1 } else { 0 };
+                    self.token_count = Some(count + segment_tokens + space_token);
+                } else if self.word_count >= self.word_threshold {
+                    // Start tracking tokens if we're approaching the threshold
+                    let tokenizer = self
+                        .tokenizer
+                        .as_ref()
+                        .expect("exact token mode requires a tokenizer");
+                    let tokens = tokenizer.encode_ordinary(&self.text);
+                    self.token_count = Some(tokens.len());
+                }
+            }
         }
 
         self.segments.push(segment);
@@ -968,8 +1096,16 @@ impl ChunkAccumulator {
 
     /// Force add a segment to complete a sentence (with overshoot limit)
     pub fn can_force_add_for_sentence(&self, segment: &TextSegment) -> bool {
+        if self.token_count_mode == TokenCountMode::Approximate {
+            let estimated = approximate_tokens(self.word_count.saturating_add(segment.word_count));
+            return estimated <= approximate_limit(self.max_overshoot);
+        }
         if let Some(current) = self.token_count {
-            let segment_tokens = self.tokenizer.encode_ordinary(&segment.content).len();
+            let tokenizer = self
+                .tokenizer
+                .as_ref()
+                .expect("exact token mode requires a tokenizer");
+            let segment_tokens = tokenizer.encode_ordinary(&segment.content).len();
             // Account for potential space token when joining
             let space_token = if !self.text.is_empty()
                 && !self.text.ends_with(' ')
@@ -1142,12 +1278,24 @@ impl ChunkAccumulator {
             let t = match b.tokens_at_boundary {
                 Some(t) => t,
                 None => {
-                    // Lazily compute and store
                     let prefix = &self.text[..b.text_byte_idx];
-                    self.tokenizer.encode_ordinary(prefix).len()
+                    match self.token_count_mode {
+                        TokenCountMode::Approximate => approximate_tokens(count_words(prefix)),
+                        TokenCountMode::Exact => self
+                            .tokenizer
+                            .as_ref()
+                            .expect("exact token mode requires a tokenizer")
+                            .encode_ordinary(prefix)
+                            .len(),
+                    }
                 }
             };
-            if t <= self.max_tokens {
+            let limit = if self.token_count_mode == TokenCountMode::Approximate {
+                approximate_limit(self.max_tokens)
+            } else {
+                self.max_tokens
+            };
+            if t <= limit {
                 candidate_idx = Some(i);
                 break;
             }
@@ -1156,10 +1304,16 @@ impl ChunkAccumulator {
             return None;
         };
         if self.boundaries[bidx].tokens_at_boundary.is_none() {
-            let t = self
-                .tokenizer
-                .encode_ordinary(&self.text[..self.boundaries[bidx].text_byte_idx])
-                .len();
+            let prefix = &self.text[..self.boundaries[bidx].text_byte_idx];
+            let t = match self.token_count_mode {
+                TokenCountMode::Approximate => approximate_tokens(count_words(prefix)),
+                TokenCountMode::Exact => self
+                    .tokenizer
+                    .as_ref()
+                    .expect("exact token mode requires a tokenizer")
+                    .encode_ordinary(prefix)
+                    .len(),
+            };
             self.boundaries[bidx].tokens_at_boundary = Some(t);
         }
         let b = self.boundaries[bidx].clone();

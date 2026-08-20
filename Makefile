@@ -1,4 +1,4 @@
-.PHONY: codebasezip codebase-zip warning-budget production-broad-report bench-corpus bench-corpus-2core bench-corpus-ecores paired-regression paired-regression-self-test
+.PHONY: codebasezip codebase-zip warning-budget production-broad-report bench-corpus bench-corpus-2core bench-corpus-ecores bench-corpus-combined paired-regression paired-regression-self-test
 
 codebasezip:
 	@./scripts/codebasezip.sh
@@ -20,6 +20,14 @@ bench-corpus-2core:
 
 bench-corpus-ecores:
 	@BENCHMARK_LABEL=efficiency-cores BENCHMARK_STABILITY_RUNS=1 BENCH_SCHEDULER='taskpolicy -c background' taskpolicy -c background -- ./scripts/bench_corpus.sh
+
+bench-corpus-combined:
+	@python3 ./scripts/render_benchmark_comparison.py \
+		--full benchmarks/runs/full-core-2026-07-21.json \
+		--two-core benchmarks/runs/2-core-2026-07-21.json \
+		--efficiency benchmarks/runs/efficiency-cores-2026-07-21.json \
+		--date 2026-07-21 \
+		--output benchmarks/reports/2026-07-21-constrained-comparison.md
 
 paired-regression-self-test:
 	@python3 scripts/paired_regression.py --self-test

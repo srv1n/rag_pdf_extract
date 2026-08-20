@@ -1,0 +1,35 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-08-04T06:08:05Z",
+  "event_kind": "updated",
+  "id": "01KZ5P5V1HQWVPHPD7TKEA0EFF",
+  "object": "PDF-T-0009",
+  "object_kind": "task",
+  "payload": {
+    "changes": {
+      "next_action": {
+        "from": "Execute the task contract and satisfy proof mode.",
+        "to": "Review evidence and close or return to rework."
+      },
+      "next_owner": {
+        "from": "agent",
+        "to": "reviewer"
+      },
+      "next_ref": {
+        "from": "PDF-T-0009",
+        "to": ""
+      },
+      "next_source": {
+        "from": "task",
+        "to": "review_policy"
+      },
+      "readiness": {
+        "from": "ready",
+        "to": "waiting_on_review"
+      }
+    },
+    "source": "task:PDF-T-0009"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

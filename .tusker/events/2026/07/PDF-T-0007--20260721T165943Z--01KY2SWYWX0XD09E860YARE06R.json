@@ -1,0 +1,31 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-07-21T16:59:43Z",
+  "event_kind": "updated",
+  "id": "01KY2SWYWX0XD09E860YARE06R",
+  "object": "PDF-T-0007",
+  "object_kind": "task",
+  "payload": {
+    "changes": {
+      "next_owner": {
+        "from": "blocked_dependency",
+        "to": "agent"
+      },
+      "next_ref": {
+        "from": "PDF-T-0006",
+        "to": "PDF-T-0007"
+      },
+      "next_source": {
+        "from": "dependency",
+        "to": "task"
+      },
+      "readiness": {
+        "from": "blocked_by_dependency",
+        "to": "ready"
+      }
+    },
+    "source": "task:PDF-T-0006"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

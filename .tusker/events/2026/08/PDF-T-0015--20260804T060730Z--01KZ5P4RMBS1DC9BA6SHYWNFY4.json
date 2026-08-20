@@ -1,0 +1,20 @@
+{
+  "actor": "tusker:reconcile",
+  "at": "2026-08-04T06:07:30Z",
+  "event_kind": "updated",
+  "id": "01KZ5P4RMBS1DC9BA6SHYWNFY4",
+  "object": "PDF-T-0015",
+  "object_kind": "task",
+  "payload": {
+    "changes": {
+      "readiness": {
+        "from": "held",
+        "to": "ready"
+      }
+    },
+    "source": "projection",
+    "state_rev": "sha256:216d4cb0b6a2835572b1b8c09546a0e5c89fb348fa6589efdd609ff075aa9e71"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

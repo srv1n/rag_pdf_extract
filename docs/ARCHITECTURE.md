@@ -154,18 +154,19 @@ if height_ratio > 1.25 && is_standalone && words ≤ 10 { return H1 }
 **Class**: `ChunkAccumulator`
 
 **Strategy**:
-1. **Estimation phase**: Use word count * learned ratio until ~50% capacity
-2. **Precise phase**: Switch to exact tokenization near capacity
-3. **Boundary detection**:
+1. **Estimation phase**: Use whitespace-word count × 1.3 with a 15% safety margin at the budget check
+2. **Default structured path**: Keep chunk decisions approximate; exact BPE is opt-in via `LAParams::exact_tokens()` or `PDF_EXTRACT_EXACT_TOKENS=1`
+3. **Final cap boundary**: Retain exact hard-cap splitting before emitting request-sized output
+4. **Boundary detection**:
    - Sentence boundaries: `.!?` followed by space + capital letter
    - Paragraph boundaries: double newlines
    - Clause boundaries: `;,—` for long sentences
-4. **Backtracking**: If overflow, backtrack to last valid boundary
+5. **Backtracking**: If overflow, backtrack to last valid boundary
 
 **Token Counting**:
-- Uses tiktoken_rs with gpt-4o tokenizer
-- Learns word-to-token ratio during processing
-- Minimizes tokenization calls (expensive operation)
+- Uses a cheap word estimate by default; legal-text probes measured roughly 1.30–1.45 BPE tokens per whitespace word
+- Uses `tiktoken_rs` with the gpt-4o tokenizer only for explicit exact mode and final hard-cap splitting
+- Keeps the exact implementation available without making it a layout hot-path dependency
 
 **Metadata Tracking**:
 - Heading hierarchy (updated per segment)

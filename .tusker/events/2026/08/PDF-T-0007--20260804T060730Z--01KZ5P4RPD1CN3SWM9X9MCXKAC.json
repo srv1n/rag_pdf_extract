@@ -1,0 +1,15 @@
+{
+  "actor": "tusker:reconcile",
+  "at": "2026-08-04T06:07:30Z",
+  "event_kind": "lease_stale",
+  "id": "01KZ5P4RPD1CN3SWM9X9MCXKAC",
+  "object": "PDF-T-0007",
+  "object_kind": "task",
+  "payload": {
+    "expires_at": "2026-07-21T18:59:58Z",
+    "lease": "PDF-T-0007",
+    "owner": "agent:codex"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

@@ -1,0 +1,16 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-08-04T06:07:50Z",
+  "event_kind": "verification_added",
+  "id": "01KZ5P5CBCPV7T7A2B1TF370DY",
+  "object": "PDF-T-0011",
+  "object_kind": "task",
+  "payload": {
+    "blocked_by": "",
+    "check": "rtk python3 scripts/paired_regression.py --corpus-dir benchmarks/corpus --corpus-sha256 benchmarks/corpus.sha256 --baseline-rev proof-baseline --baseline-cmd 'printf stable-output' --candidate-rev proof-candidate --candidate-cmd 'printf stable-output'",
+    "covers": "A3,A4",
+    "result": "pass"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

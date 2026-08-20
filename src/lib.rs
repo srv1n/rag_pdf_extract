@@ -26,6 +26,7 @@ use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::fs::File;
 use std::marker::PhantomData;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::rc::Rc;
 use std::result::Result;
 use std::slice::Iter;
@@ -75,7 +76,7 @@ pub use document::{
 };
 
 // Re-export LAParams configuration
-pub use layout_params::{LAParams, LayoutFallbackPolicy};
+pub use layout_params::{LAParams, LayoutFallbackPolicy, TokenCountMode};
 pub use quality::{
     assess_decode_quality, assess_parse_quality, DecodeQualityMetrics, ParseQualityMetrics,
     ParseQualityStatus, RepeatedLine,
@@ -3299,6 +3300,10 @@ struct FontCacheKey {
 
 struct Processor<'a> {
     font_table: HashMap<FontCacheKey, Rc<dyn PdfFont + 'a>>,
+    /// Optional sink for the low-latency text contract. When enabled, the
+    /// shared interpreter keeps its decoding/visibility semantics but emits
+    /// text directly instead of allocating discarded `TextSegment` metadata.
+    fast_text_output: Option<String>,
     _none: PhantomData<&'a ()>,
 }
 
@@ -3369,6 +3374,15 @@ impl<'a> Processor<'a> {
     fn new() -> Processor<'a> {
         Processor {
             font_table: HashMap::new(),
+            fast_text_output: None,
+            _none: PhantomData,
+        }
+    }
+
+    fn new_fast_text() -> Processor<'a> {
+        Processor {
+            font_table: HashMap::new(),
+            fast_text_output: Some(String::new()),
             _none: PhantomData,
         }
     }
@@ -3405,6 +3419,24 @@ impl<'a> Processor<'a> {
     // Helper: previously added a trailing space; now only trims to avoid double spaces
     fn preserve_sentence_boundaries(content: &str) -> String {
         content.trim().to_string()
+    }
+
+    fn emit_fast_text(&mut self, content: &str) {
+        let content = strip_non_printing_text(content);
+        if content.trim().is_empty() || looks_like_symbol_glyph_soup(&content) {
+            return;
+        }
+        let Some(output) = self.fast_text_output.as_mut() else {
+            return;
+        };
+        if !output.is_empty() {
+            output.push(' ');
+        }
+        output.push_str(content.trim());
+    }
+
+    fn take_fast_text_output(&mut self) -> Option<String> {
+        self.fast_text_output.take()
     }
 
     /// Create text segments that respect token limits
@@ -4024,37 +4056,29 @@ impl<'a> Processor<'a> {
 
                             // Push the current line as a new TextSegment.
                             let content_str = Self::preserve_sentence_boundaries(&current_line);
-                            let char_count = content_str.chars().count();
-                            // Calculate approximate width - for multi-line segments, use average line width
-                            let avg_chars_per_line = 80.0;
-                            let lines = (char_count as f64 / avg_chars_per_line).max(1.0);
-                            let approx_width = if lines > 1.0 {
-                                avg_chars_per_line * current_font_size * 0.6
+                            if self.fast_text_output.is_some() {
+                                self.emit_fast_text(&content_str);
                             } else {
-                                char_count as f64 * current_font_size * 0.6
-                            };
-                            let word_count = unicode_count_words(&content_str);
-                            // Use the new function that respects token limits
-                            // Conservative limit: 300 tokens per segment
-                            let segments = Self::create_text_segments_with_limit(
-                                content_str,
-                                current_font_size,
-                                current_transformed_font_size,
-                                current_x,
-                                current_y,
-                                current_is_bold,
-                                current_font.clone(),
-                                current_font_weight.clone(),
-                                current_is_italic,
-                                page_num,
-                                "Tj".to_string(),
-                                None,
-                                None,
-                                current_segment_start,
-                                page_char_counter,
-                                5000, // Avoid pre-splitting here; let the chunker split
-                            );
-                            text_segments.extend(segments);
+                                let segments = Self::create_text_segments_with_limit(
+                                    content_str,
+                                    current_font_size,
+                                    current_transformed_font_size,
+                                    current_x,
+                                    current_y,
+                                    current_is_bold,
+                                    current_font.clone(),
+                                    current_font_weight.clone(),
+                                    current_is_italic,
+                                    page_num,
+                                    "Tj".to_string(),
+                                    None,
+                                    None,
+                                    current_segment_start,
+                                    page_char_counter,
+                                    5000, // Avoid pre-splitting here; let the chunker split
+                                );
+                                text_segments.extend(segments);
+                            }
                             current_segment_start = page_char_counter;
                             current_line.clear();
                         }
@@ -4146,26 +4170,30 @@ impl<'a> Processor<'a> {
                                                     Self::preserve_sentence_boundaries(
                                                         &current_line,
                                                     );
-                                                let segments =
-                                                    Self::create_text_segments_with_limit(
-                                                        content_str,
-                                                        current_font_size,
-                                                        current_transformed_font_size,
-                                                        current_x,
-                                                        current_y,
-                                                        current_is_bold,
-                                                        current_font.clone(),
-                                                        current_font_weight.clone(),
-                                                        current_is_italic,
-                                                        page_num,
-                                                        "Tj".to_string(),
-                                                        Some(current_font_color),
-                                                        None,
-                                                        current_segment_start,
-                                                        page_char_counter,
-                                                        5000, // Avoid pre-splitting here; let the chunker split
-                                                    );
-                                                text_segments.extend(segments);
+                                                if self.fast_text_output.is_some() {
+                                                    self.emit_fast_text(&content_str);
+                                                } else {
+                                                    let segments =
+                                                        Self::create_text_segments_with_limit(
+                                                            content_str,
+                                                            current_font_size,
+                                                            current_transformed_font_size,
+                                                            current_x,
+                                                            current_y,
+                                                            current_is_bold,
+                                                            current_font.clone(),
+                                                            current_font_weight.clone(),
+                                                            current_is_italic,
+                                                            page_num,
+                                                            "Tj".to_string(),
+                                                            Some(current_font_color),
+                                                            None,
+                                                            current_segment_start,
+                                                            page_char_counter,
+                                                            5000, // Avoid pre-splitting here; let the chunker split
+                                                        );
+                                                    text_segments.extend(segments);
+                                                }
                                                 current_segment_start = page_char_counter;
                                                 current_line.clear();
                                             }
@@ -4362,25 +4390,29 @@ impl<'a> Processor<'a> {
                                 if !current_line.trim().is_empty() {
                                     let content_str =
                                         Self::preserve_sentence_boundaries(&current_line);
-                                    let segments = Self::create_text_segments_with_limit(
-                                        content_str,
-                                        current_font_size,
-                                        current_transformed_font_size,
-                                        current_x,
-                                        current_y,
-                                        current_is_bold,
-                                        current_font.clone(),
-                                        current_font_weight.clone(),
-                                        current_is_italic,
-                                        page_num,
-                                        "Tj".to_string(),
-                                        Some(current_font_color),
-                                        None,
-                                        current_segment_start,
-                                        page_char_counter,
-                                        300, // Conservative limit
-                                    );
-                                    text_segments.extend(segments);
+                                    if self.fast_text_output.is_some() {
+                                        self.emit_fast_text(&content_str);
+                                    } else {
+                                        let segments = Self::create_text_segments_with_limit(
+                                            content_str,
+                                            current_font_size,
+                                            current_transformed_font_size,
+                                            current_x,
+                                            current_y,
+                                            current_is_bold,
+                                            current_font.clone(),
+                                            current_font_weight.clone(),
+                                            current_is_italic,
+                                            page_num,
+                                            "Tj".to_string(),
+                                            Some(current_font_color),
+                                            None,
+                                            current_segment_start,
+                                            page_char_counter,
+                                            300, // Conservative limit
+                                        );
+                                        text_segments.extend(segments);
+                                    }
                                     current_segment_start = page_char_counter;
                                     current_line.clear();
                                 }
@@ -5060,26 +5092,29 @@ impl<'a> Processor<'a> {
 
             // if is_visible_text(Some(processed_fill_color), (255, 255, 255)) {
             let content_str = Self::preserve_sentence_boundaries(&current_line);
-            // Use the new function that respects token limits
-            let segments = Self::create_text_segments_with_limit(
-                content_str,
-                current_font_size,
-                current_transformed_font_size,
-                current_x,
-                current_y,
-                current_is_bold,
-                current_font.clone(),
-                current_font_weight.clone(),
-                current_is_italic,
-                page_num,
-                "Tj".to_string(),
-                None,
-                None,
-                current_segment_start,
-                page_char_counter,
-                300, // Conservative limit for individual segments
-            );
-            text_segments.extend(segments);
+            if self.fast_text_output.is_some() {
+                self.emit_fast_text(&content_str);
+            } else {
+                let segments = Self::create_text_segments_with_limit(
+                    content_str,
+                    current_font_size,
+                    current_transformed_font_size,
+                    current_x,
+                    current_y,
+                    current_is_bold,
+                    current_font.clone(),
+                    current_font_weight.clone(),
+                    current_is_italic,
+                    page_num,
+                    "Tj".to_string(),
+                    None,
+                    None,
+                    current_segment_start,
+                    page_char_counter,
+                    300, // Conservative limit for individual segments
+                );
+                text_segments.extend(segments);
+            }
             // }
             current_line.clear();
         }
@@ -5102,8 +5137,17 @@ impl<'a> Processor<'a> {
                     }
                 });
 
+                // The line builder owns its glyphs. Keep a second snapshot only
+                // for the opt-in vertical-text pass; the normal path can move
+                // the sorted vector instead of cloning every glyph.
+                let glyphs_for_vertical = lp.detect_vertical.then(|| glyphs.clone());
+                let glyphs_for_lines = if lp.detect_vertical {
+                    glyphs.clone()
+                } else {
+                    std::mem::take(&mut glyphs)
+                };
+
                 // 1) Group glyphs into lines based on vertical overlap (like pdfminer)
-                let glyphs_for_vertical = glyphs.clone();
                 let mut raw_lines: Vec<Vec<Glyph>> = Vec::new();
                 let mut current: Vec<Glyph> = Vec::new();
 
@@ -5114,7 +5158,7 @@ impl<'a> Processor<'a> {
                 let mut avg_char_width: f64 = 8.0;
                 let mut avg_char_height: f64 = 12.0;
 
-                for g in glyphs.iter() {
+                for g in glyphs_for_lines {
                     let is_space = g.ch.trim().is_empty();
 
                     if current.is_empty() {
@@ -5125,7 +5169,7 @@ impl<'a> Processor<'a> {
                             avg_char_width = g.width.max(1.0);
                             avg_char_height = g.height.max(1.0);
                         }
-                        current.push(g.clone());
+                        current.push(g);
                         continue;
                     }
 
@@ -5187,22 +5231,24 @@ impl<'a> Processor<'a> {
                     // New line if EITHER condition fails
                     let is_new_line = !has_vertical_overlap || !hdist_ok;
 
+                    let g_y = g.y;
+                    let g_x_end = g.x + g.width;
                     if is_new_line {
                         // Start new line
                         if !current.is_empty() {
                             raw_lines.push(std::mem::take(&mut current));
                         }
-                        current.push(g.clone());
+                        current.push(g);
                     } else {
                         // Continue current line
-                        current.push(g.clone());
+                        current.push(g);
                     }
 
                     // Update previous positions
-                    prev_y = g.y;
-                    prev_x_end = g.x + g.width;
+                    prev_y = g_y;
+                    prev_x_end = g_x_end;
                     if !is_space {
-                        prev_nonspace_x_end = g.x + g.width;
+                        prev_nonspace_x_end = g_x_end;
                     }
                 }
                 if !current.is_empty() {
@@ -5411,6 +5457,8 @@ impl<'a> Processor<'a> {
 
                 // Optional: detect vertical text lines (minimal support)
                 if lp.detect_vertical {
+                    let glyphs_for_vertical = glyphs_for_vertical
+                        .expect("vertical glyph snapshot enabled with detect_vertical");
                     let nonspace_glyph_count = glyphs_for_vertical
                         .iter()
                         .filter(|g| !g.ch.trim().is_empty())
@@ -6884,6 +6932,196 @@ pub fn extract_text<P: std::convert::AsRef<std::path::Path>>(
     Ok(result.trim().to_string())
 }
 
+/// Extract text without OCR, layout analysis, heading/table detection,
+/// location spans, or exact tokenization. This is the explicit low-latency
+/// override for callers that only need sentence-aware text chunks.
+///
+/// The returned chunks intentionally carry no page or font metadata. Use
+/// [`parse_pdf`] when citations, bounding boxes, or structured document
+/// semantics are required. `max_tokens` uses a cheap word-count estimate and
+/// is a chunking hint rather than an exact tokenizer cap.
+pub fn extract_text_fast<P: std::convert::AsRef<std::path::Path>>(
+    path: P,
+    max_tokens: Option<usize>,
+    options: ExtractionOptions,
+) -> Result<Vec<String>, OutputError> {
+    let loaded = load_pdf_from_path(path, &options)?;
+    fast_text_chunks(&loaded.document, max_tokens, &options)
+}
+
+/// In-memory counterpart to [`extract_text_fast`].
+pub fn extract_text_fast_from_mem(
+    buffer: &[u8],
+    max_tokens: Option<usize>,
+    options: ExtractionOptions,
+) -> Result<Vec<String>, OutputError> {
+    let loaded = load_pdf_from_mem(buffer, &options)?;
+    fast_text_chunks(&loaded.document, max_tokens, &options)
+}
+
+fn fast_text_chunks(
+    doc: &Document,
+    max_tokens: Option<usize>,
+    options: &ExtractionOptions,
+) -> Result<Vec<String>, OutputError> {
+    let empty_resources = &Dictionary::new();
+    let page_texts: Result<Vec<(u32, String)>, OutputError> = doc
+        .get_pages()
+        .par_iter()
+        .map(|(page_num, object_id)| {
+            let page_dict = doc
+                .get_object(*object_id)
+                .and_then(Object::as_dict)
+                .map_err(OutputError::from)?;
+            let resources = get_inherited(doc, page_dict, b"Resources").unwrap_or(empty_resources);
+            let media_box = get_inherited(doc, page_dict, b"MediaBox")
+                .map(|values: Vec<f64>| MediaBox {
+                    llx: values.first().copied().unwrap_or(0.0),
+                    lly: values.get(1).copied().unwrap_or(0.0),
+                    urx: values.get(2).copied().unwrap_or(612.0),
+                    ury: values.get(3).copied().unwrap_or(792.0),
+                })
+                .unwrap_or(MediaBox {
+                    llx: 0.0,
+                    lly: 0.0,
+                    urx: 612.0,
+                    ury: 792.0,
+                });
+            let mut processor = Processor::new_fast_text();
+            let mut segments = Vec::new();
+            if let Ok(content) = doc.get_page_content(*object_id) {
+                let result = catch_unwind(AssertUnwindSafe(|| {
+                    processor.process_stream(
+                        doc,
+                        None,
+                        None,
+                        false,
+                        content,
+                        resources,
+                        &media_box,
+                        *page_num,
+                        &mut segments,
+                        get_page_rotation(page_dict, doc),
+                        None,
+                        None,
+                        StreamContext::page_with_limit(options.max_recursion_depth.unwrap_or(8)),
+                    )
+                }));
+                if let Ok(Err(error)) = result {
+                    if matches!(error, OutputError::ResourceLimit { .. }) {
+                        return Err(error);
+                    }
+                }
+            }
+            let text = processor.take_fast_text_output().unwrap_or_else(|| {
+                let mut text = String::new();
+                for segment in segments {
+                    let segment = segment.content.trim();
+                    if segment.is_empty() {
+                        continue;
+                    }
+                    if !text.is_empty() {
+                        text.push(' ');
+                    }
+                    text.push_str(segment);
+                }
+                text
+            });
+            Ok((*page_num, text))
+        })
+        .collect();
+
+    let mut page_texts = page_texts?;
+    page_texts.sort_by_key(|(page, _)| *page);
+    let mut total_bytes = 0usize;
+    let mut chunks = Vec::new();
+    for (_, page_text) in page_texts {
+        let text = crate::document::processing::clean_text_for_indexing(&page_text);
+        total_bytes = total_bytes.saturating_add(text.len());
+        if let Some(limit) = options.max_output_bytes {
+            if total_bytes > limit {
+                return Err(OutputError::resource_limit(
+                    ResourceLimitKind::OutputBytes,
+                    limit,
+                    Some(total_bytes),
+                ));
+            }
+        }
+        chunks.extend(split_fast_sentences(&text, max_tokens));
+    }
+    Ok(chunks)
+}
+
+fn split_fast_sentences(text: &str, max_tokens: Option<usize>) -> Vec<String> {
+    // ponytail: one corpus-calibrated ratio; raise to 2.0 if hard-cap safety
+    // matters more than chunk density, or replace with a caller knob later.
+    const FAST_TOKEN_ESTIMATE_RATIO: f64 = 1.5;
+    let sentences = text
+        .split_inclusive(|character: char| matches!(character, '.' | '!' | '?'))
+        .map(str::trim)
+        .filter(|sentence| !sentence.is_empty());
+    let Some(limit) = max_tokens.filter(|limit| *limit > 0) else {
+        return sentences.map(str::to_owned).collect();
+    };
+
+    let mut chunks = Vec::new();
+    let mut current = String::new();
+    let mut estimated_tokens = 0usize;
+    for sentence in sentences {
+        let sentence_tokens = text_splitting::estimate_tokens_from_words(
+            text_splitting::count_words(sentence),
+            FAST_TOKEN_ESTIMATE_RATIO,
+        );
+        if !current.is_empty() && estimated_tokens.saturating_add(sentence_tokens) > limit {
+            chunks.push(std::mem::take(&mut current));
+            estimated_tokens = 0;
+        }
+        if !current.is_empty() {
+            current.push(' ');
+        }
+        current.push_str(sentence);
+        estimated_tokens = estimated_tokens.saturating_add(sentence_tokens);
+    }
+    if !current.is_empty() {
+        chunks.push(current);
+    }
+    chunks
+}
+
+#[cfg(test)]
+mod fast_text_tests {
+    use super::{
+        extract_text_fast_from_mem, split_fast_sentences, ExtractionOptions, OutputError, Processor,
+    };
+
+    #[test]
+    fn fast_text_splits_on_sentence_boundaries() {
+        assert_eq!(
+            split_fast_sentences("First sentence. Second sentence!", None),
+            vec!["First sentence.", "Second sentence!"]
+        );
+    }
+
+    #[test]
+    fn fast_text_keeps_pdf_validation() {
+        assert!(matches!(
+            extract_text_fast_from_mem(b"not a PDF", Some(350), ExtractionOptions::default()),
+            Err(OutputError::NotAPdf { .. })
+        ));
+    }
+
+    #[test]
+    fn fast_text_sink_matches_segment_joining() {
+        let mut processor = Processor::new_fast_text();
+        processor.emit_fast_text(" first\n");
+        processor.emit_fast_text("second ");
+        assert_eq!(
+            processor.take_fast_text_output().as_deref(),
+            Some("first second")
+        );
+    }
+}
+
 /// Number of pages in the PDF at `path`, without extracting any text.
 ///
 /// This exists so a caller that got zero characters back can tell the two cases
@@ -7965,6 +8203,28 @@ pub fn create_content_core_with_identity(
     char_start: Option<usize>,
     ordinal: usize,
 ) -> ContentCore {
+    create_content_core_with_token_mode(
+        content,
+        headings,
+        source_id,
+        source_type,
+        page_start,
+        char_start,
+        ordinal,
+        TokenCountMode::Exact,
+    )
+}
+
+pub(crate) fn create_content_core_with_token_mode(
+    content: &str,
+    headings: &[String],
+    source_id: i64,
+    source_type: &str,
+    page_start: Option<u32>,
+    char_start: Option<usize>,
+    ordinal: usize,
+    token_count_mode: TokenCountMode,
+) -> ContentCore {
     use blake3::Hasher;
 
     let mut content_hasher = Hasher::new();
@@ -7992,13 +8252,13 @@ pub fn create_content_core_with_identity(
         None
     };
 
-    let token_count = CONTENT_CORE_TOKENIZER
-        .as_ref()
-        .map(|tokenizer| tokenizer.encode_ordinary(content).len() as i32)
-        .unwrap_or_else(|| {
-            let word_count = count_words(content);
-            estimate_tokens_from_words(word_count, 1.5) as i32
-        });
+    let token_count = match token_count_mode {
+        TokenCountMode::Approximate => estimate_tokens_from_words(count_words(content), 1.3) as i32,
+        TokenCountMode::Exact => CONTENT_CORE_TOKENIZER
+            .as_ref()
+            .map(|tokenizer| tokenizer.encode_ordinary(content).len() as i32)
+            .unwrap_or_else(|| estimate_tokens_from_words(count_words(content), 1.3) as i32),
+    };
 
     ContentCore {
         chunk_id,
@@ -8380,14 +8640,7 @@ pub fn production_telemetry_for_results(
     let mut output_chars_synthetic = 0usize;
 
     for result in results {
-        let tokens = CONTENT_CORE_TOKENIZER
-            .as_ref()
-            .map(|tokenizer| {
-                tokenizer
-                    .encode_ordinary(&result.content_core.content)
-                    .len()
-            })
-            .unwrap_or(result.content_core.token_count.max(0) as usize);
+        let tokens = result.content_core.token_count.max(0) as usize;
         out.max_chunk_tokens = out.max_chunk_tokens.max(tokens);
         if tokens > max_tokens {
             out.over_cap_chunks += 1;

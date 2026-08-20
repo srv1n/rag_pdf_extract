@@ -1,0 +1,36 @@
+{
+  "actor": "tusker:reconcile",
+  "at": "2026-07-21T15:13:26Z",
+  "event_kind": "updated",
+  "id": "01KY2KTAQ4Y2NJEVS13F2E552X",
+  "object": "PDF-T-0007",
+  "object_kind": "task",
+  "payload": {
+    "changes": {
+      "next_action": {
+        "from": "Held until PDF-T-0005/0006 provide the profile; then execute.",
+        "to": "Wait for dependency PDF-T-0005 to reach review with satisfied proof or done."
+      },
+      "next_owner": {
+        "from": "agent",
+        "to": "blocked_dependency"
+      },
+      "next_ref": {
+        "from": "PDF-T-0007",
+        "to": "PDF-T-0005"
+      },
+      "next_source": {
+        "from": "task",
+        "to": "dependency"
+      },
+      "readiness": {
+        "from": "held",
+        "to": "blocked_by_dependency"
+      }
+    },
+    "source": "projection",
+    "state_rev": "sha256:23b233763be5238f69a2b345915c0a8b82eb3f436fe587f19b6a647a5c371320"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

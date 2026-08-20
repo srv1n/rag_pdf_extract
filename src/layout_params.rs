@@ -5,6 +5,17 @@ pub enum LayoutFallbackPolicy {
     OnSuspiciousVolume,
 }
 
+/// Token counting used while building structured chunks.
+///
+/// Approximate counting is the product default. Exact BPE counting remains
+/// available for callers that need precise token accounting.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TokenCountMode {
+    #[default]
+    Approximate,
+    Exact,
+}
+
 #[derive(Clone, Debug)]
 pub struct LAParams {
     /// Max horizontal gap (× char width) to group into same word/line
@@ -23,6 +34,8 @@ pub struct LAParams {
     pub all_texts: bool,
     /// Product fallback policy for layout extraction. Eval should set this to Disabled.
     pub layout_fallback_policy: LayoutFallbackPolicy,
+    /// Chunk-budget counting policy. Approximate is intentionally the default.
+    pub token_count_mode: TokenCountMode,
 }
 
 impl Default for LAParams {
@@ -42,6 +55,7 @@ impl LAParams {
             detect_vertical: false,
             all_texts: false,
             layout_fallback_policy: LayoutFallbackPolicy::OnSuspiciousVolume,
+            token_count_mode: TokenCountMode::Approximate,
         }
     }
 
@@ -49,5 +63,28 @@ impl LAParams {
         let mut params = Self::product_layout();
         params.layout_fallback_policy = LayoutFallbackPolicy::Disabled;
         params
+    }
+
+    /// Opt into exact BPE accounting for structured chunks.
+    pub fn exact_tokens(mut self) -> Self {
+        self.token_count_mode = TokenCountMode::Exact;
+        self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{LAParams, TokenCountMode};
+
+    #[test]
+    fn approximate_tokens_are_default_and_exact_is_opt_in() {
+        assert_eq!(
+            LAParams::default().token_count_mode,
+            TokenCountMode::Approximate
+        );
+        assert_eq!(
+            LAParams::default().exact_tokens().token_count_mode,
+            TokenCountMode::Exact
+        );
     }
 }

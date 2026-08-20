@@ -86,6 +86,24 @@ XObjects, but can duplicate hidden/template text in other PDFs. Start with
 `LAParams::product_layout()` and enable `all_texts` only for corpus types that
 prove they need it.
 
+### Fast Text Override
+
+When citations, bounding boxes, headings, tables, and font metadata are not
+needed, use the explicit text-only path:
+
+```rust
+use pdf_extract::{extract_text_fast, ExtractionOptions};
+
+let chunks = extract_text_fast("document.pdf", Some(500), ExtractionOptions::default())?;
+```
+
+This skips OCR, layout grouping and the downstream table, header/footer,
+heading, location, and exact-tokenizer passes. It returns sentence-aware text
+chunks with no location metadata; `max_tokens` is a cheap word-count estimate,
+not an exact tokenizer cap. It may retain column-order or Form XObject quirks
+that the structured path corrects. Keep `parse_pdf` for searchable/citable
+output.
+
 ## Architecture
 
 ### Text Extraction Pipeline
@@ -227,10 +245,15 @@ pub struct LAParams {
     pub detect_vertical: bool,   // Detect vertical text (default: false)
     pub all_texts: bool,         // Include Form XObject text (default: false)
     pub layout_fallback_policy: LayoutFallbackPolicy, // Product default catches text loss and suspicious volume
+    pub token_count_mode: TokenCountMode, // Approximate by default; exact_tokens() opts in to BPE
 }
 ```
 
 `LAParams::default()` and `LAParams::product_layout()` use suspicious-volume fallback. Use `LAParams::diagnostic_layout()` when you need raw layout behavior with fallback disabled.
+
+Structured chunk budgets use a word-based estimate with a safety margin by
+default. Call `LAParams::default().exact_tokens()` when exact BPE accounting is
+required. For no-layout structured calls, set `PDF_EXTRACT_EXACT_TOKENS=1`.
 
 **Important:** Set `all_texts = true` only for document classes that need Form
 XObject text. Keep it off for general ingestion unless corpus validation shows

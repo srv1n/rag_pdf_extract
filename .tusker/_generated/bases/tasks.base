@@ -9,6 +9,8 @@ properties:
     displayName: Title
   epic:
     displayName: Epic
+  wave:
+    displayName: Wave
   status:
     displayName: Status
   readiness:
@@ -29,7 +31,7 @@ views:
         - 'readiness == "ready"'
         - 'status == "ready" || status == "rework"'
         - 'next_owner == "agent" || next_owner.startsWith("agent:")'
-    order: [id, title, epic, priority, risk, next_action]
+    order: [id, title, wave, epic, priority, risk, next_action]
   - type: table
     name: Backlog
     filters:
@@ -37,14 +39,14 @@ views:
         - 'status == "idea"'
         - 'status == "backlog"'
         - 'readiness == "held"'
-    order: [id, title, epic, priority, risk, next_owner, next_action]
+    order: [id, title, wave, epic, priority, risk, next_owner, next_action]
   - type: table
     name: Review
     filters:
       and:
         - 'status == "review"'
         - 'readiness != "waiting_on_human"'
-    order: [id, title, epic, risk, next_action]
+    order: [id, title, wave, epic, risk, next_action]
   - type: table
     name: Human Wait
     filters:
@@ -58,10 +60,10 @@ views:
       or:
         - 'readiness.startsWith("blocked")'
         - 'readiness == "waiting_on_ci"'
-    order: [id, title, epic, readiness, next_owner, next_action]
+    order: [id, title, wave, epic, readiness, next_owner, next_action]
   - type: table
     name: Done
     filters:
       and:
         - 'status == "done"'
-    order: [id, title, epic, accepted_by, closed_at]
+    order: [id, title, wave, epic, accepted_by, closed_at]

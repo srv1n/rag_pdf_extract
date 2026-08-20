@@ -1,0 +1,15 @@
+{
+  "actor": "agent:codex",
+  "at": "2026-08-09T05:15:12Z",
+  "event_kind": "claimed",
+  "id": "01KZJF4KECRCZCZ60DTMZP5BEF",
+  "object": "PDF-T-0017",
+  "object_kind": "task",
+  "payload": {
+    "branch": "srv1nc/pdf-hardening-20260806",
+    "compatibility": "single_user_local",
+    "hand_run": true
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}

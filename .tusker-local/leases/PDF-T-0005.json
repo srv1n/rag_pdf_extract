@@ -6,8 +6,10 @@
   "owner": "agent:codex",
   "workspace": "",
   "branch": "main",
-  "status": "released",
+  "status": "stale",
   "claimed_at": "2026-05-29T04:27:15Z",
-  "expires_at": "2026-05-29T06:41:02Z",
-  "heartbeat_at": "2026-05-29T04:41:02Z"
+  "expires_at": "2026-07-21T18:36:15Z",
+  "heartbeat_at": "2026-07-21T16:36:15Z",
+  "stale_at": "2026-08-04T06:07:30Z",
+  "stale_reason": "lease expired without heartbeat"
 }

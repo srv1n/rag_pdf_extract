@@ -8,7 +8,8 @@ use super::{
 };
 use crate::chunk_accumulator::{
     contains_sentence_end, count_words as unicode_count_words, split_long_sentence,
-    split_text_hard_capped, ChunkAccumulator,
+    split_long_sentence_approximate, split_text_hard_capped, split_to_fit_approximate,
+    ChunkAccumulator,
 };
 use crate::document::{
     compact_output_spans, LocatedText, OutputSpan, SourceRef, SpanSource, SyntheticKind,
@@ -19,7 +20,7 @@ use crate::{
     create_content_core_with_identity, create_content_ext_with_spans,
     create_pdf_location_from_output_spans, create_pdf_location_from_positions, get_inherited,
     get_page_rotation, BoundingBox, ExtractionOptions, ExtractionResult, MediaBox, OcrHandler,
-    OcrImageTelemetry, OutputError, PagePosition, Processor, TextSegment,
+    OcrImageTelemetry, OutputError, PagePosition, Processor, TextSegment, TokenCountMode,
 };
 use log::{debug, error, info, warn};
 use lopdf::{Dictionary, Document};
@@ -39,12 +40,81 @@ static RE_EXCESS_DASHES: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"-{4,}")
 static RE_EXCESS_EQUALS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"={4,}").unwrap());
 static RE_SPACE_BEFORE_NEWLINE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r" +\n").unwrap());
 static RE_SPACE_AFTER_NEWLINE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\n +").unwrap());
-static OUTPUT_TOKENIZER: LazyLock<Option<tiktoken_rs::CoreBPE>> =
-    LazyLock::new(|| tiktoken_rs::get_bpe_from_model("gpt-4o").ok());
+static OUTPUT_TOKENIZER: LazyLock<Option<Arc<tiktoken_rs::CoreBPE>>> =
+    LazyLock::new(|| tiktoken_rs::get_bpe_from_model("gpt-4o").ok().map(Arc::new));
 
 // Helper: ASCII whitespace detection
 fn is_ascii_ws(b: u8) -> bool {
     matches!(b, b' ' | b'\t' | b'\n' | b'\r')
+}
+
+const APPROX_TOKEN_RATIO: f64 = 1.3;
+const APPROX_LIMIT_FRACTION: usize = 85;
+
+fn token_count_mode(laparams: Option<&crate::LAParams>) -> TokenCountMode {
+    if std::env::var_os("PDF_EXTRACT_EXACT_TOKENS").is_some() {
+        TokenCountMode::Exact
+    } else {
+        laparams
+            .map(|params| params.token_count_mode)
+            .unwrap_or(TokenCountMode::Approximate)
+    }
+}
+
+fn approximate_tokens(text: &str) -> usize {
+    ((unicode_count_words(text) as f64) * APPROX_TOKEN_RATIO).ceil() as usize
+}
+
+fn approximate_limit(max_tokens: usize) -> usize {
+    max_tokens.saturating_mul(APPROX_LIMIT_FRACTION) / 100
+}
+
+fn budget_tokens(
+    text: &str,
+    mode: TokenCountMode,
+    tokenizer: Option<&tiktoken_rs::CoreBPE>,
+) -> usize {
+    match mode {
+        TokenCountMode::Approximate => approximate_tokens(text),
+        TokenCountMode::Exact => tokenizer
+            .expect("exact token mode requires a tokenizer")
+            .encode_ordinary(text)
+            .len(),
+    }
+}
+
+fn split_long_sentence_for_mode(
+    text: &str,
+    max_tokens: usize,
+    mode: TokenCountMode,
+    tokenizer: Option<&tiktoken_rs::CoreBPE>,
+) -> Vec<String> {
+    match mode {
+        TokenCountMode::Approximate => split_long_sentence_approximate(text, max_tokens),
+        TokenCountMode::Exact => split_long_sentence(
+            text,
+            max_tokens,
+            tokenizer.expect("exact token mode requires a tokenizer"),
+        ),
+    }
+}
+
+fn split_to_fit_for_mode(
+    text: &str,
+    sep: &str,
+    capacity_tokens: usize,
+    mode: TokenCountMode,
+    tokenizer: Option<&tiktoken_rs::CoreBPE>,
+) -> (String, String) {
+    match mode {
+        TokenCountMode::Approximate => split_to_fit_approximate(text, sep, capacity_tokens),
+        TokenCountMode::Exact => split_to_fit(
+            text,
+            sep,
+            capacity_tokens,
+            tokenizer.expect("exact token mode requires a tokenizer"),
+        ),
+    }
 }
 
 /// Clean text for indexing by normalizing whitespace and special characters
@@ -1406,9 +1476,23 @@ pub(crate) fn output_doc_with_ocr_telemetry(
     let mut header_hierarchy = HeaderHierarchy::new();
 
     // Initialize ChunkAccumulator
-    let tokenizer = Arc::new(tiktoken_rs::get_bpe_from_model("gpt-4o").unwrap());
-    let mut accumulator =
-        ChunkAccumulator::new(max_tokens.unwrap_or(usize::MAX), tokenizer.clone());
+    let token_count_mode = token_count_mode(laparams);
+    let tokenizer = if token_count_mode == TokenCountMode::Exact {
+        Some(
+            OUTPUT_TOKENIZER
+                .as_ref()
+                .cloned()
+                .ok_or_else(|| "gpt-4o tokenizer unavailable".to_string())?,
+        )
+    } else {
+        None
+    };
+    let tokenizer_ref = tokenizer.as_deref();
+    let mut accumulator = ChunkAccumulator::new_with_mode(
+        max_tokens.unwrap_or(usize::MAX),
+        tokenizer.clone(),
+        token_count_mode,
+    );
 
     let doc_stats = calculate_document_stats(&text_segments);
 
@@ -1567,13 +1651,15 @@ pub(crate) fn output_doc_with_ocr_telemetry(
                         accumulator.set_headings(header_hierarchy.get_headers());
 
                         // Check if the segment itself exceeds limits before adding
-                        let segment_tokens = tokenizer.encode_ordinary(&segment.content).len();
+                        let segment_tokens =
+                            budget_tokens(&segment.content, token_count_mode, tokenizer_ref);
                         if segment_tokens > max_tokens.unwrap_or(usize::MAX) {
                             // Split the large segment
-                            let chunks = split_long_sentence(
+                            let chunks = split_long_sentence_for_mode(
                                 &segment.content,
                                 max_tokens.unwrap_or(usize::MAX),
-                                &tokenizer,
+                                token_count_mode,
+                                tokenizer_ref,
                             );
 
                             for partial_segment in positioned_split_segments(&segment, chunks) {
@@ -1593,7 +1679,8 @@ pub(crate) fn output_doc_with_ocr_telemetry(
                         && accumulator.can_force_add_for_sentence(&segment)
                     {
                         // Segment completes a sentence - check if we can force add it
-                        let segment_tokens = tokenizer.encode_ordinary(&segment.content).len();
+                        let segment_tokens =
+                            budget_tokens(&segment.content, token_count_mode, tokenizer_ref);
                         if segment_tokens > max_tokens.unwrap_or(usize::MAX) {
                             // Even though it completes a sentence, it's too large - must split
                             extend_with_capped_output(
@@ -1604,10 +1691,11 @@ pub(crate) fn output_doc_with_ocr_telemetry(
                             accumulator.reset();
                             accumulator.set_headings(header_hierarchy.get_headers());
 
-                            let chunks = split_long_sentence(
+                            let chunks = split_long_sentence_for_mode(
                                 &segment.content,
                                 max_tokens.unwrap_or(usize::MAX),
-                                &tokenizer,
+                                token_count_mode,
+                                tokenizer_ref,
                             );
 
                             for partial_segment in positioned_split_segments(&segment, chunks) {
@@ -1636,8 +1724,13 @@ pub(crate) fn output_doc_with_ocr_telemetry(
                         let remaining = max_tokens
                             .unwrap_or(usize::MAX)
                             .saturating_sub(accumulator.get_token_count().unwrap_or(0));
-                        let (prefix, rest) =
-                            split_to_fit(&segment.content, " ", remaining, &tokenizer);
+                        let (prefix, rest) = split_to_fit_for_mode(
+                            &segment.content,
+                            " ",
+                            remaining,
+                            token_count_mode,
+                            tokenizer_ref,
+                        );
                         if !prefix.is_empty() {
                             let mut split_search_byte = 0usize;
                             let prefix_chars = prefix.chars().count();
@@ -1677,12 +1770,14 @@ pub(crate) fn output_doc_with_ocr_telemetry(
                                     rest_chars,
                                     rest,
                                 );
-                                let test_tokens = tokenizer.encode_ordinary(&seg2.content).len();
+                                let test_tokens =
+                                    budget_tokens(&seg2.content, token_count_mode, tokenizer_ref);
                                 if test_tokens > max_tokens.unwrap_or(usize::MAX) {
-                                    let chunks = split_long_sentence(
+                                    let chunks = split_long_sentence_for_mode(
                                         &seg2.content,
                                         max_tokens.unwrap_or(usize::MAX),
-                                        &tokenizer,
+                                        token_count_mode,
+                                        tokenizer_ref,
                                     );
                                     for partial in positioned_split_segments(&seg2, chunks) {
                                         accumulator.add_segment(partial);
@@ -1710,7 +1805,11 @@ pub(crate) fn output_doc_with_ocr_telemetry(
 
                             // Check if segment itself is too large
                             if segment.word_count > 0 {
-                                let test_tokens = tokenizer.encode_ordinary(&segment.content).len();
+                                let test_tokens = budget_tokens(
+                                    &segment.content,
+                                    token_count_mode,
+                                    tokenizer_ref,
+                                );
                                 debug!(
                                     "Segment has {} tokens (max: {:?})",
                                     test_tokens, max_tokens
@@ -1718,10 +1817,11 @@ pub(crate) fn output_doc_with_ocr_telemetry(
                                 if test_tokens > max_tokens.unwrap_or(usize::MAX) {
                                     debug!("Splitting large segment with {} tokens", test_tokens);
                                     // Split the large segment
-                                    let chunks = split_long_sentence(
+                                    let chunks = split_long_sentence_for_mode(
                                         &segment.content,
                                         max_tokens.unwrap_or(usize::MAX),
-                                        &tokenizer,
+                                        token_count_mode,
+                                        tokenizer_ref,
                                     );
 
                                     for partial_segment in
@@ -1760,8 +1860,8 @@ pub(crate) fn output_doc_with_ocr_telemetry(
                                     let prefix = &segment.content[..k];
                                     // Conservative space token: assume a join space if accumulator non-empty
                                     let sep_tokens = if accumulator.is_empty() { 0 } else { 1 };
-                                    let needed =
-                                        sep_tokens + tokenizer.encode_ordinary(prefix).len();
+                                    let needed = sep_tokens
+                                        + budget_tokens(prefix, token_count_mode, tokenizer_ref);
                                     if needed <= lookahead_n && current_tokens + needed <= max_toks
                                     {
                                         // Split incoming segment into prefix + remainder
@@ -2218,6 +2318,7 @@ pub(crate) fn output_doc_new_schema_with_ocr_telemetry(
         source_id,
         source_type,
         clean_text,
+        token_count_mode(laparams),
         options,
     )
 }
@@ -2228,6 +2329,7 @@ fn content_outputs_to_results(
     source_id: i64,
     source_type: &str,
     clean_text: bool,
+    token_count_mode: TokenCountMode,
     options: ExtractionOptions,
 ) -> Result<Vec<ExtractionResult>, Box<dyn std::error::Error>> {
     let mut results = Vec::new();
@@ -2306,7 +2408,7 @@ fn content_outputs_to_results(
             });
             apply_split_location_metadata(&mut located_output, page_positions.clone());
 
-            let content_core = create_content_core_with_identity(
+            let content_core = crate::create_content_core_with_token_mode(
                 &paragraph,
                 &located_output.headings,
                 source_id,
@@ -2314,6 +2416,7 @@ fn content_outputs_to_results(
                 Some(located_output.page),
                 located_output.page_char_start,
                 output_idx * 10_000 + split_idx,
+                token_count_mode,
             );
 
             let format_location = located_output

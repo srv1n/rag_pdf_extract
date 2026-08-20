@@ -9,6 +9,8 @@ properties:
     displayName: Title
   epic:
     displayName: Epic
+  wave:
+    displayName: Wave
   status:
     displayName: Status
   readiness:
@@ -26,4 +28,4 @@ views:
       and:
         - 'status == "review"'
         - 'readiness != "waiting_on_human"'
-    order: [id, title, epic, risk, next_action]
+    order: [id, title, wave, epic, risk, next_action]

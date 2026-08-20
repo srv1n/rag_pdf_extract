@@ -1,0 +1,16 @@
+{
+  "actor": "agent:sarav",
+  "at": "2026-08-04T09:12:29Z",
+  "event_kind": "verification_added",
+  "id": "01KZ60QFVYAQC28NPK9HBDX1ZD",
+  "object": "PDF-T-0011",
+  "object_kind": "task",
+  "payload": {
+    "blocked_by": "",
+    "check": "python3 scripts/paired_regression.py --corpus-dir tests/fixtures/harness_corpus --baseline-rev round1-artifact-d77a9b6 --baseline-cmd \"target/debug/examples/extract_markdown-d77a9b6185ebcd4b \\\"$PDF_PATH\\\" \\\"$RZN_PAIRED_OUTPUT\\\"\" --candidate-rev round2-working-tree --candidate-cmd \"target/debug/examples/extract_markdown \\\"$PDF_PATH\\\" \\\"$RZN_PAIRED_OUTPUT\\\"\" --adversarial-dir tests/fixtures/adversarial --require-adversarial --require-document-bound-commands --output target/paired-regression/round2-honest-final.json --markdown-output target/paired-regression/round2-honest-final.md --timeout-ms 120000",
+    "covers": "A1,A4",
+    "result": "pass"
+  },
+  "project": "rag_pdf_extract",
+  "schema": "tusker.event/v1"
+}
