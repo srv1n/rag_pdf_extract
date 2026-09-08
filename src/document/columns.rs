@@ -102,9 +102,9 @@ pub(crate) fn detect_columns(segments: &[TextSegment], page_width: f64) -> Colum
     let mut gutters: Vec<(f64, f64)> = Vec::new(); // (start_x, end_x)
     let mut gutter_start: Option<usize> = None;
 
-    for (i, ranges) in coverage.iter().enumerate() {
+    for (i, ranges) in coverage.iter_mut().enumerate() {
         // Calculate total y-coverage for this x position
-        let y_coverage = calculate_y_coverage(ranges, min_y, max_y);
+        let y_coverage = calculate_y_coverage(ranges);
         let coverage_ratio = y_coverage / content_height;
 
         // If less than 5% coverage, this x position is "empty"
@@ -141,7 +141,7 @@ pub(crate) fn detect_columns(segments: &[TextSegment], page_width: f64) -> Colum
         .into_iter()
         .filter(|(gx_start, gx_end)| {
             // Check if this gutter spans enough of the page height
-            let gutter_height = calculate_gutter_height(segments, *gx_start, *gx_end, min_y, max_y);
+            let gutter_height = calculate_gutter_height(segments, *gx_start, *gx_end);
             gutter_height / content_height >= MIN_GUTTER_HEIGHT_RATIO
         })
         .collect();
@@ -206,29 +206,28 @@ pub(crate) fn detect_columns(segments: &[TextSegment], page_width: f64) -> Colum
 }
 
 /// Calculate total y-coverage from a list of y-ranges
-fn calculate_y_coverage(ranges: &[(f64, f64)], min_y: f64, max_y: f64) -> f64 {
+fn calculate_y_coverage(ranges: &mut [(f64, f64)]) -> f64 {
     if ranges.is_empty() {
         return 0.0;
     }
 
-    // Merge overlapping ranges and calculate total coverage
-    let mut sorted_ranges: Vec<(f64, f64)> = ranges.to_vec();
-    sorted_ranges.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-
-    let mut merged: Vec<(f64, f64)> = Vec::new();
-    for (start, end) in sorted_ranges {
-        if let Some(last) = merged.last_mut() {
-            if start <= last.1 {
-                last.1 = last.1.max(end);
-            } else {
-                merged.push((start, end));
-            }
+    // The coverage bucket is no longer needed by the caller. Sort and compact
+    // it in place instead of allocating sorted and merged copies per bucket.
+    // Keep the stable sort and summation order used by the original algorithm.
+    ranges.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    let mut merged_len = 1;
+    for idx in 1..ranges.len() {
+        let (start, end) = ranges[idx];
+        let last = &mut ranges[merged_len - 1];
+        if start <= last.1 {
+            last.1 = last.1.max(end);
         } else {
-            merged.push((start, end));
+            ranges[merged_len] = (start, end);
+            merged_len += 1;
         }
     }
 
-    merged.iter().map(|(s, e)| e - s).sum()
+    ranges[..merged_len].iter().map(|(s, e)| e - s).sum()
 }
 
 /// Calculate the height extent of a gutter (how much vertical space it spans)
@@ -236,42 +235,31 @@ fn calculate_gutter_height(
     segments: &[TextSegment],
     gutter_x_start: f64,
     gutter_x_end: f64,
-    min_y: f64,
-    max_y: f64,
 ) -> f64 {
-    // Find segments on either side of the gutter
-    let left_segments: Vec<&TextSegment> = segments
-        .iter()
-        .filter(|s| s.x + s.width <= gutter_x_start + 5.0)
-        .collect();
+    // Only the bounds are needed; do not collect two temporary segment lists.
+    let mut left_min_y = f64::INFINITY;
+    let mut left_max_y = f64::NEG_INFINITY;
+    let mut right_min_y = f64::INFINITY;
+    let mut right_max_y = f64::NEG_INFINITY;
+    let mut has_left = false;
+    let mut has_right = false;
 
-    let right_segments: Vec<&TextSegment> = segments
-        .iter()
-        .filter(|s| s.x >= gutter_x_end - 5.0)
-        .collect();
-
-    if left_segments.is_empty() || right_segments.is_empty() {
-        return 0.0;
+    for segment in segments {
+        if segment.x + segment.width <= gutter_x_start + 5.0 {
+            has_left = true;
+            left_min_y = left_min_y.min(segment.y);
+            left_max_y = left_max_y.max(segment.y + segment.height);
+        }
+        if segment.x >= gutter_x_end - 5.0 {
+            has_right = true;
+            right_min_y = right_min_y.min(segment.y);
+            right_max_y = right_max_y.max(segment.y + segment.height);
+        }
     }
 
-    // Find the y-overlap between left and right content
-    let left_min_y = left_segments
-        .iter()
-        .map(|s| s.y)
-        .fold(f64::INFINITY, f64::min);
-    let left_max_y = left_segments
-        .iter()
-        .map(|s| s.y + s.height)
-        .fold(f64::NEG_INFINITY, f64::max);
-
-    let right_min_y = right_segments
-        .iter()
-        .map(|s| s.y)
-        .fold(f64::INFINITY, f64::min);
-    let right_max_y = right_segments
-        .iter()
-        .map(|s| s.y + s.height)
-        .fold(f64::NEG_INFINITY, f64::max);
+    if !has_left || !has_right {
+        return 0.0;
+    }
 
     // The gutter height is the overlap of left and right content ranges
     let overlap_start = left_min_y.max(right_min_y);
@@ -314,20 +302,27 @@ pub(crate) fn reorder_by_columns(segments: &mut [TextSegment], layout: &ColumnLa
         .collect();
 
     // Sort by: column index first, then Y position within column
-    let y_positions: Vec<f64> = segments.iter().map(|s| s.y).collect();
     column_assignments.sort_by(|(idx_a, col_a), (idx_b, col_b)| match col_a.cmp(col_b) {
-        std::cmp::Ordering::Equal => y_positions[*idx_a]
-            .partial_cmp(&y_positions[*idx_b])
+        std::cmp::Ordering::Equal => segments[*idx_a]
+            .y
+            .partial_cmp(&segments[*idx_b].y)
             .unwrap(),
         other => other,
     });
 
-    // Reorder segments based on sorted indices
-    let ordered_indices: Vec<usize> = column_assignments.iter().map(|(idx, _)| *idx).collect();
-    let original_segments: Vec<TextSegment> = segments.to_vec();
-
-    for (new_pos, old_idx) in ordered_indices.iter().enumerate() {
-        segments[new_pos] = original_segments[*old_idx].clone();
+    // Invert the sorted indices into a destination for each original segment.
+    // Swapping the permutation alongside the segments resolves each cycle in
+    // linear time, without cloning text, font names, or detailed source spans.
+    let mut destinations = vec![0; segments.len()];
+    for (new_pos, &(old_pos, _)) in column_assignments.iter().enumerate() {
+        destinations[old_pos] = new_pos;
+    }
+    for pos in 0..segments.len() {
+        while destinations[pos] != pos {
+            let dest = destinations[pos];
+            segments.swap(pos, dest);
+            destinations.swap(pos, dest);
+        }
     }
 }
 
@@ -419,3 +414,7 @@ mod tests {
         assert_eq!(layout.columns.len(), 2);
     }
 }
+
+#[cfg(test)]
+#[path = "columns_performance_tests.rs"]
+mod performance_tests;
