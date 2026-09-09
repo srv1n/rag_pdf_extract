@@ -1,98 +1,97 @@
-# Located-cleaner offsets: audit and unrun validation
+# Located-cleaner Unicode-scalar offsets: validation
 
-Date: 2026-09-09. Status: **draft; not validated for merge**.
+Date: 2026-09-09. Reviewed source head: `a81118985a04090c97be6b34060c315d0f5b3581`.
+Base: `281679e886b3e3784ff9962e661dddc84a2a773e`.
 
-## Baseline and available evidence
+## Verdict
 
-Base: `281679e886b3e3784ff9962e661dddc84a2a773e`. GitHub's PR #2 metadata and the `main` branch were checked before editing: main is PR #2's merge commit. Main was checked again before publishing the branch and had not moved.
+The scalar counter is correct on the tested contracts and eliminates the expected
+quadratic prefix scans. It has **no measurable end-to-end corpus improvement**:
+the spans-off median is 1.00% slower and the spans-on median is 0.10% faster,
+both within observed variability. Keep the optimization for its local complexity
+reduction; do not claim a corpus speedup.
 
-Code/test commit: `b49a6b71f1962cda45ea7313b33105bdb2f5981d`, directly parented by that base. This report is a separate documentation commit. Record the final PR head SHA when running validation.
+## Change audit
 
-No tracked `AGENTS.md` was found in the recursive base tree; fetching the root path returned 404. These requested report paths also returned 404 on the base:
+`clean_located_text_for_indexing` has exactly three output mutations. Each
+`out.push` appends one Unicode scalar, and `output_chars` increments immediately
+after it. Skipped controls, deleted hyphens, and collapsed whitespace do not
+increment the counter. No byte offsets, BPE accounting, span operations,
+token-cap logic, public APIs, dependencies, features, or parser behavior changed.
 
-- `benchmarks/reports/pr2-2026-09-09/README.md`
-- `benchmarks/reports/2026-09-09-structured-profile.md`
+The added differential tests retain the previous rescanning implementation and
+compare whole `LocatedText` serializations. They cover empty/plain text, multibyte
+and combining Unicode, whitespace/control handling, hyphenation, unmapped/coarse/
+fragmented locations, and 128 deterministic generated inputs.
 
-No report copies or PDF corpus were attached to this editing session. The request's account of PR #2's equivalent 21-PDF structured output without measurable end-to-end speedup, and the subsequent BPE/zstd/lopdf profiling, is context supplied by the requester, not a measurement reproduced here.
+## Correctness evidence
 
-## Retained change
+- Local: `cargo test --locked` — **PASS**, 145 passed / 4 ignored.
+- CI at the reviewed SHA: `build` — **PASS** (build, warning budget, test).
+- Structured comparison: **PASS** for 21/21 SHA-256-verified corpus PDFs in both
+  `emit_output_spans=false` and `true` modes, with `max_tokens=512`, layout,
+  `all_texts=true`, cleaning, and default approximate metadata mode.
+- Each mode produced 2,519 ordered chunks. Complete normalized objects were
+  byte-identical between base and head: content core text/order/counts/IDs/
+  headings/status/hash/source, repairs, all decoded `ContentExt` JSON, locations,
+  boxes, fragments, output spans, synthetic kinds, and parent references.
+- The sole normalization was `ContentCore.created_at`, generated from the clock.
+  No text trimming, reordering, float rounding, or metadata omission occurred.
+- An independent gpt-4o `encode_ordinary` recount found every compared chunk at
+  or below 512 tokens in both modes.
 
-In `src/document/processing.rs`, `clean_located_text_for_indexing` previously called `out.chars().count()` immediately before each emitted character. Those calls repeatedly scan the growing output solely to obtain a Unicode-scalar offset. The patch maintains that offset incrementally.
+The full comparison exports were intentionally temporary (717 MiB combined).
+Their exact equality result and configuration are recorded here; the raw timing
+artifacts are retained under `benchmarks/reports/pr3-2026-09-09/measurements/`.
 
-The invariant is `output_chars == out.chars().count()`: both start at zero, every mutation of `out` appends exactly one Rust `char`, and the counter increments immediately after that append. Skipped controls, removed hyphens, and collapsed whitespace do not increment it. This is a character offset, **not a BPE token count**. No byte-count substitution is used.
+## Measurement method
 
-Hyphenation, control filtering, the explicit Unicode-space set, whitespace handling, source lookup, synthetic parent references, span merging, and final span compaction retain their existing order and implementation. The location-backed cleaner is not replaced by the plain cleaner. The final BPE cap and all tokenizer calls remain unchanged.
+Machine: Apple M1 Pro / macOS arm64, 8 logical CPUs; Rust/Cargo 1.97.1.
+Both clean isolated worktrees used the same generated temporary lockfile
+(`SHA-256 1d58a08d80d2f3b9710d59ba1f7d5b95d61997c34f56ee275666b74ad19e29a9`),
+identical `Cargo.toml`, `--release --locked`, release debug settings, corpus,
+options, and `RAYON_NUM_THREADS=1`. No dependency pin changed.
 
-This removes redundant output-prefix scans by inspection. It does not establish an end-to-end speedup or make the entire cleaner linear: source-span lookup and other work remain. Retention in a merge-ready optimization PR requires the measurements and regression results below.
+Build time and output comparison were outside timing. Runs were sequential and
+balanced: spans-off `base, head, head, base, base, head, head, base, base, head,
+base, head`; spans-on used the inverse order. The first process after release
+build is shown separately; filesystem caches were not flushed, so it is not a
+cold-cache claim. The following five samples per revision are the cache-warm
+series. Raw per-document and batch reports are durable in the measurements path.
 
-The code commit changes only the counter and a test-module declaration in the existing source file (12 added lines, 3 removed), plus a new test file. Public APIs, dependencies, feature defaults, parser code, CI, and downstream dependency pins are untouched.
+| mode | fresh base / head batch ms | warm n | base median batch ms (IQR) | head median batch ms (IQR) | head delta |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| detailed spans off | 29091.159 / 28086.032 | 5 | 28420.741 (272.252) | 28704.452 (399.242) | +1.00% |
+| detailed spans on | 44048.173 / 41260.172 | 5 | 33584.248 (83.323) | 33549.929 (317.867) | -0.10% |
 
-## Regression coverage authored, not executed
+The corresponding warm medians for summed document extraction time are
+28,333.436 ms base vs 28,610.536 ms head (off, +0.98%), and 33,528.538 ms
+base vs 33,494.154 ms head (on, -0.10%). The first-process values are one
+sample each and are not interpreted as a performance result.
 
-`src/document/processing_offset_tests.rs` retains the previous cleaner as a test reference, sharing only unchanged span helpers. Two tests compare the entire serialized `LocatedText` value, without normalization: text, span order, output offsets, PDF pages/ranges/boxes, synthetic kinds, and every parent reference.
+## Focused cleaner measurement
 
-Cases include empty and plain text, multibyte characters and combining marks, normalized and non-normalized Unicode whitespace, controls/CRLF, hyphenation, punctuation runs, longer input, and deterministic generated inputs. Each uses unmapped, coarse PDF-backed, and fragmented mixed PDF/synthetic mappings.
+This is a separate, source-level diagnostic—not end-to-end extraction. On a
+60,000-scalar `é中🦀` input with no source spans, seven alternating pairs gave:
 
-These tests are not a substitute for full extraction comparisons, independent exact token counting, or decoded ContentExt comparisons. They have not compiled or run in this environment.
+- previous rescanning cleaner: `[223.790, 224.874, 225.248, 225.285, 225.619, 227.360, 245.520]` ms; median **225.285 ms**;
+- scalar-counter cleaner: `[2.159, 2.182, 2.186, 2.188, 2.195, 2.215, 2.296]` ms; median **2.188 ms**.
 
-## Candidate audit
+That is about 103× on this deliberately prefix-scan-heavy input. It validates
+the eliminated work; parsing, final BPE enforcement, and spans-enabled zstd
+compression still dominate the corpus workload.
 
-| Candidate | Inspection and decision |
-| --- | --- |
-| Exact BPE reuse | The cap runs on the final cleaned paragraph; upstream counts can describe pre-cleaned text or approximate budgets. Exact-mode content-core construction can repeat tokenization, but safe reuse needs local provenance for the identical final text and tokenizer, including split/trim cases. Deferred rather than introducing count plumbing without execution or measurement. No cap removed; approximate metadata counts remain approximate. |
-| Metadata serialization/compression | `create_content_ext_with_spans` already borrows its payload fields, serializes once with `serde_json::to_vec`, and compresses once with `zstd::bulk::compress(..., 3)`. No duplicate serialization/compression pass was identified. Span compaction is prepared even when detailed emission is disabled; avoiding that is an off-only candidate, not a fix for the reported spans-enabled compression cost. Deferred without measurements. Schema, codec, compression level, decoded metadata, and emission behavior are not changed. |
-| Plain character/string cleaner | `clean_text_for_indexing` performs internal-hyphen cleaning, control removal, five explicit Unicode-space replacements, and ordered regex passes with owned-string conversions. Avoiding no-match allocations or combining compatible scans is plausible, but needs its own Unicode/order regression tests and separate fast-text measurements. Deferred. This path is distinct from the retained location-backed change. |
-| Located cleaner offsets | Retained provisionally in this draft: a local invariant removes repeated scans without modifying transformations or mapping helpers. Full extraction performance and equivalence remain unrun. |
-| Header/footer regex initialization | Normalization regexes are already lazy statics; detector construction still compiles fixed recognition patterns per instance. Deferred because worthwhile savings were not measured. |
-| `span_map.rs` temporary copies | Slicing clones span/source data and location grouping builds temporary collections. Deferred: no evidence of worthwhile savings, and mapping/ordering behavior deserves independent tests. No span-map changes included. |
-| lopdf parsing | Left unchanged. A parser rewrite is outside scope; the request's reported persistent parsing cost is not addressed by this patch. |
+## CI semver status
 
-No speculative cross-chunk cache, compressor pool, new dependency, span disabling, or API change was introduced.
+`semver` remains a known upstream-baseline failure, not a PR regression. The
+same main/base SHA fails the same four categories against published `0.9.0`:
+added `OutputError` variants, removed legacy variants/functions, and changed
+public function arities. The PR does not modify those APIs or the semver workflow.
+The current PR head is mergeable but draft and `UNSTABLE` only because that
+inherited check remains red.
 
-## Commands actually attempted
+## Merge recommendation
 
-The local editing environment has no Cargo or rustc on PATH. GitHub connector reads and writes work, but direct Git access failed DNS resolution. These probes were attempted; no Rust compilation or test process started:
-
-| Exact command | Observed result |
-| --- | --- |
-| `git ls-remote https://github.com/srv1n/rag_pdf_extract HEAD` | Exit 128; could not resolve host `github.com`. |
-| `cargo --version` | Exit 127; `cargo: command not found`. |
-| `rustc --version` | Exit 127; `rustc: command not found`. |
-| `cargo test --locked --lib document::processing` | Exit 127; `cargo: command not found`; tests not run. |
-| `cargo test --locked --release --lib document::processing` | Exit 127; `cargo: command not found`; tests not run. |
-| `cargo test --locked` | Exit 127; `cargo: command not found`; tests not run. |
-| `cargo fmt --all -- --check` | Exit 127; `cargo: command not found`; formatting not checked. |
-
-The final code commit's GitHub diff was inspected: only the intended counter/test changes are present. This is source review, not runtime validation.
-
-The existing `.github/workflows/rust.yml` still runs build, warning-budget, test, and semver jobs. Its `obi1kenobi/cargo-semver-checks-action@v2` step is unchanged. No CI success is asserted by this report; record actual CI results separately.
-
-## Measured results
-
-**None. No timing samples, medians, variability statistics, cold-start timings, or corpus-equivalence results were collected.**
-
-| Required validation | Result |
-| --- | --- |
-| Structured extraction, 512-token cap, detailed spans disabled | Not run |
-| Structured extraction, 512-token cap, detailed spans enabled | Not run |
-| Fast-text extraction, separately | Not run; unchanged-path control, no fast-text speedup claimed |
-| Repeated paired release timings and cold-start separation | Not run |
-| Full ordered chunk, exact-token, ID, heading, location, and decoded-span comparison | Not run |
-| New differential tests and existing regressions | Blocked before execution, as above |
-| Formatting, warning budget, and semver validation | Not established in this session |
-
-## Required paired validation before merge
-
-Use separate clean base and candidate worktrees. Freeze one dependency resolution for both, record identical Cargo.lock SHA-256 values, and build with `--locked`. Record both full revision SHAs, rustc version/target, features, environment, RUSTFLAGS, and the same release configuration, including the repository's release debug setting. Build outside timing. Do not update dependency pins to obtain a result.
-
-Use the same machine, CPU affinity, corpus bytes/order/checksums, and worker count for both revisions. A concrete initial configuration is `RAYON_NUM_THREADS=2` for both; this is a proposed setting, not a setting used for measurements here. Restore the original comparison corpus rather than labeling a different fixture collection as the requester's 21-PDF corpus.
-
-Run structured extraction with `max_tokens=Some(512)`, cleaning enabled, and all other features/defaults held fixed. Make two separate paired cases, explicitly setting detailed output-span emission false and true. Keep the default token-count mode unchanged for the primary benchmark; exercise exact mode additionally as regression coverage. Benchmark fast-text separately as an unchanged-path control. Do not infer structured gains from plain-cleaner or fast-text microbenchmarks.
-
-Collect at least eight paired repetitions in balanced base/patch and patch/base order, sequentially rather than competing on the same machine. Save every raw duration. Report per-PDF and total-corpus medians with IQR or MAD and min/max; do not pool the two span modes. Separate fresh-process startup (including tokenizer/regex initialization) from explicitly warmed in-process runs. State filesystem-cache treatment; a fresh process is not proof of a cold filesystem cache.
-
-Outside timed regions, compare every chunk in sequence. Require identical text, stored token-count fields, IDs/hashes, source identity, headings, locations, repairs, and other deterministic schema fields. Independently tokenize the identical final chunk text using the same exact BPE/tokenizer version on both sides and verify count equality and the 512-token cap; approximate stored counts cannot establish cap compliance.
-
-Decode every zstd ContentExt payload with the existing decoder and compare the complete JSON schema and values, including all citation spans, output/source ranges, bounding boxes, synthetic kinds, and parent references. Preserve array order, float values, and null-versus-absent distinctions. Do not discard detailed metadata to make comparisons pass. The only preidentified normalization candidate is `content_core.created_at`, which is generated from the clock; explicitly record its removal if used. Any other proposed normalization requires a separately identified nondeterministic source, not a blanket ignore rule.
-
-Rerun the exact Cargo commands above on a working checkout and retain their complete results. Run the unchanged CI warning-budget and semver checks. This draft contains no new executable corpus benchmark/comparator; the above is an unexecuted validation protocol, not a claim that an existing script already performs every required comparison.
+**Merge after the normal reviewer acceptance.** Correctness is established;
+the semver failure is pre-existing. Treat performance as neutral: this is a
+safe local algorithmic cleanup, not a demonstrated corpus acceleration.

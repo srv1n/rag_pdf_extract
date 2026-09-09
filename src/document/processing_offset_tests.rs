@@ -155,8 +155,7 @@ fn assert_matches_reference(text: &str) {
             input
         );
         assert!(actual.spans.iter().all(|span| {
-            span.output_start < span.output_end
-                && span.output_end <= actual.text.chars().count()
+            span.output_start < span.output_end && span.output_end <= actual.text.chars().count()
         }));
     }
 }
@@ -183,9 +182,9 @@ fn located_cleaner_offsets_match_legacy_edge_cases() {
 #[test]
 fn located_cleaner_offsets_match_legacy_generated_inputs() {
     let alphabet = [
-        'a', 'Z', 'é', '中', '🦀', '\u{0301}', '-', '.', '7', ' ', '\t', '\n', '\r',
-        '\0', '\u{0085}', '\u{00A0}', '\u{2009}', '\u{200A}', '\u{202F}', '\u{205F}',
-        '\u{200B}', '\u{2028}',
+        'a', 'Z', 'é', '中', '🦀', '\u{0301}', '-', '.', '7', ' ', '\t', '\n', '\r', '\0',
+        '\u{0085}', '\u{00A0}', '\u{2009}', '\u{200A}', '\u{202F}', '\u{205F}', '\u{200B}',
+        '\u{2028}',
     ];
     let mut state = 0x5eed_u64;
     for _ in 0..128 {
