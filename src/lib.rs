@@ -6401,6 +6401,9 @@ impl<'a> SVGOutput<'a> {
 }
 
 #[cfg(test)]
+mod content_ext_compaction_tests;
+
+#[cfg(test)]
 mod reconstruction_tests {
     use super::{
         create_content_core_with_identity, create_content_ext_with_spans,
@@ -8327,7 +8330,9 @@ pub fn create_content_ext_with_spans(
     }
 
     let compacted_spans = located_text.map(|located| {
-        if located.spans.is_empty() {
+        // Detailed spans are not serialized in the default mode.
+        // Keep chunk_locations below based on the original spans in both modes.
+        if !options.emit_output_spans || located.spans.is_empty() {
             Vec::new()
         } else {
             crate::document::compact_output_spans(&located.spans)
