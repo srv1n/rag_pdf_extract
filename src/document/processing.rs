@@ -2109,6 +2109,8 @@ fn bbox_union_from_positions(page_positions: &[PagePosition]) -> Option<Bounding
 fn clean_located_text_for_indexing(located: &LocatedText) -> LocatedText {
     let chars: Vec<char> = located.text.chars().collect();
     let mut out = String::new();
+    // Every mutation of out appends one Unicode scalar, not one byte.
+    let mut output_chars = 0usize;
     let mut spans = Vec::new();
     let mut idx = 0usize;
     let mut pending_whitespace_refs: Vec<SourceRef> = Vec::new();
@@ -2148,8 +2150,9 @@ fn clean_located_text_for_indexing(located: &LocatedText) -> LocatedText {
         if normalized == ' ' {
             collect_source_refs(located, idx, &mut pending_whitespace_refs);
             if !out.ends_with(' ') && !out.ends_with('\n') {
-                let start = out.chars().count();
+                let start = output_chars;
                 out.push(' ');
+                output_chars += 1;
                 push_clean_span(
                     &mut spans,
                     start,
@@ -2168,8 +2171,9 @@ fn clean_located_text_for_indexing(located: &LocatedText) -> LocatedText {
         if normalized == '\n' {
             collect_source_refs(located, idx, &mut pending_whitespace_refs);
             if !out.ends_with('\n') {
-                let start = out.chars().count();
+                let start = output_chars;
                 out.push('\n');
+                output_chars += 1;
                 push_clean_span(
                     &mut spans,
                     start,
@@ -2185,8 +2189,9 @@ fn clean_located_text_for_indexing(located: &LocatedText) -> LocatedText {
             continue;
         }
 
-        let start = out.chars().count();
+        let start = output_chars;
         out.push(normalized);
+        output_chars += 1;
         if let Some(source) = source_for_char(located, idx, normalized) {
             push_clean_span(&mut spans, start, start + 1, source);
         }
@@ -3075,3 +3080,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "processing_offset_tests.rs"]
+mod processing_offset_tests;
