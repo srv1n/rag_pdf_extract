@@ -1327,6 +1327,8 @@ pub(crate) fn output_doc_with_ocr_telemetry(
         .flat_map(|(_, _, segments)| segments)
         .collect();
 
+    let text_segments = super::running_matter::remove_running_matter(text_segments, &page_heights);
+
     // Merge continuation segments: if a segment ends with space (continuation marker)
     // and the next segment on the same page doesn't start a new paragraph, join them
     let text_segments = merge_continuation_segments(text_segments);
@@ -1336,8 +1338,6 @@ pub(crate) fn output_doc_with_ocr_telemetry(
 
     // Merge title block entities: consecutive short ALL CAPS lines (typical in legal docs)
     let text_segments = merge_title_block_entities(text_segments);
-
-    let text_segments = super::running_matter::remove_running_matter(text_segments, &page_heights, pages.len());
 
     // The rest of the function remains sequential to ensure that the document structure is created in the correct order
 
