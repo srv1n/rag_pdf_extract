@@ -1337,43 +1337,7 @@ pub(crate) fn output_doc_with_ocr_telemetry(
     // Merge title block entities: consecutive short ALL CAPS lines (typical in legal docs)
     let text_segments = merge_title_block_entities(text_segments);
 
-    // Create header/footer detector and analyze the document
-    let mut header_footer_detector = HeaderFooterDetector::new(pages.len());
-
-    for segment in &text_segments {
-        let page_height = page_heights
-            .get(&segment.page_num)
-            .copied()
-            .unwrap_or(792.0);
-        header_footer_detector.add_occurrence(
-            &segment.content,
-            segment.page_num,
-            segment.y,
-            segment.font_size,
-            page_height,
-        );
-    }
-
-    // Get the detected headers and footers
-    let headers_footers = header_footer_detector.analyze();
-
-    // Optionally skip header/footer filtering for debugging
-    let skip_hf = std::env::var("PDF_EXTRACT_SKIP_HEADER_FOOTER").is_ok();
-
-    // Filter out headers and footers from text segments (unless skipped)
-    let text_segments: Vec<TextSegment> = if skip_hf {
-        text_segments
-    } else {
-        text_segments
-            .into_iter()
-            .filter(|seg| {
-                let norm = crate::document::header_footer::HeaderFooterDetector::normalize_text(
-                    &seg.content,
-                );
-                !headers_footers.contains(&norm)
-            })
-            .collect()
-    };
+    let text_segments = super::running_matter::remove_running_matter(text_segments, &page_heights, pages.len());
 
     // The rest of the function remains sequential to ensure that the document structure is created in the correct order
 

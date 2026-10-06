@@ -4,6 +4,7 @@ pub mod header_footer;
 pub(crate) mod hyphenation;
 pub(crate) mod lists;
 pub mod processing;
+mod running_matter;
 pub mod span_map;
 pub mod stats;
 pub(crate) mod tables;
