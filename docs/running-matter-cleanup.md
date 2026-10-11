@@ -1,23 +1,60 @@
 # PDF running matter cleanup
 
-The layout pipeline removes repeated short visual lines in the outer 10% page
-bands before continuation, hyphenation, title-block merging and chunking. A line
-may contain several PDF font runs; repetition uses their x-ordered combined text
-and the existing page-number normalization/detector. Body occurrences of the same
-words remain intact. No reporter or corpus names are matched.
+`src/document/running_matter.rs` removes page furniture before continuation,
+hyphenation, title-block merging and chunking. No reporter or corpus names are
+matched; every rule is geometric or repetition-based.
 
-A single uppercase letter outside the substantive text column by more than two
-font sizes is a margin candidate. Removal requires three different letters on
-the same side of a page. Isolated initials and letters inside the body column
-remain. This conservative layout heuristic cannot repair arbitrary OCR or
-identify every margin layout; ambiguous text stays unchanged.
+## Running heads and feet
 
+A visual line may contain several PDF font runs; repetition uses their x-ordered
+combined text. Two rules remove a line:
+
+- The existing detector: a short line in the outer 10% bands that repeats on most
+  pages, or matches a page-number, date or copyright pattern.
+- Recurring edge lines: a line in the outer 20% bands whose text recurs on at least
+  three pages at roughly the same height (within two font sizes, because scanned
+  pages drift). This catches alternating recto/verso heads and per-section heads,
+  which each sit on only part of the pages, and reporter heads that sit about 14%
+  down the page. A head compares with every digit masked and all bracket kinds
+  treated alike, so OCR noise such as `(1988]` beside `[1988]` still matches. A foot
+  masks only a page number at either end of the line, so footnote citations that
+  differ only in their numbers never collapse into one repeated line. A recurring
+  line counts only inside the unbroken stack of recurring lines nearest the page
+  edge; a lookalike below a non-recurring line stays as body text.
+
+A head that never repeats inside one document (a two-page judgment) is kept.
+
+## Margin line-letter rails
+
+A single uppercase letter outside the substantive text column by more than 0.3 font
+sizes is a margin candidate. The column comes from the most common line end and the
+leftmost recurring line start, ignoring lines that open with a lone capital, so a
+glued rail letter cannot widen it. Removal requires three different letters on the
+same side of a page, aligned within 1.5 font sizes. A rail letter the layout glued to
+the end of a body line (`... and, A`) or to its start (`C the cardholder`) is
+trimmed from that line; its output spans are re-based so locations stay exact.
+Isolated initials and letters inside the body column remain.
+
+## Footnotes
+
+On each page the body size is the font size carrying the most characters. Smaller
+type below the last body line that opens with a superscript number is a footnote
+block. Footnote segments leave the page flow and follow the last page, so a sentence
+that crosses a page break is not cut by the footnotes at the foot of the page.
+Superscript reference marks in the body whose number matches a footnote on the same
+page are dropped. Footnote segments keep their own page locations.
+
+## Limits
+
+These heuristics cannot repair arbitrary OCR, letters merged into the middle of an
+OCR line, or a glyph whose layout box is wrong. Ambiguous text stays unchanged.
 Original retained segments keep their page, source character ranges and located
 text. There is no extra PDF parse, serialized span archive or second repeated-line
 scan after merges. PDF_EXTRACT_SKIP_HEADER_FOOTER retains its existing debug bypass.
 The backend must repin this revision and invalidate its PDF parse identity before
 reprocessing existing receipts. An index-only rebuild cannot clean stored passages.
 
-Tests in src/document/running_matter.rs cover split numbered headers, body
-lookalikes, positional margin letters, and a generated real PDF parsed through
-output_doc_new_schema with its original page locations.
+Tests in src/document/running_matter.rs cover split numbered headers, alternating
+reporter heads, body lookalikes, positional and glued margin letters, footnote
+relocation and a generated real PDF parsed through output_doc_new_schema with its
+original page locations.

@@ -1327,7 +1327,8 @@ pub(crate) fn output_doc_with_ocr_telemetry(
         .flat_map(|(_, _, segments)| segments)
         .collect();
 
-    let text_segments = super::running_matter::remove_running_matter(text_segments, &page_heights);
+    let (text_segments, footnotes) =
+        super::running_matter::remove_running_matter(text_segments, &page_heights);
 
     // Merge continuation segments: if a segment ends with space (continuation marker)
     // and the next segment on the same page doesn't start a new paragraph, join them
@@ -1434,6 +1435,7 @@ pub(crate) fn output_doc_with_ocr_telemetry(
             other => other,
         });
 
+        all_segments.extend(footnotes);
         all_segments
     };
 
