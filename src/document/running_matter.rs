@@ -88,7 +88,7 @@ fn running_lines(
         }
         let normalized = HeaderFooterDetector::normalize_text(&text);
         recurring
-            .entry(running_key(&text, *y < *height / 2.0))
+            .entry(running_key(&text))
             .or_default()
             .push((*page, *y, font));
         texts.push(normalized);
@@ -117,13 +117,13 @@ fn running_lines(
     let repeated = detector.analyze();
     let line_texts = edge_lines
         .iter()
-        .map(|(_, y, height, indices)| {
+        .map(|(_, _, _, indices)| {
             let line = indices
                 .iter()
                 .map(|i| segments[*i].content.as_str())
                 .collect::<Vec<_>>()
                 .join(" ");
-            running_key(&line, *y < height / 2.0)
+            running_key(&line)
         })
         .collect::<Vec<_>>();
     // A recurring line counts only in the unbroken stack of recurring lines
@@ -160,15 +160,12 @@ fn running_lines(
     remove
 }
 
-/// The comparison key for a running line. A head masks every digit and treats
-/// all brackets alike, so OCR noise ("(1988] 1 S.C.R." beside "[1988] 1 S.C.R.")
-/// still matches. A foot keeps its inner digits, because footnotes at the foot
-/// differ only in their numbers.
-fn running_key(text: &str, top: bool) -> String {
-    if !top {
-        return edge_number_text(text);
-    }
-    HeaderFooterDetector::normalize_text(text)
+/// The comparison key for a running line: only a page number at either end is
+/// masked, so "Section 1 Overview" and "Section 2 Overview" stay distinct, and
+/// all brackets compare alike, so OCR noise ("(1988] 1 S.C.R." beside
+/// "[1988] 1 S.C.R.") still matches.
+fn running_key(text: &str) -> String {
+    edge_number_text(text)
         .chars()
         .map(|c| if "()[]{}".contains(c) { '|' } else { c })
         .collect()
@@ -251,14 +248,13 @@ fn body_columns(segments: &[TextSegment], remove: &HashSet<usize>) -> HashMap<u3
         .collect()
 }
 
-/// (segment index, letter, x, glued to a body line)
-type RailEntry = (usize, char, f64, bool);
+/// (segment index, letter, x, y, glued to a body line)
+type RailEntry = (usize, char, f64, f64, bool);
 
 /// Removes reporter line-letter rails (A, B, C ... beside the text column),
 /// including a letter the layout glued to the end of a body line.
 fn remove_margin_rails(segments: &mut [TextSegment], remove: &mut HashSet<usize>) {
     let bodies = body_columns(segments, remove);
-    // (page, left side) -> (index, letter, x, glued to a body line)
     let mut margins: HashMap<(u32, bool), Vec<RailEntry>> = HashMap::new();
     for (index, segment) in segments.iter().enumerate() {
         if remove.contains(&index) {
@@ -284,12 +280,12 @@ fn remove_margin_rails(segments: &mut [TextSegment], remove: &mut HashSet<usize>
                 margins
                     .entry((segment.page_num, true))
                     .or_default()
-                    .push((index, letter, segment.x, false));
+                    .push((index, letter, segment.x, segment.y, false));
             } else if segment.x - gap > *right {
                 margins
                     .entry((segment.page_num, false))
                     .or_default()
-                    .push((index, letter, segment.x, false));
+                    .push((index, letter, segment.x, segment.y, false));
             }
             continue;
         }
@@ -299,43 +295,70 @@ fn remove_margin_rails(segments: &mut [TextSegment], remove: &mut HashSet<usize>
                 margins
                     .entry((segment.page_num, false))
                     .or_default()
-                    .push((index, letter, end, true));
+                    .push((index, letter, end, segment.y, true));
             }
         } else if let Some(letter) = glued_leading_letter(&segment.content) {
             if segment.x < left - segment.font_size && segment.x >= left - segment.font_size * 6.0 {
                 margins
                     .entry((segment.page_num, true))
                     .or_default()
-                    .push((index, letter, segment.x, true));
+                    .push((index, letter, segment.x, segment.y, true));
             }
         }
     }
-    // Require a recurring, vertically aligned alphabet rail, not one isolated
-    // initial or list marker.
-    for ((page, _), rail) in margins {
-        let letters = rail.iter().map(|entry| entry.1).collect::<HashSet<_>>();
-        let font = rail
-            .iter()
-            .map(|entry| segments[entry.0].font_size)
-            .fold(0.0_f64, f64::max);
-        let (low, high) = rail
-            .iter()
-            .fold((f64::MAX, f64::MIN), |(low, high), entry| {
-                (low.min(entry.2), high.max(entry.2))
-            });
-        if letters.len() < 3 || high - low > font.max(1.0) * 1.5 {
+    // A rail is three different capitals aligned on one side of a page...
+    let rails = margins
+        .into_iter()
+        .filter(|(_, rail)| {
+            let letters = rail.iter().map(|entry| entry.1).collect::<HashSet<_>>();
+            let font = rail
+                .iter()
+                .map(|entry| segments[entry.0].font_size)
+                .fold(0.0_f64, f64::max);
+            let (low, high) = rail
+                .iter()
+                .fold((f64::MAX, f64::MIN), |(low, high), entry| {
+                    (low.min(entry.2), high.max(entry.2))
+                });
+            letters.len() >= 3 && high - low <= font.max(1.0) * 1.5
+        })
+        .collect::<Vec<_>>();
+    // ...whose letters sit at the same heights on other pages too. A printed
+    // line-letter rail repeats its A..H positions page after page; an A/B/C
+    // outline does not.
+    let mut heights: HashMap<char, Vec<(u32, f64)>> = HashMap::new();
+    for ((page, _), rail) in &rails {
+        for entry in rail {
+            heights.entry(entry.1).or_default().push((*page, entry.3));
+        }
+    }
+    for ((page, _), rail) in rails {
+        let recurring = rail
+            .into_iter()
+            .filter(|entry| {
+                let tolerance = segments[entry.0].font_size.max(1.0) * 2.0;
+                heights[&entry.1]
+                    .iter()
+                    .filter(|(_, y)| (y - entry.3).abs() <= tolerance)
+                    .map(|(page, _)| *page)
+                    .collect::<HashSet<_>>()
+                    .len()
+                    >= 3
+            })
+            .collect::<Vec<_>>();
+        if recurring.len() < 3 {
             continue;
         }
         let Some(&(left, right)) = bodies.get(&page) else {
             continue;
         };
-        for (index, _, _, glued) in rail {
+        for (index, _, _, _, glued) in recurring {
             if !glued {
                 remove.insert(index);
             } else if glued_leading_letter(&segments[index].content).is_some() {
                 trim_leading_letter(&mut segments[index], left);
             } else {
-                trim_glued_letter(&mut segments[index], Some(right));
+                trim_glued_letter(&mut segments[index], right);
             }
         }
     }
@@ -357,29 +380,48 @@ fn glued_leading_letter(content: &str) -> Option<char> {
         .then_some(letter)
 }
 
+/// Keeps the located spans of `keep` (start, len) ranges of the old text, laid end
+/// to end in the new text.
+fn keep_spans(
+    located: &crate::document::LocatedText,
+    keep: &[(usize, usize)],
+    text: &str,
+) -> crate::document::LocatedText {
+    let mut spans = Vec::new();
+    let mut offset = 0;
+    for (start, len) in keep {
+        for mut span in located.slice_chars(*start, *len, String::new()).spans {
+            span.output_start += offset;
+            span.output_end += offset;
+            spans.push(span);
+        }
+        offset += len;
+    }
+    crate::document::LocatedText {
+        text: text.to_string(),
+        spans,
+    }
+}
+
+/// Drops a leading rail letter and its space; the paragraph prefix stays, so the
+/// segment still starts at its original source character.
 fn trim_leading_letter(segment: &mut TextSegment, body_left: f64) {
     let rest = segment.content.trim_start();
-    let prefix = segment.content[..segment.content.len() - rest.len()].to_string();
-    let prefix_chars = prefix.chars().count();
-    // Skip the letter and the space after it.
+    let prefix_chars = segment.content.chars().count() - rest.chars().count();
     let body = rest[2..].trim_start();
-    let skipped = rest.chars().count() - body.chars().count();
-    let content = format!("{prefix}{body}");
+    let body_chars = body.chars().count();
+    let skipped = rest.chars().count() - body_chars;
+    let content = format!(
+        "{}{body}",
+        &segment.content[..segment.content.len() - rest.len()]
+    );
     segment.located_text = segment.located_text.as_ref().map(|located| {
-        let start = prefix_chars + skipped;
-        let mut spans = located
-            .slice_chars(start, body.chars().count(), String::new())
-            .spans;
-        for span in &mut spans {
-            span.output_start += prefix_chars;
-            span.output_end += prefix_chars;
-        }
-        crate::document::LocatedText {
-            text: content.clone(),
-            spans,
-        }
+        keep_spans(
+            located,
+            &[(0, prefix_chars), (prefix_chars + skipped, body_chars)],
+            &content,
+        )
     });
-    segment.char_start = segment.char_start.saturating_add(skipped);
     let end = segment.x + segment.width;
     segment.x = segment.x.max(body_left);
     segment.width = (end - segment.x).max(0.0);
@@ -387,24 +429,29 @@ fn trim_leading_letter(segment: &mut TextSegment, body_left: f64) {
     segment.content = content;
 }
 
-fn trim_glued_letter(segment: &mut TextSegment, body_right: Option<f64>) {
+/// Drops a trailing rail letter and the space before it; trailing whitespace stays.
+fn trim_glued_letter(segment: &mut TextSegment, body_right: f64) {
+    let total = segment.content.chars().count();
     let trimmed = segment.content.trim_end();
     let tail = segment.content[trimmed.len()..].to_string();
+    let tail_chars = tail.chars().count();
     let head = trimmed[..trimmed.len() - 1].trim_end().to_string();
     let head_chars = head.chars().count();
-    let removed = segment.content.chars().count() - head_chars - tail.chars().count();
+    let removed = total - head_chars - tail_chars;
+    // A continuation line keeps its trailing space; this one is synthetic.
     let content = format!("{head}{}", if tail.is_empty() { " " } else { &tail });
     segment.located_text = segment.located_text.as_ref().map(|located| {
-        let spans = located.slice_chars(0, head_chars, String::new()).spans;
-        crate::document::LocatedText {
-            text: content.clone(),
-            spans,
-        }
+        keep_spans(
+            located,
+            &[(0, head_chars), (total - tail_chars, tail_chars)],
+            &content,
+        )
     });
-    segment.char_end = segment.char_end.saturating_sub(removed);
-    if let Some(right) = body_right {
-        segment.width = segment.width.min((right - segment.x).max(0.0));
+    if tail.is_empty() {
+        // The retained source text now ends before the letter.
+        segment.char_end = segment.char_end.saturating_sub(removed);
     }
+    segment.width = segment.width.min((body_right - segment.x).max(0.0));
     segment.word_count = content.split_whitespace().count();
     segment.content = content;
 }
@@ -466,7 +513,14 @@ fn footnote_blocks(segments: &[TextSegment]) -> HashMap<usize, Footnote> {
             .collect::<Vec<_>>();
         foot.sort_by(|a, b| segments[*a].y.total_cmp(&segments[*b].y));
         let Some(first) = foot.first() else { continue };
-        if !mark(&segments[*first]) {
+        // A footnote block opens with a superscript number, carries text, and is
+        // cited by the same superscript number in the body. A lone small page
+        // number or a numbered caption has no matching body mark.
+        if !mark(&segments[*first])
+            || !foot
+                .iter()
+                .any(|index| !mark(&segments[*index]) && segments[*index].word_count >= 2)
+        {
             continue;
         }
         let numbers = foot
@@ -474,11 +528,19 @@ fn footnote_blocks(segments: &[TextSegment]) -> HashMap<usize, Footnote> {
             .filter(|index| mark(&segments[**index]))
             .map(|index| segments[*index].content.trim().to_string())
             .collect::<HashSet<_>>();
-        for index in indices {
-            let segment = &segments[*index];
-            if segment.y <= last_body && mark(segment) && numbers.contains(segment.content.trim()) {
-                found.insert(*index, Footnote::Reference);
-            }
+        let references = indices
+            .iter()
+            .copied()
+            .filter(|index| {
+                let segment = &segments[*index];
+                segment.y <= last_body && mark(segment) && numbers.contains(segment.content.trim())
+            })
+            .collect::<Vec<_>>();
+        if references.is_empty() {
+            continue;
+        }
+        for index in references {
+            found.insert(index, Footnote::Reference);
         }
         for index in foot {
             found.insert(index, Footnote::Body);
@@ -791,35 +853,191 @@ mod tests {
         assert!(glued.x + glued.width <= 461.0 + 0.5);
     }
 
+    fn located(text: &str, page: u32) -> crate::document::LocatedText {
+        use crate::document::span_map::{OutputSpan, SpanSource};
+        crate::document::LocatedText {
+            text: text.into(),
+            spans: (0..text.chars().count())
+                .map(|i| OutputSpan {
+                    output_start: i,
+                    output_end: i + 1,
+                    source: SpanSource::Pdf {
+                        page,
+                        char_start: i,
+                        char_end: i + 1,
+                        bbox: crate::BoundingBox {
+                            x: i as f64,
+                            y: 0.0,
+                            width: 1.0,
+                            height: 1.0,
+                        },
+                    },
+                })
+                .collect(),
+        }
+    }
+
+    fn source_start(span: &crate::document::span_map::OutputSpan) -> usize {
+        match &span.source {
+            crate::document::span_map::SpanSource::Pdf { char_start, .. } => *char_start,
+            _ => panic!("expected a PDF span"),
+        }
+    }
+
     #[test]
-    fn rail_letter_glued_to_line_start_is_trimmed() {
+    fn rail_letters_glued_to_line_ends_are_trimmed_with_their_spans() {
         let mut rows = Vec::new();
-        for (i, letter) in ["A", "B", "C"].iter().enumerate() {
-            let y = 150.0 + i as f64 * 72.0;
-            rows.push(segment(
-                &format!("Plain body line number {i} here"),
-                1,
-                163.0,
-                y,
-                311.0,
-            ));
-            rows.push(segment(
-                &format!("{letter} the glued body line {i} here"),
-                1,
-                144.0,
-                y + 8.0,
-                331.0,
-            ));
+        for page in 1..=3 {
+            let word = ["first", "second", "third"][page as usize - 1];
+            for (i, letter) in ["A", "B", "C"].iter().enumerate() {
+                let y = 150.0 + i as f64 * 72.0;
+                rows.push(segment(
+                    &format!("Plain {word} body line number {i} here"),
+                    page,
+                    163.0,
+                    y,
+                    311.0,
+                ));
+                for extra in 1..=3 {
+                    rows.push(segment(
+                        &format!("More {word} plain text {i} line {extra} here"),
+                        page,
+                        163.0,
+                        y + 40.0 + extra as f64 * 13.0,
+                        311.0,
+                    ));
+                }
+                let start = format!("\n{letter} the glued {word} line {i} here");
+                let mut glued = segment(&start, page, 144.0, y + 8.0, 331.0);
+                glued.located_text = Some(located(&start, page));
+                rows.push(glued);
+                let end = format!("ends the {word} line {i} here {letter}\n");
+                let mut glued = segment(&end, page, 163.0, y + 30.0, 320.0);
+                glued.located_text = Some(located(&end, page));
+                rows.push(glued);
+            }
         }
-        let (kept, _) = remove_running_matter(rows, &heights(1));
-        for (i, segment) in kept
+        let (kept, _) = remove_running_matter(rows, &heights(3));
+        let starts = kept
             .iter()
-            .filter(|s| s.content.contains("glued"))
-            .enumerate()
-        {
-            assert_eq!(segment.content, format!("the glued body line {i} here"));
+            .filter(|s| s.content.contains("the glued"))
+            .collect::<Vec<_>>();
+        assert_eq!(starts.len(), 9);
+        for segment in starts {
+            assert!(
+                segment.content.starts_with("\nthe glued"),
+                "{:?}",
+                segment.content
+            );
             assert_eq!(segment.x, 163.0);
+            let spans = &segment.located_text.as_ref().unwrap().spans;
+            assert_eq!(segment.located_text.as_ref().unwrap().text, segment.content);
+            assert_eq!(spans.len(), segment.content.chars().count());
+            assert_eq!(source_start(&spans[0]), 0, "kept paragraph prefix");
+            assert_eq!((spans[1].output_start, source_start(&spans[1])), (1, 3));
         }
+        let ends = kept
+            .iter()
+            .filter(|s| s.content.starts_with("ends the"))
+            .collect::<Vec<_>>();
+        assert_eq!(ends.len(), 9);
+        for segment in ends {
+            assert!(
+                segment.content.ends_with(" here\n"),
+                "{:?}",
+                segment.content
+            );
+            let spans = &segment.located_text.as_ref().unwrap().spans;
+            assert_eq!(spans.len(), segment.content.chars().count());
+            let total = segment.content.chars().count() + 2;
+            assert_eq!(
+                source_start(spans.last().unwrap()),
+                total - 1,
+                "kept newline"
+            );
+        }
+    }
+
+    #[test]
+    fn an_outline_and_numbered_section_heads_are_not_furniture() {
+        let mut rows = Vec::new();
+        for page in 1..=3 {
+            let word = ["first", "second", "third"][page as usize - 1];
+            rows.push(segment(
+                &format!("Section {page} Overview"),
+                page,
+                100.0,
+                110.0,
+                120.0,
+            ));
+            for (i, letter) in ["A", "B", "C"].iter().enumerate() {
+                // Outline labels beside their clauses, at different heights per page.
+                let y = 200.0 + page as f64 * 40.0 + i as f64 * 30.0;
+                rows.push(segment(letter, page, 80.0, y, 7.0));
+                rows.push(segment(
+                    &format!("The {word} clause {i} of this outline reads"),
+                    page,
+                    100.0,
+                    y,
+                    300.0,
+                ));
+                rows.push(segment(
+                    &format!("and its {word} continuation {i} runs on"),
+                    page,
+                    100.0,
+                    y + 13.0,
+                    300.0,
+                ));
+            }
+        }
+        let (kept, _) = remove_running_matter(rows, &heights(3));
+        assert_eq!(
+            kept.iter()
+                .filter(|s| s.content.ends_with("Overview"))
+                .count(),
+            3
+        );
+        assert_eq!(
+            kept.iter()
+                .filter(|s| ["A", "B", "C"].contains(&s.content.as_str()))
+                .count(),
+            9
+        );
+    }
+
+    #[test]
+    fn a_small_page_number_is_not_a_footnote() {
+        let mut rows = Vec::new();
+        for page in 1..=3 {
+            let word = ["first", "second", "third"][page as usize - 1];
+            for i in 0..6 {
+                rows.push(sized(
+                    &format!("Body sentence {i} on the {word} page runs on"),
+                    page,
+                    150.0,
+                    150.0 + i as f64 * 13.0,
+                    300.0,
+                    12.0,
+                ));
+            }
+            rows.push(sized(&format!("{page}"), page, 300.0, 760.0, 6.0, 8.0));
+            rows.push(sized(
+                "A small caption under the figure",
+                page,
+                150.0,
+                600.0,
+                200.0,
+                8.0,
+            ));
+        }
+        let (kept, footnotes) = remove_running_matter(rows, &heights(3));
+        assert!(footnotes.is_empty(), "{footnotes:?}");
+        assert_eq!(
+            kept.iter()
+                .filter(|s| s.content.starts_with("A small caption"))
+                .count(),
+            3
+        );
     }
 
     #[test]

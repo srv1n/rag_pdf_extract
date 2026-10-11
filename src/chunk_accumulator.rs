@@ -1141,8 +1141,9 @@ impl ChunkAccumulator {
     /// Create output from current chunk
     pub fn create_output(&self) -> ContentOutput {
         // Calculate page range
-        let start_page = self.segments.first().map(|s| s.page_num).unwrap_or(0);
-        let end_page = self.segments.last().map(|s| s.page_num).unwrap_or(0);
+        // Footnotes follow the last page, so a chunk's pages are not in segment order.
+        let start_page = self.segments.iter().map(|s| s.page_num).min().unwrap_or(0);
+        let end_page = self.segments.iter().map(|s| s.page_num).max().unwrap_or(0);
         let end_page = if end_page != start_page {
             Some(end_page)
         } else {
@@ -1334,8 +1335,8 @@ impl ChunkAccumulator {
             }
         }
 
-        let start_page = prefix_segments.first().map(|s| s.page_num).unwrap_or(0);
-        let last_page = prefix_segments.last().map(|s| s.page_num).unwrap_or(0);
+        let start_page = prefix_segments.iter().map(|s| s.page_num).min().unwrap_or(0);
+        let last_page = prefix_segments.iter().map(|s| s.page_num).max().unwrap_or(0);
         let end_page = if last_page != start_page {
             Some(last_page)
         } else {
