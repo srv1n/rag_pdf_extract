@@ -18,7 +18,9 @@ combined text. Two rules remove a line:
   down the page. Lines compare with only a page number at either end masked and all
   bracket kinds treated alike, so OCR noise such as `(1988]` beside `[1988]` still
   matches while numbered section heads ("Section 1 Overview") and footnote citations
-  that differ only in their numbers stay distinct. A recurring
+  that differ only in their numbers stay distinct. A masked number must be the page
+number: across the occurrences it moves with the page by one constant offset, so
+"1 Overview" on pages 2, 5 and 9 stays. A recurring
   line counts only inside the unbroken stack of recurring lines nearest the page
   edge; a lookalike below a non-recurring line stays as body text.
 
@@ -29,9 +31,10 @@ A head that never repeats inside one document (a two-page judgment) is kept.
 A single uppercase letter outside the substantive text column by more than 0.3 font
 sizes is a margin candidate. The column comes from the most common line end and the
 leftmost recurring line start, ignoring lines that open with a lone capital, so a
-glued rail letter cannot widen it. Removal requires three different letters on the
-same side of a page, aligned within 1.5 font sizes, and each removed letter must sit
-at the same height (within two font sizes) on at least three pages. A printed rail
+glued rail letter cannot widen it. Removal requires four or more different letters on
+the same side of a page, in alphabetical order down the page and aligned within 1.5
+font sizes, and each removed letter must sit at the same height (within two font
+sizes) on at least three pages. A printed rail
 repeats its A..H positions page after page; an A/B/C outline does not. A rail letter
 the layout glued to the end of a body line (`... and, A`) or to its start
 (`C the cardholder`) is trimmed from that line; the retained prefix, body and
@@ -43,8 +46,9 @@ pages is kept.
 
 On each page the body size is the font size carrying the most characters. Smaller
 type below the last body line that opens with a superscript number, carries text,
-and is cited by the same superscript number in the body is a footnote block. A lone
-small page number or a numbered caption has no matching body mark and stays. Footnote segments leave the page flow and follow the last page, so a sentence
+whose opening mark sits on its first line just left of that text, and which is cited
+by the same superscript number in the body is a footnote block. A lone small page
+number or a numbered caption fails these tests and stays. Footnote segments leave the page flow and follow the last page, so a sentence
 that crosses a page break is not cut by the footnotes at the foot of the page.
 Superscript reference marks in the body whose number matches a footnote on the same
 page are dropped. Footnote segments keep their own page locations, and chunk page

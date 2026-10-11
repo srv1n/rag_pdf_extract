@@ -70,7 +70,8 @@ fn running_lines(
         }
     }
     let mut texts = Vec::with_capacity(edge_lines.len());
-    let mut recurring: HashMap<String, Vec<(u32, f64, f64)>> = HashMap::new();
+    // key -> (page, y, font, page number at either end of the line)
+    let mut recurring: HashMap<String, Vec<(u32, f64, f64, Option<i64>)>> = HashMap::new();
     for (page, y, height, indices) in &mut edge_lines {
         indices.sort_by(|a, b| segments[*a].x.total_cmp(&segments[*b].x));
         let text = indices
@@ -87,10 +88,12 @@ fn running_lines(
             detector.add_occurrence(&text, *page, *y, font, *height);
         }
         let normalized = HeaderFooterDetector::normalize_text(&text);
-        recurring
-            .entry(running_key(&text))
-            .or_default()
-            .push((*page, *y, font));
+        recurring.entry(running_key(&text)).or_default().push((
+            *page,
+            *y,
+            font,
+            edge_number(&text),
+        ));
         texts.push(normalized);
     }
     // Alternating recto/verso heads and per-section heads repeat on a share of the
@@ -100,6 +103,15 @@ fn running_lines(
     for (text, places) in recurring {
         let pages = places.iter().map(|place| place.0).collect::<HashSet<_>>();
         if pages.len() < 3 || text.split_whitespace().count() > 24 {
+            continue;
+        }
+        // A masked number must be the page number: it moves with the page by one
+        // constant offset. "1 Overview" on pages 2, 5 and 9 does not.
+        let offsets = places
+            .iter()
+            .map(|place| place.3.map(|number| number - i64::from(place.0)))
+            .collect::<HashSet<_>>();
+        if offsets.len() > 1 {
             continue;
         }
         let mut heights = places.iter().map(|place| place.1).collect::<Vec<_>>();
@@ -169,6 +181,17 @@ fn running_key(text: &str) -> String {
         .chars()
         .map(|c| if "()[]{}".contains(c) { '|' } else { c })
         .collect()
+}
+
+/// The number at either end of a line, if any (the candidate page number).
+fn edge_number(text: &str) -> Option<i64> {
+    let mut words = text.split_whitespace();
+    let first = words.next()?;
+    let last = words.last().unwrap_or(first);
+    [first, last]
+        .into_iter()
+        .find(|word| word.chars().all(|c| c.is_ascii_digit()))
+        .and_then(|word| word.parse().ok())
 }
 
 /// Lowercased, space-collapsed text with only a page number at either end masked.
@@ -306,7 +329,7 @@ fn remove_margin_rails(segments: &mut [TextSegment], remove: &mut HashSet<usize>
             }
         }
     }
-    // A rail is three different capitals aligned on one side of a page...
+    // A rail is four or more capitals in order, aligned on one side of a page...
     let rails = margins
         .into_iter()
         .filter(|(_, rail)| {
@@ -320,7 +343,11 @@ fn remove_margin_rails(segments: &mut [TextSegment], remove: &mut HashSet<usize>
                 .fold((f64::MAX, f64::MIN), |(low, high), entry| {
                     (low.min(entry.2), high.max(entry.2))
                 });
-            letters.len() >= 3 && high - low <= font.max(1.0) * 1.5
+            // A reporter rail runs A, B, C, D... down the page.
+            let mut by_height = rail.iter().collect::<Vec<_>>();
+            by_height.sort_by(|a, b| a.3.total_cmp(&b.3));
+            let in_order = by_height.windows(2).all(|pair| pair[0].1 < pair[1].1);
+            letters.len() >= 4 && in_order && high - low <= font.max(1.0) * 1.5
         })
         .collect::<Vec<_>>();
     // ...whose letters sit at the same heights on other pages too. A printed
@@ -516,11 +543,16 @@ fn footnote_blocks(segments: &[TextSegment]) -> HashMap<usize, Footnote> {
         // A footnote block opens with a superscript number, carries text, and is
         // cited by the same superscript number in the body. A lone small page
         // number or a numbered caption has no matching body mark.
-        if !mark(&segments[*first])
-            || !foot
-                .iter()
-                .any(|index| !mark(&segments[*index]) && segments[*index].word_count >= 2)
-        {
+        let opener = &segments[*first];
+        // The opening mark sits on the first footnote line, just left of its text.
+        let adjacent = |segment: &TextSegment| {
+            !mark(segment)
+                && segment.word_count >= 2
+                && (segment.y - opener.y).abs() <= body * 0.6
+                && segment.x >= opener.x
+                && segment.x <= opener.x + opener.width + body * 1.5
+        };
+        if !mark(opener) || !foot.iter().any(|index| adjacent(&segments[*index])) {
             continue;
         }
         let numbers = foot
@@ -582,7 +614,7 @@ mod tests {
             };
             text(format!("{page} REPEATED REPORT TITLE"), 100, 780);
             let word = ["first", "second", "third"][page - 1];
-            for (i, letter) in ["A", "B", "C"].iter().enumerate() {
+            for (i, letter) in ["A", "B", "C", "D"].iter().enumerate() {
                 let y = 700 - i as i64 * 70;
                 text(letter.to_string(), 20, y);
                 text(
@@ -629,7 +661,7 @@ mod tests {
         assert!(
             !text
                 .split_whitespace()
-                .any(|word| ["A", "B", "C"].contains(&word)),
+                .any(|word| ["A", "B", "C", "D"].contains(&word)),
             "{}",
             text
         );
@@ -672,7 +704,7 @@ mod tests {
             rows.push(segment(&page.to_string(), page, 80.0, 20.0, 10.0));
             rows.push(segment("REPEATED REPORT TITLE", page, 100.0, 20.0, 180.0));
             rows.push(segment("REPEATED REPORT TITLE", page, 100.0, 300.0, 180.0));
-            for (i, letter) in ["A", "B", "C"].iter().enumerate() {
+            for (i, letter) in ["A", "B", "C", "D"].iter().enumerate() {
                 rows.push(segment(letter, page, 20.0, 100.0 + i as f64 * 70.0, 5.0));
                 rows.push(segment(
                     &format!(
@@ -691,14 +723,14 @@ mod tests {
             remove_running_matter(rows, &HashMap::from([(1, 800.0), (2, 800.0), (3, 800.0)]));
         assert_eq!(
             kept.len(),
-            15,
+            18,
             "{:?}",
             kept.iter()
                 .map(|s| (s.page_num, s.x, s.y, s.content.as_str()))
                 .collect::<Vec<_>>()
         );
         for page in 1..=3 {
-            assert_eq!(kept.iter().filter(|s| s.page_num == page).count(), 5);
+            assert_eq!(kept.iter().filter(|s| s.page_num == page).count(), 6);
             assert!(kept.iter().any(|s| s.page_num == page
                 && s.content == "REPEATED REPORT TITLE"
                 && s.y == 300.0));
@@ -889,7 +921,7 @@ mod tests {
         let mut rows = Vec::new();
         for page in 1..=3 {
             let word = ["first", "second", "third"][page as usize - 1];
-            for (i, letter) in ["A", "B", "C"].iter().enumerate() {
+            for (i, letter) in ["A", "B", "C", "D"].iter().enumerate() {
                 let y = 150.0 + i as f64 * 72.0;
                 rows.push(segment(
                     &format!("Plain {word} body line number {i} here"),
@@ -922,7 +954,7 @@ mod tests {
             .iter()
             .filter(|s| s.content.contains("the glued"))
             .collect::<Vec<_>>();
-        assert_eq!(starts.len(), 9);
+        assert_eq!(starts.len(), 12);
         for segment in starts {
             assert!(
                 segment.content.starts_with("\nthe glued"),
@@ -940,7 +972,7 @@ mod tests {
             .iter()
             .filter(|s| s.content.starts_with("ends the"))
             .collect::<Vec<_>>();
-        assert_eq!(ends.len(), 9);
+        assert_eq!(ends.len(), 12);
         for segment in ends {
             assert!(
                 segment.content.ends_with(" here\n"),
@@ -1099,5 +1131,90 @@ mod tests {
             edge_number_text("(1990) 3 SCC 645"),
             edge_number_text("(1976) 2 SCC 123")
         );
+    }
+
+    #[test]
+    fn a_numbered_head_that_does_not_track_the_page_stays() {
+        let mut rows = Vec::new();
+        for (n, page) in [(1, 2), (2, 5), (3, 9)] {
+            rows.push(segment(&format!("{n} Overview"), page, 100.0, 110.0, 120.0));
+            rows.push(segment(
+                &format!("Body text for part {n} of the report"),
+                page,
+                100.0,
+                300.0,
+                300.0,
+            ));
+        }
+        let (kept, _) = remove_running_matter(rows, &heights(9));
+        assert_eq!(
+            kept.iter()
+                .filter(|s| s.content.ends_with("Overview"))
+                .count(),
+            3
+        );
+    }
+
+    #[test]
+    fn a_three_label_outline_at_fixed_heights_is_not_a_rail() {
+        let mut rows = Vec::new();
+        for page in 1..=3 {
+            let word = ["first", "second", "third"][page as usize - 1];
+            for (i, letter) in ["A", "B", "C"].iter().enumerate() {
+                let y = 200.0 + i as f64 * 30.0;
+                rows.push(segment(letter, page, 80.0, y, 7.0));
+                rows.push(segment(
+                    &format!("The {word} clause {i} of this outline reads"),
+                    page,
+                    100.0,
+                    y,
+                    300.0,
+                ));
+                rows.push(segment(
+                    &format!("and its {word} continuation {i} runs on"),
+                    page,
+                    100.0,
+                    y + 13.0,
+                    300.0,
+                ));
+            }
+        }
+        let (kept, _) = remove_running_matter(rows, &heights(3));
+        assert_eq!(
+            kept.iter()
+                .filter(|s| ["A", "B", "C"].contains(&s.content.as_str()))
+                .count(),
+            9
+        );
+    }
+
+    #[test]
+    fn a_page_number_beside_a_caption_does_not_claim_a_body_marker() {
+        let mut rows = Vec::new();
+        for i in 0..6 {
+            rows.push(sized(
+                &format!("Body sentence {i} of the only page runs on"),
+                1,
+                150.0,
+                150.0 + i as f64 * 13.0,
+                300.0,
+                12.0,
+            ));
+        }
+        // A small list marker in the body, a small centred page number, then a caption.
+        rows.push(sized("1", 1, 140.0, 163.0, 5.0, 7.0));
+        rows.push(sized("1", 1, 300.0, 700.0, 5.0, 7.0));
+        rows.push(sized(
+            "A caption for the plate",
+            1,
+            150.0,
+            720.0,
+            200.0,
+            8.0,
+        ));
+        let (kept, footnotes) = remove_running_matter(rows, &heights(1));
+        assert!(footnotes.is_empty(), "{footnotes:?}");
+        assert!(kept.iter().any(|s| s.content == "1" && s.y == 163.0));
+        assert!(kept.iter().any(|s| s.content.starts_with("A caption")));
     }
 }
