@@ -15,10 +15,10 @@ combined text. Two rules remove a line:
   three pages at roughly the same height (within two font sizes, because scanned
   pages drift). This catches alternating recto/verso heads and per-section heads,
   which each sit on only part of the pages, and reporter heads that sit about 14%
-  down the page. A head compares with every digit masked and all bracket kinds
-  treated alike, so OCR noise such as `(1988]` beside `[1988]` still matches. A foot
-  masks only a page number at either end of the line, so footnote citations that
-  differ only in their numbers never collapse into one repeated line. A recurring
+  down the page. Lines compare with only a page number at either end masked and all
+  bracket kinds treated alike, so OCR noise such as `(1988]` beside `[1988]` still
+  matches while numbered section heads ("Section 1 Overview") and footnote citations
+  that differ only in their numbers stay distinct. A recurring
   line counts only inside the unbroken stack of recurring lines nearest the page
   edge; a lookalike below a non-recurring line stays as body text.
 
@@ -30,19 +30,26 @@ A single uppercase letter outside the substantive text column by more than 0.3 f
 sizes is a margin candidate. The column comes from the most common line end and the
 leftmost recurring line start, ignoring lines that open with a lone capital, so a
 glued rail letter cannot widen it. Removal requires three different letters on the
-same side of a page, aligned within 1.5 font sizes. A rail letter the layout glued to
-the end of a body line (`... and, A`) or to its start (`C the cardholder`) is
-trimmed from that line; its output spans are re-based so locations stay exact.
-Isolated initials and letters inside the body column remain.
+same side of a page, aligned within 1.5 font sizes, and each removed letter must sit
+at the same height (within two font sizes) on at least three pages. A printed rail
+repeats its A..H positions page after page; an A/B/C outline does not. A rail letter
+the layout glued to the end of a body line (`... and, A`) or to its start
+(`C the cardholder`) is trimmed from that line; the retained prefix, body and
+trailing whitespace keep their own output spans. Isolated initials, outline labels
+and letters inside the body column remain. A rail in a judgment shorter than three
+pages is kept.
 
 ## Footnotes
 
 On each page the body size is the font size carrying the most characters. Smaller
-type below the last body line that opens with a superscript number is a footnote
-block. Footnote segments leave the page flow and follow the last page, so a sentence
+type below the last body line that opens with a superscript number, carries text,
+and is cited by the same superscript number in the body is a footnote block. A lone
+small page number or a numbered caption has no matching body mark and stays. Footnote segments leave the page flow and follow the last page, so a sentence
 that crosses a page break is not cut by the footnotes at the foot of the page.
 Superscript reference marks in the body whose number matches a footnote on the same
-page are dropped. Footnote segments keep their own page locations.
+page are dropped. Footnote segments keep their own page locations, and chunk page
+ranges use the lowest and highest page of their segments, so a chunk that holds
+relocated footnotes still reports every page it covers.
 
 ## Limits
 
