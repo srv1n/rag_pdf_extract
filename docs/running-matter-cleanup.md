@@ -55,7 +55,9 @@ claims a body superscript. A lone small page
 number or a numbered caption fails these tests and stays. Footnote segments leave the page flow and follow the last page, so a sentence
 that crosses a page break is not cut by the footnotes at the foot of the page.
 Superscript reference marks in the body whose number matches a footnote on the same
-page, and which sit raised above their line, are dropped; a subscript stays. Footnote segments keep their own page locations, and chunk page
+page, and which sit raised above their line, are dropped; a subscript stays. When two
+raised marks share one footnote's number, both stay. A lone raised exponent whose digit
+matches a footnote on the same page is dropped as a reference mark. Footnote segments keep their own page locations, and chunk page
 ranges use the lowest and highest page of their segments, so a chunk that holds
 relocated footnotes still reports every page it covers.
 

@@ -614,8 +614,16 @@ fn footnote_blocks(segments: &[TextSegment]) -> HashMap<usize, Footnote> {
         if references.is_empty() {
             continue;
         }
+        // Two raised marks with one footnote's number cannot both cite it (one may be
+        // an exponent), so both stay in the text.
+        let mut cited: HashMap<&str, usize> = HashMap::new();
+        for index in &references {
+            *cited.entry(segments[*index].content.trim()).or_default() += 1;
+        }
         for index in references {
-            found.insert(index, Footnote::Reference);
+            if cited[segments[index].content.trim()] == 1 {
+                found.insert(index, Footnote::Reference);
+            }
         }
         for index in foot {
             found.insert(index, Footnote::Body);
@@ -1344,5 +1352,35 @@ mod tests {
         assert!(!kept.iter().any(|s| s.content == "2" && s.y == 146.0));
         assert!(kept.iter().any(|s| s.content == "2" && s.y == 180.0));
         assert!(kept.iter().any(|s| s.content == "1" && s.y == 159.0));
+    }
+
+    #[test]
+    fn two_raised_marks_with_one_footnote_number_both_stay() {
+        let mut rows = Vec::new();
+        for i in 0..6 {
+            rows.push(sized(
+                &format!("Body sentence {i} of the only page runs on"),
+                1,
+                150.0,
+                150.0 + i as f64 * 13.0,
+                300.0,
+                12.0,
+            ));
+        }
+        // The exponent in mc2 and the citation of footnote 2 look alike.
+        rows.push(sized("2", 1, 400.0, 146.0, 5.0, 7.0));
+        rows.push(sized("2", 1, 300.0, 172.0, 5.0, 7.0));
+        rows.push(sized("2", 1, 150.0, 650.0, 5.0, 7.0));
+        rows.push(sized(
+            "A note on the cited case",
+            1,
+            157.0,
+            650.0,
+            150.0,
+            9.0,
+        ));
+        let (kept, footnotes) = remove_running_matter(rows, &heights(1));
+        assert_eq!(footnotes.len(), 2);
+        assert_eq!(kept.iter().filter(|s| s.content == "2").count(), 2);
     }
 }
