@@ -591,8 +591,11 @@ fn footnote_blocks(segments: &[TextSegment]) -> HashMap<usize, Footnote> {
                 .iter()
                 .map(|index| &segments[*index])
                 .filter(|line| {
+                    // Only a line beside the mark counts, not one in another column.
                     (line.font_size - body).abs() < body * 0.05
                         && (line.y - segment.y).abs() <= body
+                        && line.x <= segment.x + segment.width + body
+                        && line.x + line.width >= segment.x - body
                 })
                 .min_by(|a, b| (a.y - segment.y).abs().total_cmp(&(b.y - segment.y).abs()))
                 .is_some_and(|line| segment.y <= line.y - body * 0.15)
@@ -1311,7 +1314,16 @@ mod tests {
         // Footnote 2 is cited by a raised mark; the 2 in CO2 sits on its line, and
         // a raised 1 matches only the footer page number, which labels no note.
         rows.push(sized("2", 1, 400.0, 146.0, 5.0, 7.0));
-        rows.push(sized("2", 1, 420.0, 176.0, 5.0, 7.0));
+        rows.push(sized("2", 1, 420.0, 180.0, 5.0, 7.0));
+        // A right-column line slightly lower must not make that subscript look raised.
+        rows.push(sized(
+            "Right column text runs here",
+            1,
+            470.0,
+            183.0,
+            100.0,
+            12.0,
+        ));
         rows.push(sized("1", 1, 300.0, 159.0, 5.0, 7.0));
         rows.push(sized("2", 1, 150.0, 650.0, 5.0, 7.0));
         rows.push(sized(
@@ -1330,7 +1342,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(notes, ["2", "A note on the cited case"]);
         assert!(!kept.iter().any(|s| s.content == "2" && s.y == 146.0));
-        assert!(kept.iter().any(|s| s.content == "2" && s.y == 176.0));
+        assert!(kept.iter().any(|s| s.content == "2" && s.y == 180.0));
         assert!(kept.iter().any(|s| s.content == "1" && s.y == 159.0));
     }
 }
