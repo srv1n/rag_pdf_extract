@@ -32,7 +32,7 @@ A single uppercase letter outside the substantive text column by more than 0.3 f
 sizes is a margin candidate. The column comes from the most common line end and the
 leftmost recurring line start, ignoring lines that open with a lone capital, so a
 glued rail letter cannot widen it. Removal requires four or more different letters on
-the same side of a page, at least one page of the document showing five or more, in alphabetical order down the page and aligned within 1.5
+the same side of a page, at least one page's recurring rail showing five or more, in alphabetical order down the page and aligned within 1.5
 font sizes, and each removed letter must sit at the same height (within two font
 sizes) on at least three pages. A printed rail
 repeats its A..H positions page after page; an A/B/C outline does not. A rail letter
@@ -55,7 +55,7 @@ claims a body superscript. A lone small page
 number or a numbered caption fails these tests and stays. Footnote segments leave the page flow and follow the last page, so a sentence
 that crosses a page break is not cut by the footnotes at the foot of the page.
 Superscript reference marks in the body whose number matches a footnote on the same
-page are dropped. Footnote segments keep their own page locations, and chunk page
+page, and which sit raised above their line, are dropped; a subscript stays. Footnote segments keep their own page locations, and chunk page
 ranges use the lowest and highest page of their segments, so a chunk that holds
 relocated footnotes still reports every page it covers.
 

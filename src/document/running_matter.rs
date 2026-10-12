@@ -350,16 +350,6 @@ fn remove_margin_rails(segments: &mut [TextSegment], remove: &mut HashSet<usize>
             letters.len() >= 4 && in_order && high - low <= font.max(1.0) * 1.5
         })
         .collect::<Vec<_>>();
-    // A reporter rail runs A..H down a full page; a four-item outline never shows a fifth.
-    if !rails.iter().any(|(_, rail)| {
-        rail.iter()
-            .map(|entry| entry.1)
-            .collect::<HashSet<_>>()
-            .len()
-            >= 5
-    }) {
-        return;
-    }
     // ...whose letters sit at the same heights on other pages too. A printed
     // line-letter rail repeats its A..H positions page after page; an A/B/C
     // outline does not.
@@ -369,6 +359,7 @@ fn remove_margin_rails(segments: &mut [TextSegment], remove: &mut HashSet<usize>
             heights.entry(entry.1).or_default().push((*page, entry.3));
         }
     }
+    let mut found = Vec::new();
     for ((page, left_side), rail) in rails {
         let recurring = rail
             .into_iter()
@@ -383,9 +374,23 @@ fn remove_margin_rails(segments: &mut [TextSegment], remove: &mut HashSet<usize>
                     >= 3
             })
             .collect::<Vec<_>>();
-        if recurring.len() < 3 {
-            continue;
+        if recurring.len() >= 3 {
+            found.push((page, left_side, recurring));
         }
+    }
+    // A reporter rail runs A..H down a full page; a four-item outline never
+    // shows a fifth recurring letter.
+    if !found.iter().any(|(_, _, recurring)| {
+        recurring
+            .iter()
+            .map(|entry| entry.1)
+            .collect::<HashSet<_>>()
+            .len()
+            >= 5
+    }) {
+        return;
+    }
+    for (page, left_side, recurring) in found {
         let Some(&(left, right)) = bodies.get(&page) else {
             continue;
         };
@@ -580,12 +585,27 @@ fn footnote_blocks(segments: &[TextSegment]) -> HashMap<usize, Footnote> {
             .filter(|index| mark(&segments[**index]))
             .map(|index| segments[*index].content.trim().to_string())
             .collect::<HashSet<_>>();
+        // A reference mark is raised above its line; a subscript (CO2) sits on or below it.
+        let raised = |segment: &TextSegment| {
+            indices
+                .iter()
+                .map(|index| &segments[*index])
+                .filter(|line| {
+                    (line.font_size - body).abs() < body * 0.05
+                        && (line.y - segment.y).abs() <= body
+                })
+                .min_by(|a, b| (a.y - segment.y).abs().total_cmp(&(b.y - segment.y).abs()))
+                .is_some_and(|line| segment.y <= line.y - body * 0.15)
+        };
         let references = indices
             .iter()
             .copied()
             .filter(|index| {
                 let segment = &segments[*index];
-                segment.y <= last_body && mark(segment) && numbers.contains(segment.content.trim())
+                segment.y <= last_body
+                    && mark(segment)
+                    && numbers.contains(segment.content.trim())
+                    && raised(segment)
             })
             .collect::<Vec<_>>();
         if references.is_empty() {
@@ -1202,7 +1222,19 @@ mod tests {
 
     #[test]
     fn a_four_label_outline_at_fixed_heights_is_not_a_rail() {
+        // An unrelated five-item outline on another page does not make it a rail.
         let mut rows = Vec::new();
+        for (i, letter) in ["A", "B", "C", "D", "E"].iter().enumerate() {
+            let y = 250.0 + i as f64 * 100.0;
+            rows.push(segment(letter, 4, 80.0, y, 7.0));
+            rows.push(segment(
+                &format!("The fourth page item {i} of a longer outline"),
+                4,
+                100.0,
+                y,
+                300.0,
+            ));
+        }
         for page in 1..=3 {
             let word = ["first", "second", "third"][page as usize - 1];
             for (i, letter) in ["A", "B", "C", "D"].iter().enumerate() {
@@ -1224,12 +1256,12 @@ mod tests {
                 ));
             }
         }
-        let (kept, _) = remove_running_matter(rows, &heights(3));
+        let (kept, _) = remove_running_matter(rows, &heights(4));
         assert_eq!(
             kept.iter()
-                .filter(|s| ["A", "B", "C", "D"].contains(&s.content.as_str()))
+                .filter(|s| ["A", "B", "C", "D", "E"].contains(&s.content.as_str()))
                 .count(),
-            12
+            17
         );
     }
 
@@ -1264,7 +1296,7 @@ mod tests {
     }
 
     #[test]
-    fn a_footer_page_number_is_not_a_footnote_label() {
+    fn footer_numbers_and_subscripts_are_not_footnote_marks() {
         let mut rows = Vec::new();
         for i in 0..6 {
             rows.push(sized(
@@ -1276,10 +1308,12 @@ mod tests {
                 12.0,
             ));
         }
-        // Footnote 1 is cited; the superscript 2 in x² is not a footnote mark.
-        rows.push(sized("1", 1, 400.0, 150.0, 5.0, 7.0));
+        // Footnote 2 is cited by a raised mark; the 2 in CO2 sits on its line, and
+        // a raised 1 matches only the footer page number, which labels no note.
+        rows.push(sized("2", 1, 400.0, 146.0, 5.0, 7.0));
         rows.push(sized("2", 1, 420.0, 176.0, 5.0, 7.0));
-        rows.push(sized("1", 1, 150.0, 650.0, 5.0, 7.0));
+        rows.push(sized("1", 1, 300.0, 159.0, 5.0, 7.0));
+        rows.push(sized("2", 1, 150.0, 650.0, 5.0, 7.0));
         rows.push(sized(
             "A note on the cited case",
             1,
@@ -1288,14 +1322,15 @@ mod tests {
             150.0,
             9.0,
         ));
-        rows.push(sized("2", 1, 300.0, 760.0, 5.0, 7.0));
+        rows.push(sized("1", 1, 300.0, 760.0, 5.0, 7.0));
         let (kept, footnotes) = remove_running_matter(rows, &heights(1));
         let notes = footnotes
             .iter()
             .map(|s| s.content.trim())
             .collect::<Vec<_>>();
-        assert_eq!(notes, ["1", "A note on the cited case"]);
+        assert_eq!(notes, ["2", "A note on the cited case"]);
+        assert!(!kept.iter().any(|s| s.content == "2" && s.y == 146.0));
         assert!(kept.iter().any(|s| s.content == "2" && s.y == 176.0));
-        assert!(!kept.iter().any(|s| s.content == "1"));
+        assert!(kept.iter().any(|s| s.content == "1" && s.y == 159.0));
     }
 }
