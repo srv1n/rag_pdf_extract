@@ -32,13 +32,15 @@ A single uppercase letter outside the substantive text column by more than 0.3 f
 sizes is a margin candidate. The column comes from the most common line end and the
 leftmost recurring line start, ignoring lines that open with a lone capital, so a
 glued rail letter cannot widen it. Removal requires four or more different letters on
-the same side of a page, in alphabetical order down the page and aligned within 1.5
+the same side of a page, at least one page of the document showing five or more, in alphabetical order down the page and aligned within 1.5
 font sizes, and each removed letter must sit at the same height (within two font
 sizes) on at least three pages. A printed rail
 repeats its A..H positions page after page; an A/B/C outline does not. A rail letter
 the layout glued to the end of a body line (`... and, A`) or to its start
-(`C the cardholder`) is trimmed from that line; the retained prefix, body and
-trailing whitespace keep their own output spans. Isolated initials, outline labels
+(`C the cardholder`) is trimmed from that line by the side its rail sits on, so a
+right-rail line that opens with the article `A` keeps it. The retained prefix, body
+and trailing whitespace keep their own output spans, and the segment's source range
+excludes the letter. Isolated initials, outline labels
 and letters inside the body column remain. A rail in a judgment shorter than three
 pages is kept.
 
@@ -47,7 +49,9 @@ pages is kept.
 On each page the body size is the font size carrying the most characters. Smaller
 type below the last body line that opens with a superscript number, carries text,
 whose opening mark sits on its first line just left of that text, and which is cited
-by the same superscript number in the body is a footnote block. A lone small page
+by the same superscript number in the body is a footnote block. Only a mark with note
+text beside it labels a footnote, so a small page number in the foot neither moves nor
+claims a body superscript. A lone small page
 number or a numbered caption fails these tests and stays. Footnote segments leave the page flow and follow the last page, so a sentence
 that crosses a page break is not cut by the footnotes at the foot of the page.
 Superscript reference marks in the body whose number matches a footnote on the same
@@ -57,7 +61,8 @@ relocated footnotes still reports every page it covers.
 
 ## Limits
 
-These heuristics cannot repair arbitrary OCR, letters merged into the middle of an
+A lettered outline of five or more items that repeats at the same heights on three
+pages is read as a rail. These heuristics cannot repair arbitrary OCR, letters merged into the middle of an
 OCR line, or a glyph whose layout box is wrong. Ambiguous text stays unchanged.
 Original retained segments keep their page, source character ranges and located
 text. There is no extra PDF parse, serialized span archive or second repeated-line
