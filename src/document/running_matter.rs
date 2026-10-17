@@ -15,7 +15,7 @@ pub(crate) fn remove_running_matter(
     }
     let mut segments = segments;
     // Footnote marks at the page foot look like page numbers, so find footnotes first.
-    let footnotes = footnote_blocks(&segments);
+    let footnotes = footnote_blocks(&segments, page_heights);
     let mut remove = running_lines(&segments, page_heights, &footnotes);
     remove_margin_rails(&mut segments, &mut remove);
     let mut kept = Vec::with_capacity(segments.len());
@@ -24,10 +24,10 @@ pub(crate) fn remove_running_matter(
         if remove.contains(&index) {
             continue;
         }
-        match footnotes.get(&index) {
-            Some(Footnote::Body) => moved.push(segment),
-            Some(Footnote::Reference) => {}
-            None => kept.push(segment),
+        if footnotes.contains(&index) {
+            moved.push(segment);
+        } else {
+            kept.push(segment);
         }
     }
     (kept, moved)
@@ -37,7 +37,7 @@ pub(crate) fn remove_running_matter(
 fn running_lines(
     segments: &[TextSegment],
     page_heights: &HashMap<u32, f64>,
-    footnotes: &HashMap<usize, Footnote>,
+    footnotes: &HashSet<usize>,
 ) -> HashSet<usize> {
     let mut detector = HeaderFooterDetector::new(page_heights.len());
     // A reporter line can have many font runs. Detect its whole visual line,
@@ -50,7 +50,7 @@ fn running_lines(
         if !height.is_finite() || *height <= 0.0 || !segment.y.is_finite() {
             continue;
         }
-        if footnotes.contains_key(&index) {
+        if footnotes.contains(&index) {
             continue;
         }
         if segment.y > height * EDGE_BAND && segment.y < height * (1.0 - EDGE_BAND) {
@@ -164,8 +164,10 @@ fn running_lines(
         );
     }
     let mut remove = HashSet::new();
-    for (line, ((_, _, _, indices), text)) in edge_lines.iter().zip(texts).enumerate() {
-        if repeated.contains(&text) || stacked.contains(&line) {
+    for (line, ((_, y, height, indices), text)) in edge_lines.iter().zip(texts).enumerate() {
+        if (repeated.contains(&text) && (*y <= height * 0.1 || *y >= height * 0.9))
+            || stacked.contains(&line)
+        {
             remove.extend(indices.iter().copied());
         }
     }
@@ -499,23 +501,56 @@ fn trim_glued_letter(segment: &mut TextSegment, body_right: f64) {
     segment.content = content;
 }
 
-enum Footnote {
-    /// Footnote text at the page foot; moved out of the page flow.
-    Body,
-    /// A superscript reference mark in the body text; dropped.
-    Reference,
+/// A citation guard, used only below the body and beside a small footnote label.
+/// OCR sometimes inflates the citation's font or reads SCC as "sec".
+fn citation_line(text: &str) -> bool {
+    let mut words = text.split_whitespace().peekable();
+    if words.peek().is_some_and(|word| {
+        word.len() == 1 && matches!(*word, "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H")
+    }) {
+        words.next();
+        while words
+            .peek()
+            .is_some_and(|word| word.chars().all(|c| c.is_ascii_punctuation()))
+        {
+            words.next();
+        }
+    }
+    if words
+        .peek()
+        .is_some_and(|word| word.len() < 4 && word.chars().all(|c| c.is_ascii_digit()))
+    {
+        words.next();
+    }
+    let Some(first) = words.next() else {
+        return false;
+    };
+    let year = first.trim_matches(|c: char| !c.is_ascii_digit());
+    let starts_citation = first == "AIR"
+        || first == "JT"
+        || ((first.starts_with(['(', '[']) || first.len() == 4)
+            && year.len() == 4
+            && year.chars().all(|c| c.is_ascii_digit()));
+    starts_citation
+        && words.any(|word| {
+            matches!(
+                word.to_ascii_uppercase().as_str(),
+                "SC" | "SCC" | "SCR" | "SEC" | "S.C.C." | "S.C.R."
+            )
+        })
 }
 
-/// Finds footnote blocks: smaller-type lines below the last body line of a page
-/// that open with a superscript number, plus the matching marks in the body.
-fn footnote_blocks(segments: &[TextSegment]) -> HashMap<usize, Footnote> {
+/// Finds smaller-type numbered footnotes below the last body line. A raised
+/// body mark confirms ordinary notes; a page-foot citation block also stands
+/// alone because OCR can miss marks and notes can cite an earlier page.
+fn footnote_blocks(segments: &[TextSegment], page_heights: &HashMap<u32, f64>) -> HashSet<usize> {
     let mut pages: HashMap<u32, Vec<usize>> = HashMap::new();
     for (index, segment) in segments.iter().enumerate() {
         if segment.font_size.is_finite() && segment.y.is_finite() {
             pages.entry(segment.page_num).or_default().push(index);
         }
     }
-    let mut found = HashMap::new();
+    let mut found = HashSet::new();
     for indices in pages.values() {
         // The body size is the size carrying the most characters on the page.
         let mut sizes: HashMap<i64, usize> = HashMap::new();
@@ -533,7 +568,12 @@ fn footnote_blocks(segments: &[TextSegment]) -> HashMap<usize, Footnote> {
             continue;
         };
         let is_body = |segment: &TextSegment| {
-            (segment.font_size - body).abs() < body * 0.05 && segment.word_count >= 2
+            (segment.font_size - body).abs() < body * 0.05
+                && segment.word_count >= 2
+                // A labelled citation can have an OCR-inflated body-sized font.
+                // It is only moved if a small label establishes the block below.
+                && !(page_heights.get(&segment.page_num).is_some_and(|height| segment.y > height * 0.65)
+                    && citation_line(&segment.content))
         };
         let last_body = indices
             .iter()
@@ -541,44 +581,69 @@ fn footnote_blocks(segments: &[TextSegment]) -> HashMap<usize, Footnote> {
             .filter(|segment| is_body(segment))
             .map(|segment| segment.y)
             .fold(f64::MIN, f64::max);
-        let mark = |segment: &TextSegment| {
-            segment.font_size < body * 0.75
-                && !segment.content.trim().is_empty()
+        let number = |segment: &TextSegment| {
+            !segment.content.trim().is_empty()
                 && segment.content.trim().chars().all(|c| c.is_ascii_digit())
         };
+        let mark = |segment: &TextSegment| segment.font_size < body * 0.75 && number(segment);
         let mut foot = indices
             .iter()
             .copied()
             .filter(|index| {
                 let segment = &segments[*index];
-                segment.y > last_body && segment.font_size < body * 0.9
+                segment.y > last_body
+                    && (segment.font_size < body * 0.9 || citation_line(&segment.content))
             })
             .collect::<Vec<_>>();
         foot.sort_by(|a, b| segments[*a].y.total_cmp(&segments[*b].y));
-        let Some(first) = foot.first() else { continue };
-        // A footnote block opens with a superscript number, carries text, and is
-        // cited by the same superscript number in the body. A lone small page
-        // number or a numbered caption has no matching body mark.
-        // A footnote mark sits on its footnote's first line, just left of its text.
+
+        // A footnote label sits on its first line, just left of its text.
+        // A reporter rail can extend the citation's box to the left of the label.
         let labels = |opener: &TextSegment| {
             mark(opener)
                 && foot.iter().any(|index| {
                     let segment = &segments[*index];
-                    !mark(segment)
-                        && segment.word_count >= 2
+                    !number(segment)
+                        && segment.word_count >= 1
                         && (segment.y - opener.y).abs() <= body * 0.6
-                        && segment.x >= opener.x
+                        && (segment.x >= opener.x
+                            || (citation_line(&segment.content)
+                                && segment.x >= opener.x - body * 4.0
+                                && segment.x + segment.width > opener.x))
                         && segment.x <= opener.x + opener.width + body * 1.5
                 })
         };
-        if !labels(&segments[*first]) {
+        let inline_label = |segment: &TextSegment| {
+            segment.font_size < body * 0.9
+                && segment
+                    .content
+                    .split_whitespace()
+                    .next()
+                    .is_some_and(|word| word.len() < 4 && word.chars().all(|c| c.is_ascii_digit()))
+                && citation_line(&segment.content)
+        };
+        // Ignore stray OCR punctuation between the body and the first note.
+        let Some(first) = foot
+            .iter()
+            .copied()
+            .find(|index| labels(&segments[*index]) || inline_label(&segments[*index]))
+        else {
             continue;
-        }
+        };
+        let first_y = segments[first].y;
         // A small page number in the foot labels nothing, so it stays in the page flow.
         let foot = foot
             .iter()
             .copied()
-            .filter(|index| !mark(&segments[*index]) || labels(&segments[*index]))
+            .filter(|index| {
+                segments[*index].y >= first_y
+                    && (!(mark(&segments[*index])
+                        || (number(&segments[*index])
+                            && page_heights
+                                .get(&segments[*index].page_num)
+                                .is_some_and(|height| segments[*index].y >= height * 0.9)))
+                        || labels(&segments[*index]))
+            })
             .collect::<Vec<_>>();
         let numbers = foot
             .iter()
@@ -600,33 +665,28 @@ fn footnote_blocks(segments: &[TextSegment]) -> HashMap<usize, Footnote> {
                 .min_by(|a, b| (a.y - segment.y).abs().total_cmp(&(b.y - segment.y).abs()))
                 .is_some_and(|line| segment.y <= line.y - body * 0.15)
         };
-        let references = indices
-            .iter()
-            .copied()
-            .filter(|index| {
-                let segment = &segments[*index];
-                segment.y <= last_body
-                    && mark(segment)
-                    && numbers.contains(segment.content.trim())
-                    && raised(segment)
-            })
-            .collect::<Vec<_>>();
-        if references.is_empty() {
-            continue;
-        }
-        // Two raised marks with one footnote's number cannot both cite it (one may be
-        // an exponent), so both stay in the text.
-        let mut cited: HashMap<&str, usize> = HashMap::new();
-        for index in &references {
-            *cited.entry(segments[*index].content.trim()).or_default() += 1;
-        }
-        for index in references {
-            if cited[segments[index].content.trim()] == 1 {
-                found.insert(index, Footnote::Reference);
-            }
-        }
-        for index in foot {
-            found.insert(index, Footnote::Body);
+        let has_reference = indices.iter().any(|index| {
+            let segment = &segments[*index];
+            segment.y <= last_body
+                && mark(segment)
+                && numbers.contains(segment.content.trim())
+                && raised(segment)
+        });
+        let page_foot_citations =
+            page_heights
+                .get(&segments[first].page_num)
+                .is_some_and(|height| {
+                    height.is_finite()
+                        && *height > 0.0
+                        && last_body > f64::MIN
+                        && first_y > height * 0.65
+                        && first_y - last_body >= body * 0.6
+                        && foot
+                            .iter()
+                            .any(|index| citation_line(&segments[*index].content))
+                });
+        if has_reference || page_foot_citations {
+            found.extend(foot);
         }
     }
     found
@@ -1149,7 +1209,7 @@ mod tests {
     }
 
     #[test]
-    fn footnotes_leave_the_page_flow_and_reference_marks_drop() {
+    fn footnotes_leave_the_page_flow_and_reference_marks_stay() {
         let mut rows = Vec::new();
         for page in 1..=3 {
             for i in 0..6 {
@@ -1177,8 +1237,8 @@ mod tests {
             ));
         }
         let (kept, footnotes) = remove_running_matter(rows, &heights(3));
-        assert_eq!(kept.len(), 18, "{kept:?}");
-        assert!(kept.iter().all(|s| s.font_size == 11.0));
+        assert_eq!(kept.len(), 21, "{kept:?}");
+        assert_eq!(kept.iter().filter(|s| s.font_size == 6.4).count(), 3);
         let notes = footnotes
             .iter()
             .map(|s| s.content.trim())
@@ -1194,6 +1254,113 @@ mod tests {
                 "(1993) 3 SCC 643"
             ]
         );
+    }
+
+    #[test]
+    fn escr_citations_leave_a_cross_page_sentence_intact() {
+        let rows = vec![
+            sized(
+                "It is the bounden duty of the court to",
+                1,
+                80.0,
+                550.0,
+                300.0,
+                11.3,
+            ),
+            // OCR punctuation just below the body is not a footnote opener.
+            sized("•", 1, 379.0, 550.01, 4.0, 6.9),
+            sized("39", 1, 80.0, 580.0, 7.0, 5.5),
+            sized("AIR 1961 SC 838", 1, 90.0, 583.0, 70.0, 8.6),
+            sized("40", 1, 80.0, 591.0, 7.0, 5.2),
+            // OCR can inflate a citation's nominal font size.
+            sized("AIR 1988 SC 191", 1, 90.0, 594.0, 70.0, 14.1),
+            sized("41 (1994) 2 SCC 323", 1, 80.0, 608.0, 90.0, 9.0),
+            sized("42", 1, 80.0, 619.0, 7.0, 5.2),
+            sized("H\n(1995) 1 SCC 537", 1, 60.0, 622.0, 110.0, 14.0),
+            sized("43 1952 SCR 284", 1, 80.0, 635.0, 90.0, 11.3),
+            sized("34", 1, 300.0, 760.0, 8.0, 9.0),
+            sized(
+                "ascertain for what purpose the legal fiction has been created.",
+                2,
+                80.0,
+                150.0,
+                300.0,
+                11.3,
+            ),
+        ];
+        let (kept, notes) = remove_running_matter(rows, &heights(2));
+        let text = kept
+            .iter()
+            .map(|s| s.content.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert!(!text.contains("AIR"), "{}", text);
+        assert!(!text.contains("SCC"), "{}", text);
+        assert!(!kept.iter().any(|s| s.content == "34"));
+        assert!(text.contains("court to • ascertain"), "{}", text);
+        assert_eq!(notes.len(), 8);
+    }
+
+    #[test]
+    fn body_footnote_markers_and_small_body_citations_stay() {
+        let rows = vec![
+            sized(
+                "The court cited the following authority",
+                1,
+                150.0,
+                150.0,
+                300.0,
+                12.0,
+            ),
+            sized("2", 1, 400.0, 146.0, 5.0, 7.0),
+            sized("2 AIR 1961 SC 838", 1, 150.0, 180.0, 90.0, 9.0),
+            sized(
+                "The body continues with its reasoning",
+                1,
+                150.0,
+                200.0,
+                300.0,
+                12.0,
+            ),
+            sized("1", 1, 150.0, 636.0, 5.0, 7.0),
+            sized("\"ICC\"", 1, 157.0, 639.0, 30.0, 9.0),
+            sized("2", 1, 150.0, 650.0, 5.0, 7.0),
+            sized("AIR 1961 SC 838", 1, 157.0, 650.0, 150.0, 9.0),
+        ];
+        let (kept, notes) = remove_running_matter(rows, &heights(1));
+        assert!(kept.iter().any(|s| s.content == "2" && s.y == 146.0));
+        assert!(kept.iter().any(|s| s.content == "2 AIR 1961 SC 838"));
+        assert_eq!(notes.len(), 4);
+        // A body-sized citation at the page foot is ambiguous without a label.
+        let rows = vec![
+            sized("Body text continues here", 1, 150.0, 600.0, 300.0, 12.0),
+            sized("AIR 1961 SC 838", 1, 150.0, 650.0, 150.0, 12.0),
+        ];
+        let (kept, notes) = remove_running_matter(rows, &heights(1));
+        assert_eq!(kept.len(), 2);
+        assert!(notes.is_empty());
+        let rows = vec![
+            sized(
+                "The body ends here with its reasoning",
+                1,
+                150.0,
+                600.0,
+                300.0,
+                12.0,
+            ),
+            sized("2021 SCC OnLine SC 463", 1, 150.0, 650.0, 150.0, 9.0),
+        ];
+        let (kept, notes) = remove_running_matter(rows, &heights(1));
+        assert_eq!(kept.len(), 2);
+        assert!(notes.is_empty());
+        // No body text established: do not infer a footnote-only page.
+        let rows = vec![
+            sized("2", 1, 150.0, 650.0, 5.0, 5.0),
+            sized("AIR 1961 SC 838", 1, 157.0, 653.0, 150.0, 9.0),
+        ];
+        let (kept, notes) = remove_running_matter(rows, &heights(1));
+        assert_eq!(kept.len(), 2);
+        assert!(notes.is_empty());
     }
 
     #[test]
@@ -1349,7 +1516,7 @@ mod tests {
             .map(|s| s.content.trim())
             .collect::<Vec<_>>();
         assert_eq!(notes, ["2", "A note on the cited case"]);
-        assert!(!kept.iter().any(|s| s.content == "2" && s.y == 146.0));
+        assert!(kept.iter().any(|s| s.content == "2" && s.y == 146.0));
         assert!(kept.iter().any(|s| s.content == "2" && s.y == 180.0));
         assert!(kept.iter().any(|s| s.content == "1" && s.y == 159.0));
     }
