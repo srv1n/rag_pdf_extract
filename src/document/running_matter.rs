@@ -562,7 +562,7 @@ fn footnote_blocks(segments: &[TextSegment], page_heights: &HashMap<u32, f64>) -
         }
         let Some(body) = sizes
             .into_iter()
-            .max_by_key(|entry| entry.1)
+            .max_by_key(|&(size, count)| (count, size))
             .map(|entry| entry.0 as f64 / 10.0)
         else {
             continue;
@@ -1549,5 +1549,49 @@ mod tests {
         let (kept, footnotes) = remove_running_matter(rows, &heights(1));
         assert_eq!(footnotes.len(), 2);
         assert_eq!(kept.iter().filter(|s| s.content == "2").count(), 2);
+    }
+
+    #[test]
+    fn equal_line_height_counts_choose_larger_height() {
+        let mut rows = vec![
+            segment("First body line", 1, 100.0, 100.0, 300.0),
+            segment("Second body line", 1, 100.0, 120.0, 300.0),
+        ];
+        rows[0].height = 11.0;
+        rows[1].height = 13.0;
+        // Fresh maps must choose the same mode when the counts tie.
+        for _ in 0..128 {
+            let stats = crate::document::stats::calculate_document_stats(&rows);
+            assert_eq!(stats.body_line_height, 13.0);
+        }
+    }
+
+    #[test]
+    fn equal_page_font_counts_choose_larger_body_font() {
+        let rows = vec![
+            sized("Body text now", 1, 150.0, 150.0, 300.0, 12.0),
+            sized("1 1983 SC 123", 1, 150.0, 650.0, 150.0, 8.0),
+        ];
+        for _ in 0..128 {
+            assert_eq!(footnote_blocks(&rows, &heights(1)), HashSet::from([1]));
+        }
+    }
+
+    #[test]
+    fn equal_font_statistics_choose_larger_font_and_size() {
+        let mut rows = vec![
+            segment("Body text", 1, 100.0, 100.0, 300.0),
+            segment("Body text", 1, 100.0, 120.0, 300.0),
+            segment("Body text", 1, 100.0, 140.0, 300.0),
+        ];
+        rows[0].font_name = "Alpha".into();
+        rows[1].font_name = "Zulu".into();
+        rows[2].font_name = "Zulu".into();
+        rows[2].transformed_font_size = 12.0;
+        for _ in 0..128 {
+            let stats = crate::document::stats::calculate_document_stats(&rows);
+            assert_eq!((stats.body_font.as_str(), stats.body_size), ("Zulu", 12.0));
+            assert_eq!(crate::document::stats::calculate_mode(&[11.0, 13.0]), 13.0);
+        }
     }
 }

@@ -231,7 +231,7 @@ pub(crate) fn calculate_document_stats(segments: &[TextSegment]) -> DocumentStat
         }
         let mode_key = height_counts
             .into_iter()
-            .max_by_key(|&(_, count)| count)
+            .max_by_key(|&(height, count)| (count, height))
             .map(|(key, _)| key)
             .unwrap_or(24); // default 12.0 * 2
         mode_key as f64 / 2.0
@@ -273,7 +273,9 @@ pub(crate) fn calculate_document_stats(segments: &[TextSegment]) -> DocumentStat
                 .iter()
                 .map(move |(&size, &count)| (font_name, size, count))
         })
-        .max_by_key(|&(_, _, count)| count)
+        .max_by(|(font_a, size_a, count_a), (font_b, size_b, count_b)| {
+            (count_a, (font_a, size_a)).cmp(&(count_b, (font_b, size_b)))
+        })
         .map(|(font, size, _)| (font.clone(), size, size))
         .unwrap_or((
             "".to_string(),
@@ -333,7 +335,7 @@ pub fn calculate_mode(numbers: &[f64]) -> f64 {
     }
     let mode = counts
         .into_iter()
-        .max_by_key(|&(_, count)| count)
+        .max_by_key(|&(number, count)| (count, number))
         .unwrap()
         .0;
     mode as f64 / 100.0

@@ -3677,7 +3677,9 @@ impl<'a> Processor<'a> {
         rendering_mode: i32,
         page_stats: Option<PageTextLayerStats>,
     ) -> bool {
-        TextVisibilityPolicy::default()
+        static POLICY: std::sync::LazyLock<TextVisibilityPolicy> =
+            std::sync::LazyLock::new(TextVisibilityPolicy::default);
+        POLICY
             .decide(TextVisibilityInput {
                 transform,
                 font_size,
@@ -5403,7 +5405,9 @@ impl<'a> Processor<'a> {
                     }
                     let font_name = font_counts
                         .into_iter()
-                        .max_by_key(|(_, count)| *count)
+                        .max_by(|(font_a, count_a), (font_b, count_b)| {
+                            (count_a, font_a).cmp(&(count_b, font_b))
+                        })
                         .map(|(font, _)| font)
                         .unwrap_or_default();
                     let font_size = line
