@@ -2270,6 +2270,11 @@ impl Function {
                 let n = get::<f64>(doc, dict, b"N");
                 Function::Type2(Type2Func { c0, c1, n })
             }
+            // Stitching (3) and PostScript calculator (4) functions only map colours; a tint
+            // transform is kept, never evaluated, so the page's text must not be lost to it
+            // (Supreme Court Reports PDFs, 2019: every page panicked and only ~2% of text survived).
+            3 => Function::Type3,
+            4 => Function::Type4,
             _ => {
                 panic!("unhandled function type {}", function_type)
             }
@@ -8817,4 +8822,23 @@ pub fn extract_pdf_location(content_ext: &ContentExt) -> Result<PdfLocation, Out
         message: "no PDF location data found in ContentExt".to_string(),
         context: ErrorContext::default(),
     })
+}
+
+#[cfg(test)]
+mod function_tests {
+    use super::Function;
+    use lopdf::{dictionary, Document, Object, Stream};
+
+    #[test]
+    fn calculator_and_stitching_tint_transforms_do_not_panic() {
+        let doc = Document::with_version("1.5");
+        let calculator = Object::Stream(Stream::new(
+            dictionary! { "FunctionType" => 4, "Domain" => vec![0.into(), 1.into()],
+                          "Range" => vec![0.into(), 1.into(), 0.into(), 1.into(), 0.into(), 1.into(), 0.into(), 1.into()] },
+            b"{ dup dup dup }".to_vec(),
+        ));
+        assert!(matches!(Function::new(&doc, &calculator), Function::Type4));
+        let stitching = Object::Dictionary(dictionary! { "FunctionType" => 3 });
+        assert!(matches!(Function::new(&doc, &stitching), Function::Type3));
+    }
 }
