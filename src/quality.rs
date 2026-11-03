@@ -605,7 +605,10 @@ fn substitution_cipher_like(text: &str, script: &TextScriptProfile) -> bool {
     if script.latin_alpha < 64 || total_alpha == 0 || script.latin_alpha * 100 < total_alpha * 80 {
         return false;
     }
-    let words = ascii_words(text);
+    // All-capital words are abbreviations, not cipher: a law report's citation list
+    // ("(1998)9SCC514, 1999 AIR SCW 4846, LABLJ") has few vowels and no common words,
+    // yet it is clean text. Text from a broken font map comes out in mixed case.
+    let words = ascii_words_with_lowercase(text);
     if words.len() < 10 {
         return false;
     }
@@ -621,6 +624,13 @@ fn substitution_cipher_like(text: &str, script: &TextScriptProfile) -> bool {
         .filter(|ch| matches!(ch, 'a' | 'e' | 'i' | 'o' | 'u'))
         .count();
     common_ratio <= 0.06 && ratio(vowels, letters) <= 0.28
+}
+
+fn ascii_words_with_lowercase(text: &str) -> Vec<String> {
+    text.split(|ch: char| !ch.is_ascii_alphabetic())
+        .filter(|word| word.len() >= 2 && word.chars().any(|ch| ch.is_ascii_lowercase()))
+        .map(str::to_ascii_lowercase)
+        .collect()
 }
 
 fn ascii_words(text: &str) -> Vec<String> {
@@ -768,6 +778,33 @@ mod tests {
 
         assert_eq!(status, ParseQualityStatus::MostlyBoilerplate);
         assert!(score <= 0.25);
+    }
+
+    #[test]
+    fn law_report_citation_list_is_not_cipher() {
+        // Indian Kanoon's header on a one-page order; alone in its chunk it failed the parse.
+        let header = "Equivalent citations: (1999)1CALLT81(SC), [1999(81)FLR348], JT1998(8)SC422, \
+            (1998)9SCC514, AIRONLINE 1996 SC 256, 1998 (9) SCC 514, 1999 AIR SCW 4846, (1998) 1 LAB LN 350, \
+            1998 SCC (L&S) 1242, (1999) 3 LAB LJ 54, (1999) 1 CAL LT 81, (1999) 1 SCT 536, (1998) 8 JT 422, \
+            (1998) 7 SERVLR 603, (1999) 1 LABLJ 254, (1999) 81 FACLR 303, (1999) 1 LAB LN 18";
+        let quality = assess_text_quality(header);
+
+        assert!(!quality
+            .findings
+            .iter()
+            .any(|f| f.signal == TextQualitySignal::SubstitutionCipherLike));
+    }
+
+    #[test]
+    fn mixed_case_cipher_is_still_flagged() {
+        let cipher = "Tkh Prsdng Ftcr Lbqr Crt Hld Thtz Mplvy Wsnt Ntld Bckwgs Strc Prtn Rdr Trbnl \
+            Grmn Hgh Crt Mnt Dpstd Pllnt Pyrsnt Rdrs Shll Rtrnd Pplnt Dspsd Crdngly Cssts";
+        let quality = assess_text_quality(cipher);
+
+        assert!(quality
+            .findings
+            .iter()
+            .any(|f| f.signal == TextQualitySignal::SubstitutionCipherLike));
     }
 
     #[test]
