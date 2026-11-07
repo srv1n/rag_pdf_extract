@@ -1259,6 +1259,25 @@ fn encoding_to_unicode_table(name: &[u8]) -> Vec<u16> {
     has a built-in encoding. Under some circumstances, the encoding can be altered by means
     described in Section 5.5.5, "Character Encoding."
 */
+/// Whether a Type1C font's built-in encoding decides what its character codes mean.
+/// An encoding named in the font dictionary wins over the built-in one. A predefined
+/// built-in is a code-to-glyph-name table that cannot be paired with the charset by
+/// position: doing so turned every letter of a MacRoman book into another glyph.
+fn type1c_builtin_encoding_applies(
+    doc: &Document,
+    font_encoding: Option<&Object>,
+    builtin_is_predefined: bool,
+) -> bool {
+    let font_names_encoding = match font_encoding {
+        Some(Object::Name(_)) => true,
+        Some(Object::Dictionary(encoding)) => {
+            maybe_get_name(doc, encoding, b"BaseEncoding").is_some()
+        }
+        _ => false,
+    };
+    !font_names_encoding && !builtin_is_predefined
+}
+
 impl<'a> PdfSimpleFont<'a> {
     fn new(doc: &'a Document, font: &'a Dictionary) -> PdfSimpleFont<'a> {
         let base_name = get_name_string(doc, font, b"BaseFont");
@@ -1311,7 +1330,17 @@ impl<'a> PdfSimpleFont<'a> {
                     if subtype == "Type1C" {
                         let bytes = get_contents(s);
                         match cff_parser::Table::parse(&bytes) {
-                            Some(table) => {
+                            Some(table)
+                                if type1c_builtin_encoding_applies(
+                                    doc,
+                                    encoding,
+                                    matches!(
+                                        table.encoding.kind,
+                                        cff_parser::EncodingKind::Standard
+                                            | cff_parser::EncodingKind::Expert
+                                    ),
+                                ) =>
+                            {
                                 let charset = table.charset.get_table();
                                 let encoding = table.encoding.get_table();
                                 let mut mapping = HashMap::new();
@@ -1344,6 +1373,7 @@ impl<'a> PdfSimpleFont<'a> {
                                     embedded_unicode_map = Some(mapping);
                                 }
                             }
+                            Some(_) => {}
                             None => {
                                 warn!("failed to parse embedded Type1C font {}", base_name);
                             }
@@ -8840,5 +8870,30 @@ mod function_tests {
         assert!(matches!(Function::new(&doc, &calculator), Function::Type4));
         let stitching = Object::Dictionary(dictionary! { "FunctionType" => 3 });
         assert!(matches!(Function::new(&doc, &stitching), Function::Type3));
+    }
+}
+
+#[cfg(test)]
+mod type1c_encoding_tests {
+    use super::*;
+
+    #[test]
+    fn a_named_or_predefined_encoding_overrides_the_type1c_table() {
+        let doc = Document::new();
+        let name = Object::Name(b"MacRomanEncoding".to_vec());
+        let mut based = Dictionary::new();
+        based.set("BaseEncoding", name.clone());
+        let based = Object::Dictionary(based);
+        let differences_only = Object::Dictionary(Dictionary::new());
+
+        assert!(!type1c_builtin_encoding_applies(&doc, Some(&name), false));
+        assert!(!type1c_builtin_encoding_applies(&doc, Some(&based), false));
+        assert!(!type1c_builtin_encoding_applies(&doc, None, true));
+        assert!(type1c_builtin_encoding_applies(
+            &doc,
+            Some(&differences_only),
+            false
+        ));
+        assert!(type1c_builtin_encoding_applies(&doc, None, false));
     }
 }
