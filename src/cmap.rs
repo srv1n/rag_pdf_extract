@@ -20,7 +20,7 @@
 
 extern crate pom;
 
-use pom::char_class::{alpha, hex_digit, oct_digit, multispace};
+use pom::char_class::{hex_digit, oct_digit, multispace};
 use pom::Parser;
 use pom::parser::*;
 use pom::DataInput;
@@ -54,7 +54,10 @@ fn content_space() -> Parser<u8, ()> {
 }
 
 fn operator() -> Parser<u8, String> {
-    (is_a(alpha) | one_of(b"*'\"")).repeat(1..).convert(|v|String::from_utf8(v))
+    // PDF keywords can contain any regular character, including bare CMap names.
+    none_of(b" \t\n\r\0\x0C()<>[]{}/%")
+        .repeat(1..)
+        .convert(String::from_utf8)
 }
 
 fn oct_char() -> Parser<u8, u8> {

@@ -70,8 +70,13 @@ variants and inspect `ErrorContext` rather than parse display strings.
 
 ### Decompressed-stream budget
 
-`max_decompressed_stream_bytes` is serde-configurable at runtime and defaults
-to 128 MiB. It bounds the cumulative bytes extraction materializes from page
+`max_decompressed_stream_bytes` is serde-configurable at runtime. The default,
+`Some(0)`, selects `max(256 MiB, 1 MiB × pages)`, capped at 2 GiB. Positive
+values are exact byte limits; `None` disables this check. The backend's
+`RZN_PDF_MAX_DECOMPRESSED_STREAM_BYTES` override continues to set an exact limit.
+Missing, non-positive, non-integer, or overflowing image dimensions report
+`pdf_invalid_structure`, with no fabricated observed byte count. The budget bounds
+the cumulative bytes extraction materializes from page
 content, forms, fonts, and other non-image streams. Image XObjects are charged
 at stored size because OCR decodes them one at a time, while each image's
 decoded bitmap/RGB working size is checked independently against the same hard

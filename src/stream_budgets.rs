@@ -9,7 +9,8 @@ impl Default for ExtractionOptions {
             max_pages: Some(10_000),
             max_objects: Some(1_000_000),
             max_recursion_depth: Some(8),
-            max_decompressed_stream_bytes: Some(128 * 1024 * 1024),
+            // Zero defers the default budget until the page count is known.
+            max_decompressed_stream_bytes: Some(0),
             max_output_bytes: Some(128 * 1024 * 1024),
             password: None,
             enable_repairs: true,
@@ -37,20 +38,24 @@ fn bounded_decompressed_content(
         .and_then(|value| value.as_name().ok())
         == Some(b"Image".as_slice())
     {
-        let width = stream
-            .dict
-            .get(b"Width")
-            .ok()
-            .and_then(|value| value.as_i64().ok())
-            .and_then(|value| usize::try_from(value).ok())
-            .unwrap_or(usize::MAX);
-        let height = stream
-            .dict
-            .get(b"Height")
-            .ok()
-            .and_then(|value| value.as_i64().ok())
-            .and_then(|value| usize::try_from(value).ok())
-            .unwrap_or(usize::MAX);
+        let dimension = |key: &[u8]| {
+            stream
+                .dict
+                .get(key)
+                .ok()
+                .and_then(|value| value.as_i64().ok())
+                .and_then(|value| usize::try_from(value).ok())
+                .filter(|value| *value > 0)
+                .ok_or_else(|| OutputError::InvalidStructure {
+                    message: format!(
+                        "image {} must be a positive integer",
+                        String::from_utf8_lossy(key)
+                    ),
+                    context: Default::default(),
+                })
+        };
+        let width = dimension(b"Width")?;
+        let height = dimension(b"Height")?;
         let bits_per_component = stream
             .dict
             .get(b"BitsPerComponent")
@@ -89,8 +94,11 @@ fn bounded_decompressed_content(
             predictor,
             stream.content.len(),
         )
-        .map(|bounds| bounds.working_set_bytes)
-        .unwrap_or(usize::MAX);
+        .ok_or_else(|| OutputError::InvalidStructure {
+            message: "image dimensions overflow decoded working size".to_owned(),
+            context: Default::default(),
+        })?
+        .working_set_bytes;
         if working_set_bytes > image_limit {
             return Err(decompression_limit_error(
                 image_limit,
@@ -327,8 +335,8 @@ pub(crate) fn validate_document_budgets(
     document: &Document,
     options: &ExtractionOptions,
 ) -> Result<(), OutputError> {
+    let pages = document.get_pages().len();
     if let Some(limit) = options.max_pages {
-        let pages = document.get_pages().len();
         if pages > limit {
             return Err(OutputError::resource_limit(
                 ResourceLimitKind::Pages,
@@ -360,12 +368,20 @@ pub(crate) fn validate_document_budgets(
         }
     }
     if let Some(limit) = options.max_decompressed_stream_bytes {
+        let limit = if limit == 0 {
+            default_stream_budget(pages)
+        } else {
+            limit
+        };
         accounted_stream_bytes(document, limit)?;
     }
     Ok(())
 }
 
-pub(super) fn accounted_stream_bytes(document: &Document, limit: usize) -> Result<usize, OutputError> {
+pub(super) fn accounted_stream_bytes(
+    document: &Document,
+    limit: usize,
+) -> Result<usize, OutputError> {
     let mut total = 0usize;
     for object in document.objects.values() {
         let Object::Stream(stream) = object else {
@@ -376,13 +392,20 @@ pub(super) fn accounted_stream_bytes(document: &Document, limit: usize) -> Resul
             Ok(decompressed) => decompressed,
             Err(OutputError::ResourceLimit {
                 kind: ResourceLimitKind::DecompressedStreamBytes,
+                limit: stream_limit,
                 observed,
                 ..
             }) => {
                 return Err(OutputError::resource_limit(
                     ResourceLimitKind::DecompressedStreamBytes,
                     limit,
-                    observed.map(|value| total.saturating_add(value)),
+                    observed.map(|value| {
+                        if stream_limit == remaining {
+                            total.saturating_add(value)
+                        } else {
+                            value
+                        }
+                    }),
                 ));
             }
             Err(error) => return Err(error),
@@ -399,3 +422,29 @@ pub(super) fn accounted_stream_bytes(document: &Document, limit: usize) -> Resul
     Ok(total)
 }
 
+fn default_stream_budget(pages: usize) -> usize {
+    pages
+        .saturating_mul(1024 * 1024)
+        .clamp(256 * 1024 * 1024, 2 * 1024 * 1024 * 1024)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_budget_has_a_floor_scales_by_pages_and_caps_without_overflow() {
+        for (pages, mib) in [
+            (0, 256),
+            (1, 256),
+            (256, 256),
+            (257, 257),
+            (417, 417),
+            (2048, 2048),
+            (10_000, 2048),
+            (usize::MAX, 2048),
+        ] {
+            assert_eq!(default_stream_budget(pages), mib * 1024 * 1024);
+        }
+    }
+}
