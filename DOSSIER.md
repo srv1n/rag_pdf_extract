@@ -1,5 +1,5 @@
 # PDF Extract — dossier
-Last updated: 2026-08-18 (update this line every edit)
+Last updated: 2026-11-12 (update this line every edit)
 
 ## One paragraph
 PDF Extract is a Rust library—not an end-user application—that turns PDF files into token-bounded text chunks for downstream search and retrieval systems. It can preserve headings, page and bounding-box locations, source-to-output spans, and extraction-quality metadata; optionally it can use layout analysis, Form XObject traversal, and OCR for PDFs whose text is not available through the basic path.
@@ -26,7 +26,7 @@ Primary maintainer/integrator: Sarav, through RZN Backend and RZN Tauri. The int
 - Historical 2026-07-21 M1 Pro full-core benchmark: 21/21 Supreme Court PDFs completed; 1,925 pages and 3,271,444 output characters; second run took 39,625.79 ms total, 20.58 ms/page weighted, and 19.76 ms/page median. Reproduce with `make bench-corpus`; corpus identity is pinned by `shasum -a 256 -c benchmarks/corpus.sha256`. This predates the 2026-08-06 and 2026-08-09 hardening commits.
 - Same corpus/settings on two Rayon workers: 46,060.48 ms total and 23.93 ms/page weighted. Reproduce with `make bench-corpus-2core` after fetching the pinned corpus.
 - Same corpus/settings under macOS background QoS: 356,524.55 ms total, 185.21 ms/page weighted, and 0.113x full-core throughput. This is a scheduling approximation, not hard efficiency-core pinning. Reproduce with `make bench-corpus-ecores` on the recorded Apple M1 Pro setup.
-- Decompressed `ContentExt` is capped at 16 MiB; the default cumulative non-image decompressed-stream budget is 128 MiB, while decoded image working sets are checked independently. Reproduce with `rg 'CONTENT_EXT_DECOMPRESS_LIMIT_BYTES|max_decompressed_stream_bytes' src/lib.rs MIGRATION.md` and `cargo test --test decompression_limits`.
+- Decompressed `ContentExt` is capped at 16 MiB; the default cumulative non-image decompressed-stream budget is max(256 MiB, 1 MiB × pages), capped at 2 GiB (was a flat 128 MiB until 2026-11-12), while decoded image working sets are checked independently. Reproduce with `rg 'CONTENT_EXT_DECOMPRESS_LIMIT_BYTES|max_decompressed_stream_bytes|default_stream_budget' src MIGRATION.md` and `cargo test --test decompression_limits --test decoder_regressions`.
 - GitHub stars: 1 as of 2026-08-18; reproduce from the public `srv1n/rag_pdf_extract` repository page. Sarav reports the star is his own. GitHub releases: 0 and packages: 0 on the same date, reproducible from that page.
 - The fork has no GitHub releases or packages and no independently tracked installs/downloads. It is not a standalone commercial product, and no separate revenue is attributed to it. There is no external production volume or measured real-world loss rate because use is local to Sarav.
 - A later repository evaluation run at git `ddc8d25` passed 2 of 4 files: the legal case passed, while one mixed fixture had an invalid PDF header and another exceeded the configured empty-section threshold at 10.9%. Reproduce with `python eval/eval.py --history` and inspect `eval/runs/latest.json`; WER, CER, heading F1, and content coverage are null, so this run does not substantiate the README's broad quality claims.
@@ -38,6 +38,8 @@ One pipeline loads and bounds a PDF, extracts glyphs and images, optionally anal
 Notable decisions: lopdf-only parser path; typed reason codes; original-first bounded repairs; stable source/range/ordinal chunk IDs separate from content hashes; optional detailed output spans; workload-specific `all_texts`; OCR disabled by default.
 
 ## Recent changes (rolling, newest first, keep last ~10)
+- 2026-11-12: Fixed CMap keyword lexing that dropped bfchar-only ToUnicode maps with bare hyphenated CMap names (calibre/Qt PDFs decoded as glyph ids); *Save the Cat!* now extracts within 0.23% of Poppler's word count.
+- 2026-11-12: Default decompressed-stream budget scales with pages (256 MiB floor, 2 GiB cap); a 417-page book that needed 161 MB now parses. Invalid or overflowing image dimensions report `pdf_invalid_structure` instead of a fabricated `usize::MAX` byte count.
 - 2026-08-09: Bounded decoded image working sets to prevent compact images from inflating past the resource ceiling.
 - 2026-08-09: Corrected image stream budget accounting and added a decompression report.
 - 2026-08-06: Added typed extraction errors, encrypted-PDF handling, document classification, bounded repairs, and paired regression tooling.
@@ -46,8 +48,6 @@ Notable decisions: lopdf-only parser path; typed reason codes; original-first bo
 - 2026-07-21: Added a pinned 21-document Supreme Court performance and stability benchmark.
 - 2026-07-21: Normalized non-zero PDF page-box origins for location metadata.
 - 2026-07-06: Prevented nested Form XObject font-resource decode collisions.
-- 2026-07-06: Emitted compact, grouped chunk locations while retaining detailed source spans.
-- 2026-07-06: Replaced effectively quadratic hard-cap chunk splitting on long legal text with bounded prefix probing.
 
 ## Deliberate exclusions
 - No document-type policy or change-data-capture logic; those stay in the consuming application because editability and citation-stability policy are caller concerns.
