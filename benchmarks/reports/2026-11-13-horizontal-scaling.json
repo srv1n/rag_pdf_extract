@@ -1,0 +1,120 @@
+{
+  "status": "EXPERIMENTAL_NOT_ACCEPTED",
+  "scope": "Tz horizontal scale only; no line grouping changes",
+  "baseline_report": "2026-11-13-pdf-bug-originals.json",
+  "tests": "5 passing: horizontal_scaling(2), quartz_text_transforms(1), pdf_page_bbox_origins(2)",
+  "books": [
+    {
+      "source_pdf": "Comedy Writing for Late-Night TV - Joe Toplyn.pdf",
+      "sha256": "b5b72a4e84d5fa64b36a1cac58645eb5fa577b9b492f42b8ebaa4cfcf20d351c",
+      "chunks": 752,
+      "extracted_words": 131299,
+      "poppler_words": 120001,
+      "word_ratio": 1.0941492154232049,
+      "extracted_long_word_fraction": 3.8081021180663984e-05,
+      "poppler_long_word_fraction": 7.499937500520829e-05,
+      "extracted_single_letter_fraction": 0.17808970365349316,
+      "poppler_single_letter_fraction": 0.060724493962550315,
+      "pages_with_content": 449,
+      "before_extracted_words": 130942,
+      "before_single_letter_fraction": 0.17358066930396665,
+      "word_count_change": 357
+    },
+    {
+      "source_pdf": "On Film-Making - Alexander Mackendrick.pdf",
+      "sha256": "14d8ebcf50b16f4ddda70f84c41df6963ea7a6468b32c26ab8d6ac18aa6cd6cd",
+      "chunks": 898,
+      "extracted_words": 138411,
+      "poppler_words": 109209,
+      "word_ratio": 1.26739554432327,
+      "extracted_long_word_fraction": 0.0,
+      "poppler_long_word_fraction": 9.15675447994213e-06,
+      "extracted_single_letter_fraction": 0.29403732362312246,
+      "poppler_single_letter_fraction": 0.04692836670970341,
+      "pages_with_content": 333,
+      "before_extracted_words": 137129,
+      "before_single_letter_fraction": 0.28048042354279545,
+      "word_count_change": 1282
+    }
+  ],
+  "single_page_repro": [
+    {
+      "source_pdf": "On Film-Making - Alexander Mackendrick.pdf",
+      "page": 29,
+      "before_words": 798,
+      "after_words": 814,
+      "poppler_words": 408,
+      "before_single_letters": 479,
+      "after_single_letters": 509,
+      "poppler_single_letters": 17
+    },
+    {
+      "source_pdf": "Comedy Writing for Late-Night TV - Joe Toplyn.pdf",
+      "page": 48,
+      "before_words": 651,
+      "after_words": 664,
+      "poppler_words": 298,
+      "before_single_letters": 443,
+      "after_single_letters": 468,
+      "poppler_single_letters": 12
+    }
+  ],
+  "source_geometry": [
+    {
+      "source_pdf": "On Film-Making - Alexander Mackendrick.pdf",
+      "sha256": "14d8ebcf50b16f4ddda70f84c41df6963ea7a6468b32c26ab8d6ac18aa6cd6cd",
+      "page": 29,
+      "text_show_operations": 407,
+      "skewed_text_show_operations": 179,
+      "skewed_text_matrix": [
+        1.0,
+        -0.008,
+        0.008,
+        1.0,
+        18.546,
+        568.6
+      ],
+      "first_horizontal_scale_percent": [
+        74.864,
+        90.226,
+        84.358,
+        67.868,
+        84.724,
+        92.424,
+        93.132,
+        89.33
+      ]
+    },
+    {
+      "source_pdf": "Comedy Writing for Late-Night TV - Joe Toplyn.pdf",
+      "sha256": "b5b72a4e84d5fa64b36a1cac58645eb5fa577b9b492f42b8ebaa4cfcf20d351c",
+      "page": 48,
+      "text_show_operations": 286,
+      "skewed_text_show_operations": 126,
+      "skewed_text_matrix": [
+        1.0,
+        0.007,
+        -0.007,
+        1.0,
+        49.678,
+        545.395
+      ],
+      "first_horizontal_scale_percent": [
+        198.678,
+        86.9,
+        82.288,
+        76.774,
+        76.22,
+        77.86,
+        93.786,
+        77.48
+      ]
+    }
+  ],
+  "unverified": [
+    "Exact-Y sorting as cause of scrambling remains a hypothesis; no minimal generic failure isolated.",
+    "Requested Nov12 reOCR168 Supreme Court PDF provenance/path unavailable; no substitute claimed.",
+    "Rotation and nonuniform transform geometry inherited; not fixed or validated.",
+    "No backend rebuild/pin/deployment or 1000-document run."
+  ]
+}

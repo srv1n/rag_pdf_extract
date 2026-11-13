@@ -4181,6 +4181,8 @@ impl<'a> Processor<'a> {
                                                 .round()
                                                 / 100.0;
                                         // Use full device-space transform: CTM x Tm x viewer Y-flip
+                                        let glyph_advance =
+                                            w0 * transformed_font_size * gs.ts.horizontal_scaling;
                                         let trm_vis = device_trm;
                                         let is_add = if use_layout {
                                             self.visible_for_layout(
@@ -4290,10 +4292,10 @@ impl<'a> Processor<'a> {
                                             if use_layout {
                                                 // Collect glyphs for layout grouping
                                                 let g_height = transformed_font_size.max(0.0);
-                                                let g_width = (w0 * transformed_font_size).max(0.0);
+                                                let g_width = glyph_advance.abs();
                                                 glyphs.push(Glyph {
                                                     ch: char.clone(),
-                                                    x,
+                                                    x: x.min(x + glyph_advance),
                                                     y,
                                                     width: g_width,
                                                     height: g_height,
@@ -4330,7 +4332,7 @@ impl<'a> Processor<'a> {
                                         }
                                         first_char = false;
 
-                                        last_end = x + w0 * transformed_font_size;
+                                        last_end = x + glyph_advance;
                                         last_y = y;
 
                                         let tx = gs.ts.horizontal_scaling
@@ -4404,6 +4406,8 @@ impl<'a> Processor<'a> {
                                 / 100.0;
 
                             // Use full device-space transform: CTM x Tm x viewer Y-flip
+                            let glyph_advance =
+                                w0 * transformed_font_size * gs.ts.horizontal_scaling;
                             let trm_vis = device_trm;
                             let is_add = if use_layout {
                                 self.visible_for_layout(
@@ -4492,10 +4496,10 @@ impl<'a> Processor<'a> {
                             if is_add {
                                 if use_layout {
                                     let g_height = transformed_font_size.max(0.0);
-                                    let g_width = (w0 * transformed_font_size).max(0.0);
+                                    let g_width = glyph_advance.abs();
                                     glyphs.push(Glyph {
                                         ch: char.clone(),
-                                        x,
+                                        x: x.min(x + glyph_advance),
                                         y,
                                         width: g_width,
                                         height: g_height,
@@ -4526,7 +4530,7 @@ impl<'a> Processor<'a> {
                             }
                             first_char = false;
 
-                            last_end = x + w0 * transformed_font_size;
+                            last_end = x + glyph_advance;
                             last_y = y;
 
                             let tx = gs.ts.horizontal_scaling
@@ -4668,6 +4672,7 @@ impl<'a> Processor<'a> {
                                 .round()
                                 / 100.0;
 
+                            let glyph_advance = w0 * transformed_font_size * ts.horizontal_scaling;
                             let trm_vis = device_trm;
                             let is_add = if use_layout {
                                 self.visible_for_layout(
@@ -4693,10 +4698,10 @@ impl<'a> Processor<'a> {
                             if is_add {
                                 if use_layout {
                                     let g_height = transformed_font_size.max(0.0);
-                                    let g_width = (w0 * transformed_font_size).max(0.0);
+                                    let g_width = glyph_advance.abs();
                                     glyphs.push(Glyph {
                                         ch: ch.clone(),
-                                        x,
+                                        x: x.min(x + glyph_advance),
                                         y,
                                         width: g_width,
                                         height: g_height,
@@ -4726,7 +4731,7 @@ impl<'a> Processor<'a> {
                                 }
                             }
                             first_char = false;
-                            last_end = x + w0 * transformed_font_size;
+                            last_end = x + glyph_advance;
                             last_y = y;
                             let tx = ts.horizontal_scaling
                                 * ((w0 - 0. / 1000.) * ts.font_size + spacing);
@@ -4779,6 +4784,8 @@ impl<'a> Processor<'a> {
                                     .round()
                                     / 100.0;
 
+                                let glyph_advance =
+                                    w0 * transformed_font_size * ts.horizontal_scaling;
                                 let trm_vis = device_trm;
                                 let is_add = if use_layout {
                                     self.visible_for_layout(
@@ -4804,10 +4811,10 @@ impl<'a> Processor<'a> {
                                 if is_add {
                                     if use_layout {
                                         let g_height = transformed_font_size.max(0.0);
-                                        let g_width = (w0 * transformed_font_size).max(0.0);
+                                        let g_width = glyph_advance.abs();
                                         glyphs.push(Glyph {
                                             ch: ch.clone(),
-                                            x,
+                                            x: x.min(x + glyph_advance),
                                             y,
                                             width: g_width,
                                             height: g_height,
@@ -4837,7 +4844,7 @@ impl<'a> Processor<'a> {
                                     }
                                 }
                                 first_char = false;
-                                last_end = x + w0 * transformed_font_size;
+                                last_end = x + glyph_advance;
                                 last_y = y;
                                 let tx = ts.horizontal_scaling
                                     * ((w0 - 0. / 1000.) * ts.font_size + spacing);
