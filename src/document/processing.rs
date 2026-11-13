@@ -2437,6 +2437,34 @@ pub fn parse_pdf(
     clean_text: Option<bool>, // Clean text for indexing (default: true)
     options: ExtractionOptions,
 ) -> Result<Vec<ExtractionResult>, OutputError> {
+    parse_pdf_with_report(
+        file_path,
+        source_id,
+        source_type,
+        ocr_config,
+        ocr_cache,
+        _resume,
+        max_tokens,
+        laparams,
+        clean_text,
+        options,
+    )
+    .map(|report| report.results)
+}
+
+/// Parse a PDF and return the same production diagnostics emitted to the log.
+pub fn parse_pdf_with_report(
+    file_path: &str,
+    source_id: i64,
+    source_type: &str,
+    ocr_config: Option<crate::OcrConfig>,
+    ocr_cache: Option<&str>,
+    _resume: Option<bool>, // Kept for compatibility
+    max_tokens: Option<usize>,
+    laparams: Option<crate::LAParams>,
+    clean_text: Option<bool>, // Clean text for indexing (default: true)
+    options: ExtractionOptions,
+) -> Result<crate::PdfParseReport, OutputError> {
     let _ = ocr_cache;
     let loaded = crate::load_pdf_from_path(file_path, &options)?;
     let doc = loaded.document;
@@ -2487,6 +2515,7 @@ pub fn parse_pdf(
     };
 
     if layout_requested && should_probe_no_layout {
+        let layout_skips = ocr_telemetry.take_skipped_xobjects();
         let mut no_layout_results = output_doc_new_schema_with_ocr_telemetry(
             &doc,
             ocr_handler.as_ref(),
@@ -2530,7 +2559,7 @@ pub fn parse_pdf(
                 layout_chars,
                 no_layout_chars
             );
-            log_production_telemetry(
+            let telemetry = log_production_telemetry(
                 file_path,
                 &doc,
                 &no_layout_results,
@@ -2542,10 +2571,14 @@ pub fn parse_pdf(
                 Some(no_layout_chars),
                 &ocr_telemetry,
             );
-            return Ok(no_layout_results);
+            return Ok(crate::PdfParseReport {
+                results: no_layout_results,
+                telemetry,
+            });
         }
 
-        log_production_telemetry(
+        ocr_telemetry.restore_skipped_xobjects(layout_skips);
+        let telemetry = log_production_telemetry(
             file_path,
             &doc,
             &layout_results,
@@ -2557,10 +2590,13 @@ pub fn parse_pdf(
             Some(no_layout_chars),
             &ocr_telemetry,
         );
-        return Ok(layout_results);
+        return Ok(crate::PdfParseReport {
+            results: layout_results,
+            telemetry,
+        });
     }
 
-    log_production_telemetry(
+    let telemetry = log_production_telemetry(
         file_path,
         &doc,
         &layout_results,
@@ -2572,7 +2608,10 @@ pub fn parse_pdf(
         None,
         &ocr_telemetry,
     );
-    Ok(layout_results)
+    Ok(crate::PdfParseReport {
+        results: layout_results,
+        telemetry,
+    })
 }
 
 fn log_production_telemetry(
@@ -2586,7 +2625,7 @@ fn log_production_telemetry(
     layout_normalized_chars: Option<usize>,
     no_layout_normalized_chars: Option<usize>,
     ocr_telemetry: &crate::OcrImageTelemetry,
-) {
+) -> crate::ProductionTelemetry {
     let page_dimensions = crate::pdf_page_dimensions(doc);
     let telemetry = crate::production_telemetry_for_results(
         results,
@@ -2605,6 +2644,7 @@ fn log_production_telemetry(
         "metrics": telemetry,
     });
     info!("{}", payload);
+    telemetry
 }
 
 fn normalized_extraction_chars(results: &[ExtractionResult]) -> usize {

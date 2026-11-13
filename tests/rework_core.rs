@@ -3,7 +3,8 @@ use lopdf::{
     Stream,
 };
 use pdf_extract::{
-    extract_text_from_mem, parse_pdf, EncryptionFailure, ExtractionOptions, OutputError,
+    extract_text_from_mem, parse_pdf, parse_pdf_with_report, EncryptionFailure, ExtractionOptions,
+    OutputError,
 };
 use std::convert::TryFrom;
 
@@ -245,30 +246,88 @@ fn deep_form_xobject_depth_skip_preserves_page_text() {
 
 #[test]
 fn missing_xobject_does_not_discard_following_page_text() {
-    let mut document = Document::load_mem(&deep_form_xobject_pdf(1)).unwrap();
-    let page_id = document.get_pages()[&1];
-    let content_id = document
-        .get_object(page_id)
-        .unwrap()
-        .as_dict()
-        .unwrap()
-        .get(b"Contents")
-        .unwrap()
-        .as_reference()
-        .unwrap();
-    let stream = document
-        .get_object_mut(content_id)
-        .unwrap()
-        .as_stream_mut()
-        .unwrap();
-    let mut content = b"/X0 Do\n".to_vec();
-    content.extend_from_slice(&stream.content);
-    stream.set_plain_content(content);
-    let mut bytes = Vec::new();
-    document.save_to(&mut bytes).unwrap();
-    let text = extract_text_from_mem(&bytes, None).expect("missing X0 is skipped");
-    assert!(
-        text.contains("VISIBLE SURVIVES"),
-        "following text lost: {text}"
-    );
+    for malformed_resource in [false, true] {
+        let mut document = Document::load_mem(&deep_form_xobject_pdf(1)).unwrap();
+        let page_id = document.get_pages()[&1];
+        if malformed_resource {
+            document
+                .get_object_mut(page_id)
+                .unwrap()
+                .as_dict_mut()
+                .unwrap()
+                .get_mut(b"Resources")
+                .unwrap()
+                .as_dict_mut()
+                .unwrap()
+                .get_mut(b"XObject")
+                .unwrap()
+                .as_dict_mut()
+                .unwrap()
+                .set("X0", Object::Integer(42));
+        }
+        let content_id = document
+            .get_object(page_id)
+            .unwrap()
+            .as_dict()
+            .unwrap()
+            .get(b"Contents")
+            .unwrap()
+            .as_reference()
+            .unwrap();
+        let stream = document
+            .get_object_mut(content_id)
+            .unwrap()
+            .as_stream_mut()
+            .unwrap();
+        let mut content = b"/X0 Do\n".to_vec();
+        content.extend_from_slice(&stream.content);
+        stream.set_plain_content(content);
+        let mut bytes = Vec::new();
+        document.save_to(&mut bytes).unwrap();
+        let text = extract_text_from_mem(&bytes, None).expect("missing X0 is skipped");
+        assert!(
+            text.contains("VISIBLE SURVIVES"),
+            "following text lost: {}",
+            text
+        );
+
+        let path = write_temp_pdf("missing-xobject-report", &bytes);
+        let mut layout = pdf_extract::LAParams::default();
+        layout.layout_fallback_policy = pdf_extract::LayoutFallbackPolicy::OnTextLoss;
+        for params in [None, Some(layout)] {
+            let probing = params.is_some();
+            let report = parse_pdf_with_report(
+                path.to_str().unwrap(),
+                1,
+                "file",
+                None,
+                None,
+                None,
+                Some(500),
+                params,
+                Some(true),
+                ExtractionOptions::default(),
+            )
+            .expect("report after missing X0");
+            assert_eq!(report.telemetry.skipped_xobject_invocations, 1);
+            assert_eq!(report.telemetry.skipped_xobject_pages, vec![1]);
+            assert_eq!(
+                report.telemetry.no_layout_normalized_chars.is_some(),
+                probing
+            );
+            assert!(report
+                .results
+                .iter()
+                .any(|chunk| chunk.content_core.content.contains("VISIBLE SURVIVES")));
+            let mut old_metrics = serde_json::to_value(&report.telemetry).unwrap();
+            let metrics = old_metrics.as_object_mut().unwrap();
+            metrics.remove("skipped_xobject_invocations");
+            metrics.remove("skipped_xobject_pages");
+            let old: pdf_extract::ProductionTelemetry =
+                serde_json::from_value(old_metrics).unwrap();
+            assert_eq!(old.skipped_xobject_invocations, 0);
+            assert!(old.skipped_xobject_pages.is_empty());
+        }
+        std::fs::remove_file(path).unwrap();
+    }
 }

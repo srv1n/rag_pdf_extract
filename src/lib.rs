@@ -75,8 +75,8 @@ use ocrs::apply_transform_to_image;
 // Re-export document processing types and functions
 pub use document::{
     calculate_heading_thresholds, calculate_mode, output_doc, output_doc_new_schema, parse_pdf,
-    DocumentStats, FontStats, HeaderFooterDetector, HeaderFooterPattern, HeaderFooterType,
-    PageBand, PageOccurrence, TextLevel,
+    parse_pdf_with_report, DocumentStats, FontStats, HeaderFooterDetector, HeaderFooterPattern,
+    HeaderFooterType, PageBand, PageOccurrence, TextLevel,
 };
 
 // Re-export LAParams configuration
@@ -211,6 +211,11 @@ pub struct OcrImageTelemetrySnapshot {
     pub images_skipped: usize,
     pub images_with_text: usize,
     pub text_chars_emitted: usize,
+    /// Invoked resources that were missing, unresolvable, or not streams.
+    #[serde(default)]
+    pub skipped_xobject_invocations: usize,
+    #[serde(default)]
+    pub skipped_xobject_pages: Vec<u32>,
 }
 
 #[derive(Debug, Default)]
@@ -220,6 +225,7 @@ pub(crate) struct OcrImageTelemetry {
     images_skipped: AtomicUsize,
     images_with_text: AtomicUsize,
     text_chars_emitted: AtomicUsize,
+    skipped_xobjects: Mutex<std::collections::BTreeMap<u32, usize>>,
 }
 
 impl OcrImageTelemetry {
@@ -240,13 +246,33 @@ impl OcrImageTelemetry {
         self.text_chars_emitted.fetch_add(chars, Ordering::Relaxed);
     }
 
+    pub(crate) fn xobject_skipped(&self, page: u32) {
+        *self
+            .skipped_xobjects
+            .lock()
+            .unwrap()
+            .entry(page)
+            .or_default() += 1;
+    }
+
+    pub(crate) fn take_skipped_xobjects(&self) -> std::collections::BTreeMap<u32, usize> {
+        std::mem::take(&mut *self.skipped_xobjects.lock().unwrap())
+    }
+
+    pub(crate) fn restore_skipped_xobjects(&self, counts: std::collections::BTreeMap<u32, usize>) {
+        *self.skipped_xobjects.lock().unwrap() = counts;
+    }
+
     pub(crate) fn snapshot(&self) -> OcrImageTelemetrySnapshot {
+        let skipped = self.skipped_xobjects.lock().unwrap();
         OcrImageTelemetrySnapshot {
             images_seen: self.images_seen.load(Ordering::Relaxed),
             images_converted: self.images_converted.load(Ordering::Relaxed),
             images_skipped: self.images_skipped.load(Ordering::Relaxed),
             images_with_text: self.images_with_text.load(Ordering::Relaxed),
             text_chars_emitted: self.text_chars_emitted.load(Ordering::Relaxed),
+            skipped_xobject_invocations: skipped.values().sum(),
+            skipped_xobject_pages: skipped.keys().copied().collect(),
         }
     }
 }
@@ -289,6 +315,19 @@ pub struct ProductionTelemetry {
     pub ocr_images_skipped: usize,
     pub ocr_images_with_text: usize,
     pub ocr_text_chars_emitted: usize,
+    /// Missing, unresolvable, or non-stream XObject invocations in the selected parse pass.
+    #[serde(default)]
+    pub skipped_xobject_invocations: usize,
+    /// Sorted, unique page numbers containing skipped XObject invocations.
+    #[serde(default)]
+    pub skipped_xobject_pages: Vec<u32>,
+}
+
+/// Extracted chunks and diagnostics from the selected parse pass.
+#[derive(Debug)]
+pub struct PdfParseReport {
+    pub results: Vec<ExtractionResult>,
+    pub telemetry: ProductionTelemetry,
 }
 
 impl ExtractionStats {
@@ -4965,6 +5004,9 @@ impl<'a> Processor<'a> {
                     let xf = match xf {
                         Ok(stream) => stream,
                         Err(error) => {
+                            if let Some(telemetry) = ocr_telemetry {
+                                telemetry.xobject_skipped(page_num);
+                            }
                             warn!(
                                 "Skipping XObject {} on page {}: {}",
                                 String::from_utf8_lossy(name),
@@ -8312,6 +8354,8 @@ pub fn production_telemetry_for_results(
         ocr_images_skipped: ocr.images_skipped,
         ocr_images_with_text: ocr.images_with_text,
         ocr_text_chars_emitted: ocr.text_chars_emitted,
+        skipped_xobject_invocations: ocr.skipped_xobject_invocations,
+        skipped_xobject_pages: ocr.skipped_xobject_pages.clone(),
         ..ProductionTelemetry::default()
     };
 

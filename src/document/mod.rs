@@ -15,7 +15,9 @@ pub use analysis::{classify_all_lines, classify_line, NextLineContext, TextLevel
 pub use header_footer::{
     HeaderFooterDetector, HeaderFooterPattern, HeaderFooterType, PageBand, PageOccurrence,
 };
-pub use processing::{clean_text_for_indexing, output_doc, output_doc_new_schema, parse_pdf};
+pub use processing::{
+    clean_text_for_indexing, output_doc, output_doc_new_schema, parse_pdf, parse_pdf_with_report,
+};
 pub use span_map::{
     chunk_locations_from_output_spans, compact_output_spans, LocatedText, OutputSpan, SourceRef,
     SpanSource, SyntheticKind,
