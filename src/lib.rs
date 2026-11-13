@@ -4167,7 +4167,7 @@ impl<'a> Processor<'a> {
 
                                         let char = font.decode_char(c);
 
-                                        let text_trm = gs.ctm.post_transform(&gs.ts.tm);
+                                        let text_trm = gs.ts.tm.post_transform(&gs.ctm);
                                         let device_trm = text_trm.post_transform(&flip_ctm);
                                         let (x, y) = (device_trm.m31, device_trm.m32);
                                         let transformed_font_size_vec = text_trm.transform_vector(
@@ -4391,7 +4391,7 @@ impl<'a> Processor<'a> {
 
                             let char = font.decode_char(c);
 
-                            let text_trm = gs.ctm.post_transform(&gs.ts.tm);
+                            let text_trm = gs.ts.tm.post_transform(&gs.ctm);
                             let device_trm = text_trm.post_transform(&flip_ctm);
                             let (x, y) = (device_trm.m31, device_trm.m32);
                             let transformed_font_size_vec =
@@ -4656,7 +4656,7 @@ impl<'a> Processor<'a> {
 
                             let ch = font.decode_char(c);
 
-                            let text_trm = gs.ctm.post_transform(&ts.tm);
+                            let text_trm = ts.tm.post_transform(&gs.ctm);
                             let device_trm = text_trm.post_transform(&flip_ctm);
                             let (x, y) = (device_trm.m31, device_trm.m32);
                             let transformed_font_size_vec =
@@ -4767,7 +4767,7 @@ impl<'a> Processor<'a> {
 
                                 let ch = font.decode_char(c);
 
-                                let text_trm = gs.ctm.post_transform(&ts.tm);
+                                let text_trm = ts.tm.post_transform(&gs.ctm);
                                 let device_trm = text_trm.post_transform(&flip_ctm);
                                 let (x, y) = (device_trm.m31, device_trm.m32);
                                 let transformed_font_size_vec =

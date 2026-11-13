@@ -1,0 +1,41 @@
+[
+  {
+    "source_pdf": "On Film-Making - Alexander Mackendrick.pdf",
+    "sha256": "14d8ebcf50b16f4ddda70f84c41df6963ea7a6468b32c26ab8d6ac18aa6cd6cd",
+    "chunks": 899,
+    "extracted_words": 137129,
+    "poppler_words": 109209,
+    "word_ratio": 1.2556565850799843,
+    "extracted_long_word_fraction": 0.0,
+    "poppler_long_word_fraction": 9.15675447994213e-06,
+    "extracted_single_letter_fraction": 0.28048042354279545,
+    "poppler_single_letter_fraction": 0.04692836670970341,
+    "pages_with_content": 333
+  },
+  {
+    "source_pdf": "Comedy Writing for Late-Night TV - Joe Toplyn.pdf",
+    "sha256": "b5b72a4e84d5fa64b36a1cac58645eb5fa577b9b492f42b8ebaa4cfcf20d351c",
+    "chunks": 748,
+    "extracted_words": 130942,
+    "poppler_words": 120001,
+    "word_ratio": 1.091174240214665,
+    "extracted_long_word_fraction": 3.8184845198637565e-05,
+    "poppler_long_word_fraction": 7.499937500520829e-05,
+    "extracted_single_letter_fraction": 0.17358066930396665,
+    "poppler_single_letter_fraction": 0.060724493962550315,
+    "pages_with_content": 449
+  },
+  {
+    "source_pdf": "Impro for Storytellers - Keith Johnstone.pdf",
+    "sha256": "21285f5fce1b6d68f709aa3a1be734a4b0307d0d4b48b4d9c86ffd809f834641",
+    "chunks": 755,
+    "extracted_words": 134474,
+    "poppler_words": 144882,
+    "word_ratio": 0.9281622285722174,
+    "extracted_long_word_fraction": 1.4872763508187455e-05,
+    "poppler_long_word_fraction": 6.90216866139341e-06,
+    "extracted_single_letter_fraction": 0.05943156297871707,
+    "poppler_single_letter_fraction": 0.1481964633287779,
+    "pages_with_content": 388
+  }
+]

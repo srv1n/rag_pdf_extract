@@ -234,7 +234,8 @@ fn ctm_scaled_text_uses_single_viewer_y_flip() {
         "unexpected viewer-space y after CTM conversion: {}",
         bbox.y
     );
-    assert!(bbox.width > 90.0 && bbox.width < 110.0);
+    // Poppler's glyph bounds span x=72..257.376 after the 2x CTM scale.
+    assert!((bbox.width - 185.376).abs() < 0.01);
     assert!(bbox.height > 20.0 && bbox.height < 30.0);
 }
 

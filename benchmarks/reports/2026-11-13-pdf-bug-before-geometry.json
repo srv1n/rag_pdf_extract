@@ -1,0 +1,35 @@
+{
+  "source_revision": "8da1c70",
+  "extractor": "examples/export_chunks: parse_pdf, LAParams::default(), clean_text=true, max_tokens=350, no OCR",
+  "counting": "[A-Za-z']+ matching the shelf report",
+  "results": [
+    {
+      "source_pdf": "David_Ball_Backwards_and_Forwards_href_edition_php_id_138273519_Backwards_Forwar.pdf",
+      "extracted_words": 23355,
+      "poppler_words": 23363,
+      "chunks": 133,
+      "pages_with_content": 69
+    },
+    {
+      "source_pdf": "The Screenwriter's Bible - David Trottier.pdf",
+      "extracted_words": 139849,
+      "poppler_words": 139829,
+      "chunks": 1288,
+      "pages_with_content": 379
+    },
+    {
+      "source_pdf": "Blake_Snyder_Snyder_Blake_Save_the_Cat_The_Last_Book_on_Screenwriting_You_ll_Ever_Need_200.pdf",
+      "extracted_words": 60917,
+      "poppler_words": 60900,
+      "chunks": 338,
+      "pages_with_content": 210
+    },
+    {
+      "source_pdf": "EUGENE_M_SCHWARTZ_EUGENE_M_SCHWARTZ_BREAKTHROUGH_ADVERTISING_href_edition_php_id_146301399.pdf",
+      "extracted_words": 212046,
+      "poppler_words": 69324,
+      "chunks": 960,
+      "pages_with_content": 229
+    }
+  ]
+}
