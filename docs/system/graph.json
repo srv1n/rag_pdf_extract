@@ -1,0 +1,12 @@
+{
+  "nodes": [
+    {
+      "subject": "overview",
+      "kind": "doc",
+      "path": "docs/system/00-overview.md",
+      "title": "System overview",
+      "status": "current"
+    }
+  ],
+  "edges": []
+}

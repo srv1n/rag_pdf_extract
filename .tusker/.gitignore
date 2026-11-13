@@ -1,0 +1,16 @@
+# tusker
+config.local.yaml
+_system/generated/
+.obsidian/workspace*
+.obsidian/cache
+.trash/
+events/**/*.json
+attempts/**/*.json
+attempts/**/*.jsonl
+attempts/**/*.log
+_generated/
+scratch/
+workspaces/
+_runtime/
+_system/locks/
+evidence/**/artifacts/

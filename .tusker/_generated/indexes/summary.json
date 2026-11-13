@@ -1,7 +1,7 @@
 {
   "counts": {
     "cancelled": 0,
-    "done": 2,
+    "done": 5,
     "doneOpenGates": 0,
     "epics": 1,
     "gates": 0,
@@ -9,14 +9,14 @@
     "humanWait": 0,
     "inReview": 13,
     "openGates": 0,
-    "openWork": 15,
+    "openWork": 16,
     "ready": 0,
-    "running": 1,
-    "staleLeases": 8,
+    "running": 0,
+    "staleLeases": 9,
     "superseded": 0,
-    "tasks": 17
+    "tasks": 21
   },
-  "generatedAt": "2026-08-09T06:18:39Z",
+  "generatedAt": "2026-11-13T02:42:47Z",
   "schema": "tusker.summary/v7",
   "source": "v7"
 }

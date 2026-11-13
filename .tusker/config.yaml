@@ -1,0 +1,60 @@
+schema: tusker.config/v1
+project_id: rag_pdf_extract
+
+storage:
+  root: .tusker
+  generated_root: .tusker/_generated
+  evidence_root: .tusker/evidence
+  events_root: .tusker/events
+  attempts_root: .tusker/attempts
+
+runtime:
+  lease_backend: local
+  lease_ttl_minutes: 120
+  mutation_mode: single_user_local
+
+automation:
+  # Automation is opt-in. Registration keeps status projections fresh; only
+  # an explicit operator change may authorize daemon dispatch.
+  enabled: false
+  # Runner profiles live only in the global config (tusker models profile --defaults
+  # --write); this project selects them by name via automation.model_levels.
+  dispatch_scope: armed_waves
+  # After a passing review the daemon lands and closes the task
+  # (authoritative). Set disabled to land and close by hand.
+  completion_reactor:
+    mode: authoritative
+  # Landing gate, detected by tusker init. Edit to match the project.
+  validation:
+    commands:
+      - cargo test
+  trigger_states: [ready, rework]
+  # Direct Codex is available after fresh setup. tusker acp setup can add the
+  # pinned ACP adapter later when that machine has been configured for it.
+  default_runner: codex_exec
+  enabled_runners: [codex_exec, claude-code]
+  # Workspace mode: worktree (a worktree per task) or shared (the project
+  # checkout, no branches). This setting overrides workspace.strategy in
+  # WORKFLOW.md; tusker check warns when the two disagree.
+  workspace:
+    strategy: worktree
+    root: workspaces
+  concurrency:
+    max_active_runs: 2
+    max_active_runs_per_project: 1
+    max_concurrent_by_state:
+      rework: 1
+  runners:
+    # Direct Codex is the current default runner. ACP is added only by its
+    # explicit machine-local setup.
+    codex_exec:
+      kind: codex_exec
+      command: codex exec --json --skip-git-repo-check -
+    claude-code:
+      kind: claude-code
+      command: claude -p
+  fanout:
+    enabled: false
+    max_children: 0
+    allowed_child_types: []
+    merge_rule: manual_review

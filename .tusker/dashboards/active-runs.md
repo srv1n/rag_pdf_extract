@@ -1,4 +1,4 @@
-<!-- tusker:generated:file; do not edit manually; run `tusker dashboard build` -->
+<!-- tusker:generated:file; do not edit manually; run `tusker check --fix` -->
 
 # Active Runs
 
@@ -14,6 +14,6 @@
 | [[PDF-T-0006]] | `stale` | agent:codex | `main` | `2026-07-21T18:50:41Z` |
 | [[PDF-T-0007]] | `stale` | agent:codex | `main` | `2026-07-21T18:59:58Z` |
 | [[PDF-T-0009]] | `stale` | agent:codex | `main` | `2026-05-29T19:29:53Z` |
-| [[PDF-T-0017]] | `active` | agent:codex | `srv1nc/pdf-hardening-20260806` | `2026-08-09T07:15:12Z` |
+| [[PDF-T-0017]] | `stale` | agent:codex | `srv1nc/pdf-hardening-20260806` | `2026-08-09T07:15:12Z` |
 
 <!-- tusker:generated:end -->

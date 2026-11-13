@@ -123,7 +123,7 @@
     "heartbeat_at": "2026-08-09T05:15:12Z",
     "id": "PDF-T-0017",
     "owner": "agent:codex",
-    "runtime_state": "active",
+    "runtime_state": "stale",
     "stale_at": "",
     "status": "active",
     "task": "PDF-T-0017",

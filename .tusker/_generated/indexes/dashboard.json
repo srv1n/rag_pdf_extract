@@ -1,12 +1,12 @@
 {
-  "active_runs": 1,
+  "active_runs": 0,
   "agent_ready": 0,
   "done_open_gates": 0,
-  "generatedAt": "2026-08-09T06:18:39Z",
+  "generatedAt": "2026-11-13T02:42:47Z",
   "human_actions": 0,
   "human_wait": 0,
   "review_queue": 13,
   "schema": "tusker.dashboard-index/v1",
   "source": "v7",
-  "stale_leases": 8
+  "stale_leases": 9
 }
