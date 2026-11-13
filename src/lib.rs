@@ -47,6 +47,7 @@ mod chunk_accumulator;
 pub mod classifier;
 mod cmap;
 mod stream_budgets;
+mod trailer_repair;
 use stream_budgets::{accounted_stream_bytes, bounded_flate_decode};
 use stream_budgets::validate_document_budgets;
 pub mod document;
@@ -7299,6 +7300,7 @@ pub struct ChunkLocation {
 pub enum RepairKind {
     HeaderGarbageStripped,
     TruncatedEofRepaired,
+    MissingTrailerSizeRepaired,
 }
 
 /// A password whose secret value is never exposed by formatting.
@@ -7631,6 +7633,12 @@ pub(crate) fn load_pdf_from_mem(
                 append_missing_eof(&mut repaired);
                 repairs.push(RepairKind::TruncatedEofRepaired);
             }
+            if matches!(&first_error, OutputError::InvalidStructure { message, .. } if message == "invalid file trailer") {
+                if let Some(with_size) = trailer_repair::restore_missing_size(&repaired) {
+                    repaired = with_size;
+                    repairs.push(RepairKind::MissingTrailerSizeRepaired);
+                }
+            }
             if repairs.is_empty() {
                 Err(first_error)
             } else {
@@ -7642,6 +7650,13 @@ pub(crate) fn load_pdf_from_mem(
                         validate_document_budgets(&document, options)
                             .map_err(|error| error.with_repair_attempted(true))?;
                         Ok(LoadedPdf { document, repairs })
+                    }
+                    Err(error @ OutputError::Encrypted { .. })
+                        if repairs.contains(&RepairKind::MissingTrailerSizeRepaired) =>
+                    {
+                        Err(error
+                            .with_estimated_pages(estimated_pages)
+                            .with_repair_attempted(true))
                     }
                     Err(_) => {
                         // Preserve the semantic error from the original
