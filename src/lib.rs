@@ -4949,7 +4949,6 @@ impl<'a> Processor<'a> {
                     mc_stack.pop();
                 }
                 "Do" => {
-                    let xobject: &Dictionary = get(&doc, resources, b"XObject");
                     let Some(name) = operation
                         .operands
                         .first()
@@ -4958,7 +4957,23 @@ impl<'a> Processor<'a> {
                         warn!("Skipping malformed Do operator on page {}", page_num);
                         continue;
                     };
-                    let xf: &Stream = get(&doc, xobject, name);
+                    let xf = doc
+                        .get_dict_in_dict(resources, b"XObject")
+                        .and_then(|objects| objects.get(name))
+                        .and_then(|object| doc.dereference(object))
+                        .and_then(|(_, object)| object.as_stream());
+                    let xf = match xf {
+                        Ok(stream) => stream,
+                        Err(error) => {
+                            warn!(
+                                "Skipping XObject {} on page {}: {}",
+                                String::from_utf8_lossy(name),
+                                page_num,
+                                error
+                            );
+                            continue;
+                        }
+                    };
 
                     // Only process XObject if OCR handler is available
                     if ocr_route {
@@ -5064,8 +5079,9 @@ impl<'a> Processor<'a> {
                                     Transform::identity()
                                 };
 
-                                let child_name = xobject
-                                    .get(name)
+                                let child_name = doc
+                                    .get_dict_in_dict(resources, b"XObject")
+                                    .and_then(|objects| objects.get(name))
                                     .ok()
                                     .and_then(|obj| match obj {
                                         Object::Reference(id) => Some(format!("{id:?}")),

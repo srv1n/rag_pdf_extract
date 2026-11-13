@@ -242,3 +242,33 @@ fn deep_form_xobject_depth_skip_preserves_page_text() {
         text
     );
 }
+
+#[test]
+fn missing_xobject_does_not_discard_following_page_text() {
+    let mut document = Document::load_mem(&deep_form_xobject_pdf(1)).unwrap();
+    let page_id = document.get_pages()[&1];
+    let content_id = document
+        .get_object(page_id)
+        .unwrap()
+        .as_dict()
+        .unwrap()
+        .get(b"Contents")
+        .unwrap()
+        .as_reference()
+        .unwrap();
+    let stream = document
+        .get_object_mut(content_id)
+        .unwrap()
+        .as_stream_mut()
+        .unwrap();
+    let mut content = b"/X0 Do\n".to_vec();
+    content.extend_from_slice(&stream.content);
+    stream.set_plain_content(content);
+    let mut bytes = Vec::new();
+    document.save_to(&mut bytes).unwrap();
+    let text = extract_text_from_mem(&bytes, None).expect("missing X0 is skipped");
+    assert!(
+        text.contains("VISIBLE SURVIVES"),
+        "following text lost: {text}"
+    );
+}
